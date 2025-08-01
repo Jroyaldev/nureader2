@@ -1,0 +1,445 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: 248 249 250;
+    --fg: 15 23 42;
+    --muted: 51 65 85;
+    --border: 233 236 239;
+    --accent: 0 102 204;
+    --surface: 255 255 255;
+    --surface-hover: 248 249 250;
+    --shadow: 0 0 0;
+  }
+  .dark {
+    --bg: 13 17 23;
+    --fg: 248 249 250;
+    --muted: 203 213 225;
+    --border: 33 38 45;
+    --accent: 88 166 255;
+    --surface: 22 27 34;
+    --surface-hover: 33 38 45;
+    --shadow: 255 255 255;
+  }
+  html, body, #__next { height: 100%; }
+  body { 
+    background-color: rgb(var(--bg)); 
+    color: rgb(var(--fg)); 
+    font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+}
+
+@layer utilities {
+  .container-px { padding-left: clamp(24px, 5vw, 48px); padding-right: clamp(24px, 5vw, 48px); }
+  .text-muted { color: rgb(var(--muted)); }
+  .text-foreground { color: rgb(var(--fg)); }
+  .bg-surface { background-color: rgb(var(--surface)); }
+  .bg-surface-hover { background-color: rgb(var(--surface-hover)); }
+  
+  /* Floating elements with elegant shadows and better contrast */
+  .floating {
+    backdrop-filter: blur(20px) saturate(180%);
+    background: color-mix(in srgb, rgb(var(--surface)) 95%, transparent);
+    border: 1px solid color-mix(in srgb, rgb(var(--border)) 80%, transparent);
+    box-shadow: 0 8px 32px color-mix(in srgb, rgb(var(--shadow)) 15%, transparent),
+                0 1px 0 color-mix(in srgb, rgb(var(--surface)) 100%, transparent) inset;
+    color: rgb(var(--fg));
+  }
+  
+  /* Clean shadcn-inspired floating elements */
+  .floating-premium {
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--border));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    color: rgb(var(--fg));
+  }
+  
+  .dark .floating-premium {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+  
+  
+  /* Enhanced text contrast for floating elements */
+  .floating .text-foreground {
+    color: rgb(var(--fg));
+    font-weight: 500;
+  }
+  
+  .floating button {
+    color: rgb(var(--fg));
+  }
+  
+  .floating button:hover {
+    color: rgb(var(--fg));
+  }
+  
+  /* Premium button styles */
+  .btn-primary {
+    background: rgb(var(--accent));
+    color: white;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px color-mix(in srgb, rgb(var(--accent)) 25%, transparent);
+    border: none;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px color-mix(in srgb, rgb(var(--accent)) 30%, transparent);
+  }
+  
+  .btn-secondary {
+    background: color-mix(in srgb, rgb(var(--surface)) 90%, transparent);
+    color: rgb(var(--fg));
+    border: 1px solid color-mix(in srgb, rgb(var(--border)) 60%, transparent);
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 1px 3px color-mix(in srgb, rgb(var(--shadow)) 8%, transparent);
+    backdrop-filter: blur(12px);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-secondary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+      color-mix(in srgb, rgb(var(--surface)) 30%, transparent) 0%, 
+      transparent 50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .btn-secondary:hover {
+    background: color-mix(in srgb, rgb(var(--surface-hover)) 95%, transparent);
+    transform: translateY(-0.5px) scale(1.01);
+    box-shadow: 
+      0 4px 12px color-mix(in srgb, rgb(var(--shadow)) 12%, transparent),
+      0 1px 0 color-mix(in srgb, rgb(var(--surface)) 100%, transparent) inset;
+    border-color: color-mix(in srgb, rgb(var(--border)) 80%, transparent);
+  }
+  
+  .btn-secondary:hover::before {
+    opacity: 1;
+  }
+  
+  .btn-secondary:active {
+    transform: translateY(0) scale(0.99);
+  }
+  
+  .btn-secondary span,
+  .btn-secondary svg {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Clean shadcn-inspired control buttons */
+  .control-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--border));
+    color: rgb(var(--fg));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  
+  .control-btn:hover {
+    background: rgb(var(--surface-hover));
+    border-color: rgb(var(--border));
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .control-btn:active {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(0.5px);
+  }
+  
+  .dark .control-btn {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  }
+  
+  .dark .control-btn:hover {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Elegant transitions */
+  .transition-elegant {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Contextual controls with improved animations */
+  .contextual {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+    transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    pointer-events: none;
+  }
+  .contextual.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  
+  /* Reading optimized typography */
+  .reading-text {
+    font-size: 18px;
+    line-height: 1.8;
+    max-width: 65ch;
+    margin: 0 auto;
+  }
+  
+  /* Tabular numbers for consistent digit width */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Modal animations */
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes scale-in {
+    from { 
+      opacity: 0; 
+      transform: scale(0.9) translateY(20px);
+    }
+    to { 
+      opacity: 1; 
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Text utilities */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    .floating-premium {
+      backdrop-filter: blur(20px) saturate(180%);
+      background: color-mix(in srgb, rgb(var(--surface)) 96%, transparent);
+      box-shadow: 
+        0 8px 32px color-mix(in srgb, rgb(var(--shadow)) 15%, transparent),
+        0 2px 8px color-mix(in srgb, rgb(var(--shadow)) 10%, transparent);
+    }
+    
+    .control-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      /* Larger touch targets for mobile */
+      padding: 0;
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    .contextual {
+      transform: translateY(16px) scale(0.92);
+    }
+    
+    /* Mobile-specific button adjustments */
+    .btn-secondary {
+      min-height: 36px;
+      padding: 8px 12px;
+    }
+    
+    /* Improved mobile reading experience */
+    .reading-text {
+      font-size: 16px;
+      line-height: 1.7;
+      padding: 0 16px;
+    }
+  }
+  
+  /* iPhone specific optimizations */
+  @supports (-webkit-touch-callout: none) {
+    .contextual {
+      /* Better performance on iOS */
+      will-change: transform, opacity;
+    }
+    
+    .floating-premium {
+      /* iOS Safari backdrop-filter optimization */
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+  }
+  
+  /* Dark mode mobile optimizations */
+  @media (max-width: 768px) and (prefers-color-scheme: dark) {
+    .floating-premium {
+      background: color-mix(in srgb, rgb(var(--surface)) 98%, transparent);
+      border: 1px solid color-mix(in srgb, rgb(var(--border)) 80%, transparent);
+    }
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .floating-premium, .floating {
+      border-width: 2px;
+      background: rgb(var(--surface));
+    }
+    
+    .control-btn {
+      border-width: 2px;
+      background: rgb(var(--surface));
+    }
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .contextual, .control-btn, .btn-primary, .btn-secondary, .transition-elegant {
+      transition: none;
+    }
+    
+    .contextual {
+      transform: none;
+    }
+    
+    .contextual.show {
+      transform: none;
+    }
+    
+    /* Disable hover effects for reduced motion */
+    .control-btn:hover, .btn-secondary:hover {
+      transform: none;
+    }
+  }
+  
+  /* Ultra-wide screen optimizations */
+  @media (min-width: 1400px) {
+    .floating-premium {
+      backdrop-filter: blur(28px) saturate(220%);
+      box-shadow: 
+        0 16px 48px color-mix(in srgb, rgb(var(--shadow)) 10%, transparent),
+        0 8px 24px color-mix(in srgb, rgb(var(--shadow)) 6%, transparent),
+        0 1px 0 color-mix(in srgb, rgb(var(--surface)) 100%, transparent) inset;
+    }
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Annotation system styles */
+.annotation-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.annotation-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, rgb(var(--accent)) 10%, transparent) 0%, 
+    transparent 50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.annotation-btn:hover::before {
+  opacity: 1;
+}
+
+.annotation-card {
+  background: color-mix(in srgb, rgb(var(--surface)) 95%, transparent);
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+}
+
+.annotation-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    color-mix(in srgb, rgb(var(--accent)) 8%, transparent) 50%, 
+    transparent 100%);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.annotation-card:hover::before {
+  left: 100%;
+}
+
+/* Highlight styles for EPUB content */
+.epub-highlight {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.epub-highlight:hover {
+  filter: brightness(0.95);
+  transform: scale(1.01);
+}
+
+/* Border utilities */
+.border-l-3 {
+  border-left-width: 3px;
+}
+
+.border-6 {
+  border-width: 6px;
+}
