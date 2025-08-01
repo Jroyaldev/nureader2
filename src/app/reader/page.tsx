@@ -4,9 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import AnnotationPanel from "@/components/AnnotationPanel";
-import AnnotationToolbar from "@/components/AnnotationToolbar";
-import NoteModal from "@/components/NoteModal";
-import Tooltip from "@/components/Tooltip";
 
 // Remove next/dynamic usage for non-component library; use on-demand import instead
 
@@ -49,18 +46,6 @@ export default function ReaderPage() {
   const [currentProgress, setCurrentProgress] = useState<number>(0);
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [containerReady, setContainerReady] = useState<boolean>(false);
-  const [annotationToolbar, setAnnotationToolbar] = useState<{
-    visible: boolean;
-    position: { x: number; y: number };
-    text: string;
-    cfi: string;
-  }>({ visible: false, position: { x: 0, y: 0 }, text: '', cfi: '' });
-  const [showNoteModal, setShowNoteModal] = useState<boolean>(false);
-  const [pendingAnnotation, setPendingAnnotation] = useState<{
-    text: string;
-    cfi: string;
-    type: 'note' | 'highlight';
-  } | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -132,19 +117,8 @@ export default function ReaderPage() {
         width: "100%",
         height: "100%",
         flow: "paginated",
-        spread: "auto",
-        allowScriptedContent: true
+        spread: "auto"
       });
-
-      // Configure iframe sandbox to allow scripts and text selection
-      setTimeout(() => {
-        const iframes = containerRef.current?.querySelectorAll('iframe');
-        iframes?.forEach(iframe => {
-          iframe.sandbox.add('allow-scripts');
-          iframe.sandbox.add('allow-same-origin');
-          iframe.sandbox.add('allow-pointer-lock');
-        });
-      }, 100);
 
       applyTheme(rendition, theme);
 
@@ -164,9 +138,6 @@ export default function ReaderPage() {
         console.warn('Failed to display saved position, starting from beginning:', error);
         await rendition.display(); // Display first page if saved position fails
       }
-      
-      // Load and restore existing highlights
-      await loadExistingHighlights(rendition);
 
       // Extract metadata
       let title: string | undefined;
@@ -203,53 +174,7 @@ export default function ReaderPage() {
         } catch {}
       });
 
-      // Text selection handling for annotations
-      rendition.on("selected", async (cfiRange: string, contents: any) => {
-        console.log('📝 Text selected event fired:', { cfiRange, contents });
-        try {
-          const selection = contents.window.getSelection();
-          console.log('📝 Selection object:', selection, 'Text:', selection?.toString());
-          
-          if (selection && selection.toString().trim()) {
-            const selectedText = selection.toString().trim();
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const containerRect = containerRef.current?.getBoundingClientRect();
-            
-            console.log('📝 Selection rect:', rect, 'Container rect:', containerRect);
-            
-            if (containerRect) {
-              // Calculate position relative to viewport, not container
-              const x = rect.left + rect.width / 2;
-              const y = rect.top;
-              
-              console.log('📝 Setting annotation toolbar at:', { x, y });
-              
-              setAnnotationToolbar({
-                visible: true,
-                position: { x, y },
-                text: selectedText,
-                cfi: cfiRange
-              });
-              
-              setSelectedText(selectedText);
-              setSelectionCfi(cfiRange);
-            }
-          }
-        } catch (error) {
-          console.error('Error handling text selection:', error);
-        }
-      });
-      
-      // Hide annotation toolbar when selection is cleared
-      rendition.on("click", () => {
-        setAnnotationToolbar({ visible: false, position: { x: 0, y: 0 }, text: '', cfi: '' });
-      });
-      
-      // Also listen for selection cleared events
-      rendition.on("unselected", () => {
-        setAnnotationToolbar({ visible: false, position: { x: 0, y: 0 }, text: '', cfi: '' });
-      });
+      // Note: Removed iframe access to prevent sandboxing security warnings
 
       // Persist CFI periodically to both database and localStorage
       const persist = async () => {
@@ -424,55 +349,19 @@ export default function ReaderPage() {
     }
   }, [loaded, loadDefault, bookId, isLoading]);
 
-  // Keyboard navigation and shortcuts
+  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!loaded?.rendition) return;
-      
-      // Don't interfere with form inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      
-      // Navigation
-      if (e.key === "ArrowRight" || e.key === " ") {
-        e.preventDefault();
+      if (e.key === "ArrowRight") {
         loaded.rendition.next();
       } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
         loaded.rendition.prev();
       }
-      
-      // Annotation shortcuts
-      else if (e.key === "h" && selectedText) {
-        // Quick highlight with default color
-        // TODO: Add keyboard shortcut for highlighting
-      } else if (e.key === "n" && selectedText) {
-        // Quick note
-        // TODO: Add keyboard shortcut for notes
-      } else if (e.key === "b") {
-        // Quick bookmark
-        // TODO: Add keyboard shortcut for bookmarks
-      }
-      
-      // UI shortcuts
-      else if (e.key === "t") {
-        // Toggle table of contents
-        setShowToc(prev => !prev);
-      } else if (e.key === "a") {
-        // Toggle annotations panel
-        setShowAnnotations(prev => !prev);
-      } else if (e.key === "Escape") {
-        // Close any open panels/toolbars
-        // TODO: Add toolbar close functionality
-        setShowToc(false);
-        setShowAnnotations(false);
-      }
     };
-    
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [loaded, selectedText, selectionCfi]);
+  }, [loaded]);
 
   // Apply theme when system toggles or after loading
   useEffect(() => {
@@ -498,7 +387,7 @@ export default function ReaderPage() {
     setShowAnnotations(prev => !prev);
   }, []);
 
-  const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = '#fbbf24', note?: string, customText?: string, customCfi?: string) => {
+  const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = '#fbbf24', note?: string) => {
     if (!bookId || !loaded?.rendition) return;
     
     try {
@@ -506,13 +395,11 @@ export default function ReaderPage() {
       if (!user) return;
 
       const currentLocation = await loaded.rendition.currentLocation();
-      const cfi = customCfi || selectionCfi || currentLocation?.start?.cfi || "";
+      const cfi = currentLocation?.start?.cfi || "";
       
       let content = "";
-      if (type === 'highlight' && (customText || selectedText)) {
-        content = customText || selectedText;
-      } else if (type === 'note' && (customText || selectedText)) {
-        content = customText || selectedText;
+      if (type === 'highlight' && selectedText) {
+        content = selectedText;
       } else if (type === 'bookmark') {
         content = chapterTitle || "Bookmark";
       }
@@ -524,26 +411,16 @@ export default function ReaderPage() {
           book_id: bookId,
           content,
           note: note || null,
-          location: cfi,
+          location: selectionCfi || cfi,
           annotation_type: type,
           color
         });
 
       if (error) throw error;
       
-      // Apply highlight to the rendition if it's a highlight
-      if (type === 'highlight' && cfi) {
-        loaded.rendition.annotations.add("highlight", cfi, {}, undefined, "epub-highlight", {
-          "background-color": color,
-          "border-radius": "3px",
-          "padding": "2px 0"
-        });
-      }
-      
-      // Clear selection and toolbar
+      // Clear selection
       setSelectedText("");
       setSelectionCfi("");
-      setAnnotationToolbar({ visible: false, position: { x: 0, y: 0 }, text: '', cfi: '' });
       
     } catch (error) {
       console.error('Error creating annotation:', error);
@@ -558,94 +435,6 @@ export default function ReaderPage() {
       console.error('Error jumping to annotation:', error);
     }
   }, [loaded]);
-  
-  // Annotation toolbar handlers
-  const handleHighlight = useCallback((color: string) => {
-    createAnnotation('highlight', color, undefined, annotationToolbar.text, annotationToolbar.cfi);
-  }, [createAnnotation, annotationToolbar]);
-  
-  const handleNote = useCallback(() => {
-    setPendingAnnotation({
-      text: annotationToolbar.text,
-      cfi: annotationToolbar.cfi,
-      type: 'note'
-    });
-    setShowNoteModal(true);
-    setAnnotationToolbar({ visible: false, position: { x: 0, y: 0 }, text: '', cfi: '' });
-  }, [annotationToolbar]);
-  
-  const handleBookmark = useCallback(() => {
-    createAnnotation('bookmark');
-  }, [createAnnotation]);
-  
-  const handleCloseToolbar = useCallback(() => {
-    setAnnotationToolbar({ visible: false, position: { x: 0, y: 0 }, text: '', cfi: '' });
-    setSelectedText("");
-    setSelectionCfi("");
-  }, []);
-  
-  const handleSaveNote = useCallback((note: string, highlightColor?: string) => {
-    if (!pendingAnnotation) return;
-    
-    if (highlightColor) {
-      // Create both highlight and note
-      createAnnotation('highlight', highlightColor, undefined, pendingAnnotation.text, pendingAnnotation.cfi);
-    }
-    
-    createAnnotation('note', '#3b82f6', note, pendingAnnotation.text, pendingAnnotation.cfi);
-    
-    setShowNoteModal(false);
-    setPendingAnnotation(null);
-  }, [pendingAnnotation, createAnnotation]);
-  
-  const handleCancelNote = useCallback(() => {
-    setShowNoteModal(false);
-    setPendingAnnotation(null);
-  }, []);
-  
-  // Load existing highlights from database
-  const loadExistingHighlights = useCallback(async (rendition: any) => {
-    if (!bookId || !authReady) return;
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data: highlights, error } = await supabase
-        .from('annotations')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('book_id', bookId)
-        .eq('annotation_type', 'highlight');
-        
-      if (error) throw error;
-      
-      // Apply each highlight to the rendition
-      highlights?.forEach((highlight) => {
-        if (highlight.location && highlight.color) {
-          rendition.annotations.add("highlight", highlight.location, {}, undefined, "epub-highlight", {
-            "background-color": highlight.color,
-            "border-radius": "3px",
-            "padding": "2px 0",
-            "cursor": "pointer"
-          });
-        }
-      });
-      
-    } catch (error) {
-      console.warn('Error loading existing highlights:', error);
-    }
-  }, [bookId, authReady, supabase]);
-  
-  // Refresh highlights when annotations change
-  useEffect(() => {
-    if (loaded?.rendition && bookId && authReady) {
-      // Small delay to ensure rendition is ready
-      setTimeout(() => {
-        loadExistingHighlights(loaded.rendition);
-      }, 1000);
-    }
-  }, [loaded, bookId, authReady, loadExistingHighlights]);
 
   const headerTitle = useMemo(() => {
     const t = loaded?.title || "EPUB";
@@ -682,7 +471,7 @@ export default function ReaderPage() {
   return (
     <div 
       className="min-h-dvh relative overflow-hidden transition-elegant"
-      style={{ background: theme === "dark" ? "#0a0a0a" : "#fefefe" }}
+      style={{ background: theme === "dark" ? "#0d1117" : "#f8f9fa" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -690,132 +479,73 @@ export default function ReaderPage() {
       <input ref={inputRef} type="file" accept=".epub" className="hidden" onChange={onInputChange} />
 
       {/* Floating Header - appears on hover */}
-      <div className={`fixed top-2 md:top-4 left-1/2 -translate-x-1/2 z-[100] transition-elegant ${(isHovering || !loaded) ? 'contextual show' : 'contextual'}`}>
-        <div className="floating-premium rounded-xl md:rounded-2xl px-3 md:px-5 py-2 md:py-2.5">
-          <div className="flex items-center gap-2 md:gap-3">
+      <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-elegant ${(isHovering || !loaded) ? 'contextual show' : 'contextual'}`}>
+        <div className="floating rounded-2xl px-6 py-3">
+          <div className="flex items-center gap-4">
             {!bookId && (
-              <Tooltip content="Open EPUB file" position="bottom">
-                <button 
-                  onClick={onPick} 
-                  className="btn-secondary text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5"
-                >
-                  <span className="hidden sm:inline">Open EPUB</span>
-                  <span className="sm:hidden">Open</span>
-                </button>
-              </Tooltip>
-            )}
-            <Tooltip content="Back to library" position="bottom">
               <button 
-                onClick={() => router.push('/library')} 
-                className="btn-secondary text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5"
+                onClick={onPick} 
+                className="btn-secondary text-sm px-4 py-2"
               >
-                <span className="hidden sm:inline">Library</span>
-                <span className="sm:hidden">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 1v6m8-6v6" />
-                  </svg>
-                </span>
+                Open EPUB
               </button>
-            </Tooltip>
+            )}
+            <button 
+              onClick={() => router.push('/library')} 
+              className="btn-secondary text-sm px-4 py-2"
+            >
+              Library
+            </button>
             {loaded && (
               <>
-                <div className="text-xs md:text-sm font-semibold text-foreground max-w-[8rem] sm:max-w-sm truncate" title={headerTitle}>
+                <div className="text-sm font-medium text-foreground max-w-xs truncate" title={headerTitle}>
                   {headerTitle}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Tooltip content="Previous page (←)" position="bottom">
-                    <button 
-                      onClick={onPrev} 
-                      className="control-btn"
-                      aria-label="Previous page"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Next page (→)" position="bottom">
-                    <button 
-                      onClick={onNext} 
-                      className="control-btn"
-                      aria-label="Next page"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
-                  <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} position="bottom">
-                    <button 
-                      onClick={onThemeToggle} 
-                      className="control-btn"
-                      aria-label="Toggle theme"
-                    >
-                      {theme === "dark" ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                      )}
-                    </button>
-                  </Tooltip>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={onPrev} 
+                    className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-sm"
+                    aria-label="Previous page"
+                  >
+                    ←
+                  </button>
+                  <button 
+                    onClick={onNext} 
+                    className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-sm"
+                    aria-label="Next page"
+                  >
+                    →
+                  </button>
+                  <button 
+                    onClick={onThemeToggle} 
+                    className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-sm"
+                    aria-label="Toggle theme"
+                  >
+                    {theme === "dark" ? "🌙" : "☀️"}
+                  </button>
                   {toc.length > 0 && (
-                    <Tooltip content="Table of contents" position="bottom">
-                      <button 
-                        onClick={toggleToc} 
-                        className="control-btn"
-                        aria-label="Table of contents"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                      </button>
-                    </Tooltip>
+                    <button 
+                      onClick={toggleToc} 
+                      className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-sm"
+                      aria-label="Table of contents"
+                    >
+                      ☰
+                    </button>
                   )}
-                  <Tooltip content="View annotations and highlights" position="bottom">
-                    <button 
-                      onClick={toggleAnnotations} 
-                      className="control-btn"
-                      aria-label="Annotations"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 011 1v1a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7H3a1 1 0 01-1-1V5a1 1 0 011-1h4z" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Add bookmark at current location" position="bottom">
-                    <button 
-                      onClick={() => createAnnotation('bookmark')} 
-                      className="control-btn"
-                      aria-label="Add bookmark"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Test annotation toolbar" position="bottom">
-                    <button 
-                      onClick={() => {
-                        console.log('🧪 Testing annotation toolbar');
-                        setAnnotationToolbar({
-                          visible: true,
-                          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-                          text: 'Test selected text for annotation toolbar',
-                          cfi: 'test-cfi'
-                        });
-                      }}
-                      className="control-btn bg-yellow-500/20 hover:bg-yellow-500/30"
-                      aria-label="Test annotation toolbar"
-                    >
-                      🧪
-                    </button>
-                  </Tooltip>
+                  <button 
+                    onClick={toggleAnnotations} 
+                    className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-sm"
+                    aria-label="Annotations"
+                  >
+                    🖍️
+                  </button>
+                  <button 
+                    onClick={() => createAnnotation('bookmark')} 
+                    className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-sm"
+                    aria-label="Add bookmark"
+                  >
+                    🔖
+                  </button>
                 </div>
               </>
             )}
@@ -825,33 +555,26 @@ export default function ReaderPage() {
 
       {/* Floating TOC Sidebar */}
       {toc.length > 0 && (
-        <div className={`fixed left-2 md:left-4 top-1/2 -translate-y-1/2 z-[90] w-[calc(100vw-1rem)] max-w-80 md:w-80 max-h-[75vh] transition-elegant ${showToc ? 'contextual show' : 'contextual'}`}>
-          <div className="floating-premium rounded-xl md:rounded-2xl p-4 md:p-5 overflow-hidden">
+        <div className={`fixed left-6 top-1/2 -translate-y-1/2 z-40 w-80 max-h-96 transition-elegant ${showToc ? 'contextual show' : 'contextual'}`}>
+          <div className="floating rounded-2xl p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-base text-foreground">Contents</h3>
-              <Tooltip content="Close table of contents" position="left">
-                <button 
-                  onClick={toggleToc}
-                  className="control-btn p-1.5"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </Tooltip>
+              <h3 className="font-medium text-lg text-foreground">Table of Contents</h3>
+              <button 
+                onClick={toggleToc}
+                className="w-6 h-6 rounded-full bg-surface hover:bg-surface-hover transition-elegant flex items-center justify-center text-xs"
+              >
+                ×
+              </button>
             </div>
-            <div className="overflow-y-auto max-h-[60vh] space-y-1 -mx-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+            <div className="overflow-y-auto max-h-80 space-y-1">
               {toc.map((item, idx) => (
                 <button
                   key={`${item.href}-${idx}`}
                   onClick={() => onTocJump(item.href)}
-                  className="toc-item group text-left w-full px-3 py-2.5 rounded-lg transition-all duration-200 text-sm leading-relaxed text-foreground border-l-3 border-transparent relative overflow-hidden"
+                  className="text-left w-full px-3 py-2 rounded-lg hover:bg-surface-hover transition-elegant text-sm leading-relaxed text-foreground"
                   title={item.label}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                  <div className="relative z-10 truncate">
-                    {item.label}
-                  </div>
+                  {item.label}
                 </button>
               ))}
             </div>
@@ -860,21 +583,21 @@ export default function ReaderPage() {
       )}
 
       {/* Main Reading Area */}
-      <main className="min-h-dvh flex items-center justify-center p-0 md:p-6">
-        <div className="w-full max-w-5xl relative">
+      <main className="min-h-dvh flex items-center justify-center p-6">
+        <div className="w-full max-w-4xl relative">
           {/* Chapter Title & Progress Overlay */}
           {chapterTitle && loaded && (
-            <div className={`absolute -top-12 md:-top-14 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}>
-              <div className="floating-premium rounded-lg md:rounded-xl px-3 md:px-5 py-2 md:py-2.5 space-y-1.5 md:space-y-2">
-                <div className="text-xs md:text-sm font-medium text-center truncate max-w-[12rem] md:max-w-xs">{chapterTitle}</div>
-                <div className="flex items-center gap-2 md:gap-3">
-                  <div className="flex-1 bg-gray-200/80 dark:bg-gray-700/80 rounded-full h-1 md:h-1.5 min-w-[100px] md:min-w-[140px]">
+            <div className={`absolute -top-16 left-1/2 -translate-x-1/2 z-30 transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}>
+              <div className="floating rounded-2xl px-6 py-3 space-y-2">
+                <div className="text-sm font-medium text-center">{chapterTitle}</div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 min-w-[120px]">
                     <div 
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 h-1 md:h-1.5 rounded-full transition-all duration-500"
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${currentProgress}%` }}
                     />
                   </div>
-                  <span className="text-xs font-semibold min-w-[2.5rem] md:min-w-[3rem] text-center tabular-nums">{currentProgress}%</span>
+                  <span className="text-xs font-medium min-w-[3rem] text-center">{currentProgress}%</span>
                 </div>
               </div>
             </div>
@@ -883,10 +606,10 @@ export default function ReaderPage() {
           {/* EPUB Container */}
           <div
             ref={containerRef}
-            className="w-full bg-white dark:bg-gray-900 md:rounded-2xl lg:rounded-3xl shadow-none md:shadow-xl lg:shadow-2xl overflow-hidden transition-elegant border-0 md:border border-gray-200/50 dark:border-gray-700/50 relative z-10"
+            className="w-full bg-surface rounded-3xl shadow-lg overflow-hidden transition-elegant"
             style={{
-              height: "100vh",
-              maxWidth: "100vw",
+              height: "calc(100vh - 96px)",
+              maxWidth: "900px",
               margin: "0 auto",
             }}
           />
@@ -894,12 +617,12 @@ export default function ReaderPage() {
           {/* Invisible click areas for navigation */}
           <button 
             onClick={onPrev} 
-            className="absolute left-0 top-0 h-full w-1/3 md:w-1/4 opacity-0 z-20" 
+            className="absolute left-0 top-0 h-full w-1/4 opacity-0 z-20" 
             aria-label="Previous page" 
           />
           <button 
             onClick={onNext} 
-            className="absolute right-0 top-0 h-full w-1/3 md:w-1/4 opacity-0 z-20" 
+            className="absolute right-0 top-0 h-full w-1/4 opacity-0 z-20" 
             aria-label="Next page" 
           />
         </div>
@@ -907,15 +630,12 @@ export default function ReaderPage() {
 
       {/* Floating Status/Error Message */}
       {(error || isHovering) && (
-        <div className={`fixed bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 z-[70] transition-elegant ${(error || isHovering) ? 'contextual show' : 'contextual'}`}>
-          <div className="floating-premium rounded-lg md:rounded-xl px-3 md:px-4 py-1.5 md:py-2 mx-2">
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-elegant ${(error || isHovering) ? 'contextual show' : 'contextual'}`}>
+          <div className="floating rounded-2xl px-6 py-3">
             {error ? (
-              <div className="text-red-600 dark:text-red-400 text-xs md:text-sm font-medium">{error}</div>
+              <div className="text-red-600 text-sm font-medium">{error}</div>
             ) : (
-              <div className="text-muted text-xs text-center max-w-xs md:max-w-md">
-                <span className="hidden md:inline">Use arrow keys or click edges to navigate • Select text to highlight • Press space for page down</span>
-                <span className="md:hidden">Tap edges or swipe to navigate • Tap and hold to highlight</span>
-              </div>
+              <div className="text-muted text-sm">Double-click to toggle UI • Use arrow keys to navigate • Select text to highlight</div>
             )}
           </div>
         </div>
@@ -923,36 +643,16 @@ export default function ReaderPage() {
 
       {/* Loading Overlay */}
       {showLoadingOverlay && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-lg flex items-center justify-center z-[110]">
-          <div className="floating-premium rounded-xl md:rounded-2xl p-6 md:p-8 shadow-2xl max-w-xs md:max-w-sm mx-4">
-            <div className="text-center space-y-3 md:space-y-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 mx-auto border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
-              <p className="text-sm md:text-base font-semibold">Loading your book...</p>
-              <p className="text-xs md:text-sm text-muted hidden md:block">Please wait while we prepare your reading experience</p>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 dark:border-gray-700/30">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto border-4 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+              <p className="text-lg font-medium">Loading your book...</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Annotation Toolbar */}
-      <AnnotationToolbar
-        isVisible={annotationToolbar.visible}
-        position={annotationToolbar.position}
-        selectedText={annotationToolbar.text}
-        onHighlight={handleHighlight}
-        onNote={handleNote}
-        onBookmark={handleBookmark}
-        onClose={handleCloseToolbar}
-      />
-      
-      {/* Note Modal */}
-      <NoteModal
-        isOpen={showNoteModal}
-        selectedText={pendingAnnotation?.text || ''}
-        onSave={handleSaveNote}
-        onCancel={handleCancelNote}
-      />
-      
       {/* Annotation Panel */}
       <AnnotationPanel
         bookId={bookId || ""}

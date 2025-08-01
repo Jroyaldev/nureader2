@@ -139,28 +139,28 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 floating-premium border-l border-gray-200/30 dark:border-gray-700/30 shadow-2xl z-[9998] transform transition-all duration-300 rounded-l-2xl overflow-hidden">
+    <div className="fixed inset-y-0 right-0 w-96 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-l border-gray-200/50 dark:border-gray-700/50 shadow-2xl z-50 transform transition-transform duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-gray-200/30 dark:border-gray-700/30">
+      <div className="flex items-center justify-between p-6 border-b border-gray-200/50 dark:border-gray-700/50">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
             <PaintBrushIcon className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Annotations</h2>
-            <p className="text-sm text-muted">{filteredAnnotations.length} {filteredAnnotations.length === 1 ? 'item' : 'items'}</p>
+            <h2 className="text-lg font-semibold">Annotations</h2>
+            <p className="text-sm text-muted">{filteredAnnotations.length} items</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="control-btn"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
         >
-          <XMarkIcon className="w-4 h-4" />
+          <XMarkIcon className="w-5 h-5" />
         </button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex border-b border-gray-200/30 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50">
+      <div className="flex border-b border-gray-200/50 dark:border-gray-700/50">
         {[
           { key: 'all', label: 'All', icon: PaintBrushIcon },
           { key: 'highlight', label: 'Highlights', icon: PaintBrushIcon },
@@ -170,150 +170,122 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
           <button
             key={key}
             onClick={() => setFilter(key as any)}
-            className={`flex-1 px-3 py-3 text-xs font-medium transition-all duration-200 relative overflow-hidden ${
+            className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               filter === key
-                ? 'text-blue-600 dark:text-blue-400'
-                : 'text-muted hover:text-foreground'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-muted hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
-            {filter === key && (
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-blue-600/10 dark:from-blue-400/10 dark:to-blue-500/10" />
-            )}
-            <div className="relative z-10 flex flex-col items-center gap-1">
-              <Icon className="w-4 h-4" />
-              <span>{label}</span>
-            </div>
-            {filter === key && (
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 rounded-full" />
-            )}
+            <Icon className="w-4 h-4 mx-auto mb-1" />
+            {label}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[calc(100vh-180px)] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[calc(100vh-200px)]">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
-              <p className="text-sm text-muted">Loading annotations...</p>
-            </div>
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
           </div>
         ) : filteredAnnotations.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl flex items-center justify-center">
-              <PaintBrushIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2 text-foreground">No {filter === 'all' ? 'annotations' : filter + 's'} yet</h3>
-            <p className="text-muted text-sm max-w-xs mx-auto leading-relaxed">
-              {filter === 'all' && 'Start highlighting text or adding bookmarks to see them here'}
-              {filter === 'highlight' && 'Select text and choose a highlight color to create your first highlight'}
-              {filter === 'note' && 'Add notes to remember your thoughts about important passages'}
-              {filter === 'bookmark' && 'Bookmark important locations in your book for quick access'}
-            </p>
+          <div className="text-center py-12">
+            <PaintBrushIcon className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+            <h3 className="text-lg font-medium mb-2">No annotations yet</h3>
+            <p className="text-muted text-sm">Start highlighting text or adding bookmarks to see them here</p>
           </div>
         ) : (
           filteredAnnotations.map((annotation) => (
             <div
               key={annotation.id}
-              className="group annotation-card floating rounded-xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer border border-gray-200/30 dark:border-gray-700/30 hover:border-blue-300/50 dark:hover:border-blue-600/50"
+              className="bg-surface rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => onJumpToAnnotation(annotation.location)}
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   {annotation.annotation_type === 'highlight' && (
                     <div 
-                      className="w-4 h-4 rounded-lg shadow-sm border border-white/20"
-                      style={{ backgroundColor: annotation.color }}
+                      className={`w-4 h-4 rounded ${getColorInfo(annotation.color).bg}`}
                     />
                   )}
                   {annotation.annotation_type === 'note' && (
-                    <div className="w-4 h-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                      <ChatBubbleLeftIcon className="w-2.5 h-2.5 text-white" />
-                    </div>
+                    <ChatBubbleLeftIcon className="w-4 h-4 text-blue-500" />
                   )}
                   {annotation.annotation_type === 'bookmark' && (
-                    <div className="w-4 h-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
-                      <BookmarkIcon className="w-2.5 h-2.5 text-white" />
-                    </div>
+                    <BookmarkIcon className="w-4 h-4 text-green-500" />
                   )}
-                  <span className="text-xs text-muted font-medium">
+                  <span className="text-xs text-muted">
                     {formatDate(annotation.created_at)}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditingNote(annotation.id);
                       setEditText(annotation.note || '');
                     }}
-                    className="control-btn !w-7 !h-7 text-blue-600 dark:text-blue-400"
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                   >
-                    <PencilIcon className="w-3.5 h-3.5" />
+                    <PencilIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteAnnotation(annotation.id);
                     }}
-                    className="control-btn !w-7 !h-7 text-red-500 dark:text-red-400"
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors text-red-500"
                   >
-                    <TrashIcon className="w-3.5 h-3.5" />
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {annotation.content && (
-                  <div className="relative">
-                    <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
-                    <p className="text-sm leading-relaxed pl-4 text-foreground font-medium italic">
-                      "{annotation.content}"
-                    </p>
-                  </div>
+                  <p className="text-sm leading-relaxed bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 italic">
+                    "{annotation.content}"
+                  </p>
                 )}
                 
                 {editingNote === annotation.id ? (
-                  <div className="space-y-3 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg p-3 -m-1">
+                  <div className="space-y-2">
                     <textarea
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
                       placeholder="Add your note..."
-                      className="w-full p-3 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full p-3 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                       onClick={(e) => e.stopPropagation()}
                     />
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateAnnotationNote(annotation.id, editText);
+                        }}
+                        className="btn-primary text-xs px-3 py-1"
+                      >
+                        Save
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingNote(null);
                           setEditText('');
                         }}
-                        className="btn-secondary text-xs px-3 py-1.5"
+                        className="btn-secondary text-xs px-3 py-1"
                       >
                         Cancel
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateAnnotationNote(annotation.id, editText);
-                        }}
-                        className="btn-primary text-xs px-4 py-1.5"
-                      >
-                        Save
                       </button>
                     </div>
                   </div>
                 ) : annotation.note && (
-                  <div className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent rounded-lg p-3 -mx-1">
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {annotation.note}
-                    </p>
-                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {annotation.note}
+                  </p>
                 )}
               </div>
             </div>
