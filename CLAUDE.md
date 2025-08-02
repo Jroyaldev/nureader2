@@ -6,9 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arcadia Reader - A feature-complete, modern EPUB reader built with Next.js and Supabase. This is a production-ready application with comprehensive database integration, advanced reading features, and a premium user experience.
 
+## Project Structure
+
+- `/epub-reader/` - The main Next.js application
+- `/supabase/` - Database migrations and configurations
+- Root files: CLAUDE.md, ROADMAP.md, database-schema.sql
+
 ## Development Commands
 
-### Working in the epub-reader submodule
+### Working in the epub-reader application
 ```bash
 cd epub-reader
 npm run dev        # Start development server with Turbopack
