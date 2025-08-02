@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import UploadModal from "@/components/UploadModal";
-import { BookOpenIcon, PlusIcon, UserIcon, FolderIcon } from "@heroicons/react/24/outline";
+import BookDetailsEditor from "@/components/BookDetailsEditor";
+import { BookOpenIcon, PlusIcon, UserIcon, FolderIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 interface Book {
   id: string;
@@ -29,6 +30,9 @@ export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [deletingBook, setDeletingBook] = useState<Book | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const supabase = createClient();
 
   const fetchBooks = useCallback(async () => {
@@ -69,6 +73,90 @@ export default function LibraryPage() {
     }
     const { data } = supabase.storage.from('book-covers').getPublicUrl(coverPath);
     return data.publicUrl;
+  };
+
+  const handleDeleteBook = async () => {
+    if (!deletingBook) return;
+    
+    setIsDeleting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Delete related data first (due to foreign key constraints)
+      // Delete reading progress
+      const { error: progressError } = await supabase
+        .from('reading_progress')
+        .delete()
+        .eq('book_id', deletingBook.id);
+      
+      if (progressError) {
+        console.error('Error deleting reading progress:', progressError);
+      }
+
+      // Delete annotations
+      const { error: annotationsError } = await supabase
+        .from('annotations')
+        .delete()
+        .eq('book_id', deletingBook.id);
+      
+      if (annotationsError) {
+        console.error('Error deleting annotations:', annotationsError);
+      }
+
+      // Delete from collections
+      const { error: collectionsError } = await supabase
+        .from('book_collections')
+        .delete()
+        .eq('book_id', deletingBook.id);
+      
+      if (collectionsError) {
+        console.error('Error deleting from collections:', collectionsError);
+      }
+
+      // Delete files from storage
+      if (deletingBook.file_path) {
+        const { error: epubError } = await supabase.storage
+          .from('epub-files')
+          .remove([deletingBook.file_path]);
+        
+        if (epubError) {
+          console.error('Error deleting EPUB file:', epubError);
+        }
+      }
+
+      if (deletingBook.cover_path) {
+        const { error: coverError } = await supabase.storage
+          .from('book-covers')
+          .remove([deletingBook.cover_path]);
+        
+        if (coverError) {
+          console.error('Error deleting cover file:', coverError);
+        }
+      }
+
+      // Finally, delete the book record
+      const { error: bookError } = await supabase
+        .from('books')
+        .delete()
+        .eq('id', deletingBook.id)
+        .eq('user_id', user.id); // Add user_id check for extra security
+
+      if (bookError) {
+        throw new Error(`Failed to delete book: ${bookError.message}`);
+      }
+
+      // Update local state
+      setBooks(books.filter(book => book.id !== deletingBook.id));
+      setDeletingBook(null);
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete book. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -168,41 +256,71 @@ export default function LibraryPage() {
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-6">
                 {books.map((book, index) => (
-                  <Link 
-                    key={book.id} 
-                    href={`/reader?id=${book.id}`} 
-                    className="group block animate-fade-in"
+                  <div
+                    key={book.id}
+                    className="group relative animate-fade-in"
                     style={{ animationDelay: `${Math.min(index * 0.03, 0.3)}s` }}
                   >
-                    <div className="space-y-3">
-                      {/* Book Cover */}
-                      <div className="aspect-[3/4] rounded-[var(--radius)] overflow-hidden bg-gradient-to-br from-[rgba(var(--muted),0.05)] to-[rgba(var(--muted),0.1)] shadow-sm group-hover:shadow-lg transition-all duration-300">
-                        {book.cover_path && getCoverUrl(book.cover_path) ? (
-                          <img 
-                            src={getCoverUrl(book.cover_path)!} 
-                            alt={`${book.title} cover`}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center p-4">
-                            <div className="text-center">
-                              <BookOpenIcon className="w-8 h-8 text-muted opacity-40 mx-auto mb-2" />
-                              <p className="text-xs text-muted font-medium line-clamp-2">{book.title}</p>
+                    <Link 
+                      href={`/reader?id=${book.id}`} 
+                      className="block"
+                    >
+                      <div className="space-y-3">
+                        {/* Book Cover */}
+                        <div className="aspect-[3/4] rounded-[var(--radius)] overflow-hidden bg-gradient-to-br from-[rgba(var(--muted),0.05)] to-[rgba(var(--muted),0.1)] shadow-sm group-hover:shadow-lg transition-all duration-300 relative">
+                          {book.cover_path && getCoverUrl(book.cover_path) ? (
+                            <img 
+                              src={getCoverUrl(book.cover_path)!} 
+                              alt={`${book.title} cover`}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center p-4">
+                              <div className="text-center">
+                                <BookOpenIcon className="w-8 h-8 text-muted opacity-40 mx-auto mb-2" />
+                                <p className="text-xs text-muted font-medium line-clamp-2">{book.title}</p>
+                              </div>
                             </div>
+                          )}
+                          
+                          {/* Action buttons overlay */}
+                          <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingBook(book);
+                              }}
+                              className="btn-icon w-8 h-8 bg-[rgb(var(--bg))]/90 backdrop-blur-sm shadow-lg"
+                              title="Edit book details"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDeletingBook(book);
+                              }}
+                              className="btn-icon w-8 h-8 bg-[rgb(var(--bg))]/90 backdrop-blur-sm shadow-lg hover:bg-red-500/20 hover:text-red-500"
+                              title="Delete book"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
                           </div>
-                        )}
+                        </div>
+                        
+                        {/* Book Info */}
+                        <div className="space-y-0.5">
+                          <h3 className="font-medium text-sm leading-snug text-foreground group-hover:text-[rgb(var(--accent))] transition-colors line-clamp-2">
+                            {book.title}
+                          </h3>
+                          <p className="text-muted text-xs line-clamp-1">{book.author || 'Unknown'}</p>
+                        </div>
                       </div>
-                      
-                      {/* Book Info */}
-                      <div className="space-y-0.5">
-                        <h3 className="font-medium text-sm leading-snug text-foreground group-hover:text-[rgb(var(--accent))] transition-colors line-clamp-2">
-                          {book.title}
-                        </h3>
-                        <p className="text-muted text-xs line-clamp-1">{book.author || 'Unknown'}</p>
-                      </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}
@@ -216,6 +334,53 @@ export default function LibraryPage() {
         onClose={() => setIsUploadModalOpen(false)}
         onUploadComplete={handleUploadComplete}
       />
+      
+      {/* Book Details Editor */}
+      {editingBook && (
+        <BookDetailsEditor
+          book={editingBook}
+          isOpen={!!editingBook}
+          onClose={() => setEditingBook(null)}
+          onUpdate={fetchBooks}
+        />
+      )}
+      
+      {/* Delete Confirmation Dialog */}
+      {deletingBook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+            onClick={() => setDeletingBook(null)}
+          />
+          
+          {/* Dialog */}
+          <div className="relative w-full max-w-md bg-[rgb(var(--bg))] rounded-[var(--radius-lg)] shadow-2xl animate-slide-up p-6">
+            <h3 className="text-xl font-semibold mb-4">Delete Book</h3>
+            <p className="text-muted mb-6">
+              Are you sure you want to delete "<span className="text-foreground font-medium">{deletingBook.title}</span>"? 
+              This will permanently remove the book, all reading progress, annotations, and bookmarks.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeletingBook(null)}
+                className="btn-secondary px-6"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteBook}
+                className="btn-primary bg-red-500 hover:bg-red-600 px-6"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -116,8 +116,47 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
         console.warn('Could not extract full metadata:', error);
       }
 
-      // Generate a placeholder cover (we'll generate from EPUB later)
-      const coverPath = `${user.id}/${bookId}/cover.jpg`;
+      // Try to extract cover from EPUB
+      let coverPath: string | null = null;
+      try {
+        setUploadProgress(60);
+        const cover = await book.loaded.cover;
+        
+        if (cover) {
+          // Get the cover URL from the book
+          const coverUrl = await book.coverUrl();
+          
+          if (coverUrl) {
+            // Fetch the cover image
+            const response = await fetch(coverUrl);
+            const blob = await response.blob();
+            
+            // Determine file extension from MIME type
+            const mimeType = blob.type;
+            let extension = 'jpg';
+            if (mimeType.includes('png')) extension = 'png';
+            else if (mimeType.includes('webp')) extension = 'webp';
+            else if (mimeType.includes('gif')) extension = 'gif';
+            
+            coverPath = `${user.id}/${bookId}/cover.${extension}`;
+            
+            // Upload cover to storage
+            const { error: coverUploadError } = await supabase.storage
+              .from('book-covers')
+              .upload(coverPath, blob, {
+                contentType: mimeType,
+                upsert: false
+              });
+            
+            if (coverUploadError) {
+              console.warn('Could not upload cover:', coverUploadError);
+              coverPath = null;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Could not extract cover from EPUB:', error);
+      }
       
       // Create book record in database
       setUploadProgress(80);
@@ -130,7 +169,8 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
           author: metadata.author,
           description: metadata.description,
           file_path: filePath,
-          cover_url: null, // Will set later when we extract cover
+          cover_path: coverPath, // Now we have the extracted cover path
+          cover_url: null, // Deprecated field
           isbn: metadata.isbn,
           language: metadata.language,
           publisher: metadata.publisher,
