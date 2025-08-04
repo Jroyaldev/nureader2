@@ -5,10 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import AnnotationPanel from "@/components/AnnotationPanel";
 import Tooltip from "@/components/TooltipImproved";
-
-// Remove next/dynamic usage for non-component library; use on-demand import instead
-
-// Lazy import note: epubjs is imported dynamically within loadFromFile to avoid SSR issues
+import { useTheme } from "@/providers/ThemeProvider";
+import { EpubRenderer } from "@/lib/epub-renderer";
 
 interface TocItem {
   label: string;
@@ -17,8 +15,7 @@ interface TocItem {
 }
 
 type LoadedBook = {
-  book: any;
-  rendition: any;
+  renderer: EpubRenderer;
   title?: string;
   author?: string;
 };
@@ -27,11 +24,16 @@ const defaultBookUrl = "/sample.epub";
 
 export default function ReaderPage() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const epubRendererRef = useRef<EpubRenderer | null>(null);
   const [loaded, setLoaded] = useState<LoadedBook | null>(null);
   const [error, setError] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  // Removed showChrome as it's not used in the new floating UI design
+  const { theme: userTheme, resolvedTheme, setTheme: setUserTheme } = useTheme();
+  const [localThemeOverride, setLocalThemeOverride] = useState<"light" | "dark" | null>(null);
+  const theme = localThemeOverride || resolvedTheme;
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // UI state
   const [toc, setToc] = useState<TocItem[]>([]);
   const [chapterTitle, setChapterTitle] = useState<string>("");
   const [isHovering, setIsHovering] = useState<boolean>(false);
@@ -39,191 +41,87 @@ export default function ReaderPage() {
   const [showAnnotations, setShowAnnotations] = useState<boolean>(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [bookData, setBookData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedText, setSelectedText] = useState<string>("");
-  const [selectionCfi, setSelectionCfi] = useState<string>("");
-  const [readingStartTime, setReadingStartTime] = useState<number>(Date.now());
-  const [totalReadingTime, setTotalReadingTime] = useState<number>(0);
   const [currentProgress, setCurrentProgress] = useState<number>(0);
+  const [savedProgress, setSavedProgress] = useState<{location: string, percentage: number} | null>(null);
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [containerReady, setContainerReady] = useState<boolean>(false);
+  const [navigationState, setNavigationState] = useState({ canGoNext: false, canGoPrev: false });
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
   const bookId = searchParams.get('id');
 
-  const getStorageKey = useCallback((identifier?: string) => {
-    return identifier ? `arcadia:epub:cfi:${identifier}` : `arcadia:epub:cfi`;
-  }, []);
-
-  const applyTheme = useCallback((rendition: any, t: "light" | "dark") => {
-    try {
-      rendition.themes.register("light", {
-        body: { 
-          background: "#ffffff", 
-          color: "#1c2024",
-          fontFamily: "var(--font-geist-sans), -apple-system, system-ui, sans-serif",
-          fontSize: "17px",
-          lineHeight: "1.7",
-          letterSpacing: "-0.003em"
-        },
-        "::selection": { background: "rgba(0, 113, 227, 0.15)" },
-        a: { color: "#0071e3", textDecoration: "none" },
-        "a:hover": { textDecoration: "underline" }
-      });
-      rendition.themes.register("dark", {
-        body: { 
-          background: "#1a1c20", 
-          color: "#f5f5f7",
-          fontFamily: "var(--font-geist-sans), -apple-system, system-ui, sans-serif",
-          fontSize: "17px",
-          lineHeight: "1.7",
-          letterSpacing: "-0.003em"
-        },
-        "::selection": { background: "rgba(64, 156, 255, 0.3)" },
-        a: { color: "#409cff", textDecoration: "none" },
-        "a:hover": { textDecoration: "underline" }
-      });
-      rendition.themes.select(t);
-    } catch {
-      // noop
-    }
-  }, []);
-
-  const saveReadingProgress = useCallback(async (cfi: string, rendition?: any) => {
-    // Skip database operations for now due to RLS 406 errors
-    // Just save to localStorage as backup
-    if (!bookData || !bookId) return;
-    
-    try {
-      // Save to localStorage only for now
-      const meta = await (loaded?.book?.loaded?.metadata || Promise.resolve({}));
-      const id = meta?.identifier || bookData.title;
-      const key = getStorageKey(id);
-      
-      if (typeof window !== "undefined" && cfi) {
-        window.localStorage.setItem(key, cfi);
+  // Clean up renderer on unmount
+  useEffect(() => {
+    return () => {
+      if (epubRendererRef.current) {
+        epubRendererRef.current.destroy();
+        epubRendererRef.current = null;
       }
-    } catch (error) {
-      console.warn('Error saving reading progress to localStorage:', error);
-    }
-  }, [bookData, bookId, loaded, getStorageKey]);
+    };
+  }, []);
 
   const loadFromFile = useCallback(async (file: File) => {
     setError("");
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      
-      // Dynamically import epubjs only on the client
-      const mod = await import("epubjs");
-      const EpubCtor = mod?.default ?? mod;
-      
-      const book = new (EpubCtor as any)(arrayBuffer);
+    setIsLoading(true);
+    console.log("📚 Loading EPUB file with new renderer:", file.name);
 
+    // Clean up any existing renderer
+    if (epubRendererRef.current) {
+      epubRendererRef.current.destroy();
+      epubRendererRef.current = null;
+    }
+
+    try {
       if (!containerRef.current) {
-        // Wait for the next tick to allow DOM to render
         await new Promise(resolve => setTimeout(resolve, 100));
         if (!containerRef.current) {
           setError("Reader container not ready");
           return;
         }
       }
-      
-      const rendition = book.renderTo(containerRef.current, {
-        width: "100%",
-        height: "100%",
-        flow: "paginated",
-        spread: "auto"
+
+      // Create new epub renderer
+      const renderer = new EpubRenderer(containerRef.current);
+      epubRendererRef.current = renderer;
+
+      // Set up progress tracking
+      renderer.onProgress((progress) => {
+        setCurrentProgress(progress);
       });
 
-      applyTheme(rendition, theme);
-
-      // Restore last CFI from localStorage for now (skip database due to RLS issues)
-      let displayTarget: string | undefined = undefined;
-      try {
-        // Use localStorage until RLS issues are resolved
-        const id = (await book.loaded.metadata)?.identifier || file.name;
-        const key = getStorageKey(id);
-        const saved = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
-        if (saved) displayTarget = saved;
-      } catch {}
-
-      try {
-        await rendition.display(displayTarget);
-      } catch (error) {
-        console.warn('Failed to display saved position, starting from beginning:', error);
-        await rendition.display(); // Display first page if saved position fails
-      }
-
-      // Extract metadata
-      let title: string | undefined;
-      let author: string | undefined;
-      try {
-        const meta = await book.loaded.metadata;
-        title = meta?.title;
-        author = meta?.creator || meta?.author;
-      } catch {
-        // ignore
-      }
-
-      // Table of contents
-      try {
-        const nav = await book.loaded.navigation;
-        const flat: Array<{ label: string; href: string }> = [];
-        const walk = (items: TocItem[]) => {
-          for (const it of items || []) {
-            if (it?.label && it?.href) flat.push({ label: it.label, href: it.href });
-            if (it?.subitems?.length) walk(it.subitems);
-          }
-        };
-        walk(nav?.toc || []);
-        setToc(flat);
-      } catch {}
-
-      // Update chapter title and progress on relocate
-      rendition.on("relocated", (location: { start: { displayed: { chapterName: string }, percentage: number } }) => {
-        try {
-          setChapterTitle(location?.start?.displayed?.chapterName || "");
-          if (location?.start?.percentage !== undefined) {
-            setCurrentProgress(Math.round(location.start.percentage * 100));
-          }
-        } catch {}
+      // Set up chapter tracking
+      renderer.onChapterChange((title) => {
+        setChapterTitle(title);
+        // Update navigation state
+        const position = renderer.getCurrentPosition();
+        setNavigationState({
+          canGoNext: position.canGoNext,
+          canGoPrev: position.canGoPrev
+        });
       });
 
-      // Note: Removed iframe access to prevent sandboxing security warnings
+      // Load the book
+      const { title, author } = await renderer.loadBook(file);
 
-      // Persist CFI periodically to both database and localStorage
-      const persist = async () => {
-        try {
-          const cfi = await rendition.currentLocation();
-          const meta = await book.loaded.metadata;
-          const id = meta?.identifier || file.name;
-          const key = getStorageKey(id);
-          const value = cfi?.start?.cfi || cfi?.end?.cfi;
-          
-          if (value) {
-            // Save to localStorage as backup
-            if (typeof window !== "undefined") {
-              window.localStorage.setItem(key, value);
-            }
-            
-            // Save to database if we have book data
-            await saveReadingProgress(value, rendition);
-          }
-        } catch (error) {
-          console.warn('Failed to persist reading progress:', error);
-        }
-      };
-      rendition.on("relocated", persist);
+      // Get table of contents
+      const tocItems = renderer.getTableOfContents();
+      setToc(tocItems);
 
-      setLoaded({ book, rendition, title, author });
+      // Apply current theme
+      renderer.setTheme(theme);
+
+      setLoaded({ renderer, title, author });
+      console.log("✅ EPUB loaded successfully with new renderer:", { title, author });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load EPUB. Please try a different file.";
       console.error('❌ EPUB loading failed:', err);
       setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-  }, [applyTheme, theme, getStorageKey, saveReadingProgress, bookId]);
+  }, [theme]);
 
   // Monitor auth state
   useEffect(() => {
@@ -243,7 +141,7 @@ export default function ReaderPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase.auth]);
 
   // Monitor container readiness
   useEffect(() => {
@@ -253,12 +151,8 @@ export default function ReaderPage() {
       }
     };
     
-    // Check immediately
     checkContainer();
-    
-    // Also check after a small delay to ensure DOM is fully rendered
     const timeout = setTimeout(checkContainer, 100);
-    
     return () => clearTimeout(timeout);
   }, []);
 
@@ -270,12 +164,6 @@ export default function ReaderPage() {
         return;
       }
 
-      // Don't reload if book is already loaded
-      if (loaded) {
-        return;
-      }
-
-      // Wait for auth and container to be ready
       if (!authReady || !containerReady) {
         return;
       }
@@ -283,11 +171,11 @@ export default function ReaderPage() {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
+          setIsLoading(false);
           router.push('/login');
           return;
         }
 
-        // Get book metadata
         const { data: book, error: bookError } = await supabase
           .from('books')
           .select('*')
@@ -303,7 +191,6 @@ export default function ReaderPage() {
 
         setBookData(book);
 
-        // Download EPUB file from storage
         const { data: fileData, error: storageError } = await supabase.storage
           .from('epub-files')
           .download(book.file_path);
@@ -314,31 +201,158 @@ export default function ReaderPage() {
           return;
         }
 
-        // Create file object and load it
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
+        
+        // Load saved reading progress after a short delay
+        if (bookId) {
+          setTimeout(() => {
+            loadReadingProgress();
+          }, 1000);
+        }
         
       } catch (err) {
         console.error('❌ Error loading book:', err);
         setError("Failed to load book");
-      } finally {
         setIsLoading(false);
       }
     };
 
     loadBookFromDatabase();
-  }, [bookId, authReady, containerReady, router]);
+  }, [bookId, authReady, containerReady, loadFromFile, router, supabase]);
 
-  // Detect prefers-color-scheme for initial theme
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      setTheme(mq.matches ? "dark" : "light");
-      const listener = (e: MediaQueryListEvent) => setTheme(e.matches ? "dark" : "light");
-      mq.addEventListener?.("change", listener);
-      return () => mq.removeEventListener?.("change", listener);
+  // Save reading progress to database
+  const saveReadingProgress = useCallback(async (progress: number) => {
+    if (!bookId || !authReady) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const container = containerRef.current;
+      if (!container) return;
+
+      const scrollHeight = container.scrollHeight - container.clientHeight;
+      const currentLocation = `${container.scrollTop}:${scrollHeight}`;
+
+      console.log('💾 Saving reading progress:', progress + '%', 'at location:', currentLocation);
+
+      const { error } = await supabase
+        .from('reading_progress')
+        .upsert({
+          user_id: user.id,
+          book_id: bookId,
+          current_location: currentLocation,
+          progress_percentage: progress,
+          last_read_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,book_id'
+        });
+
+      if (error) {
+        console.error('Error saving reading progress:', error);
+      } else {
+        console.log('✅ Progress saved successfully');
+      }
+    } catch (error) {
+      console.error('Error saving reading progress:', error);
     }
-  }, []);
+  }, [bookId, authReady, supabase]);
+
+  // Load reading progress from database
+  const loadReadingProgress = useCallback(async () => {
+    if (!bookId || !authReady) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('📖 Loading reading progress for book:', bookId);
+      
+      const { data: progress, error } = await supabase
+        .from('reading_progress')
+        .select('current_location, progress_percentage, reading_time_minutes')
+        .eq('user_id', user.id)
+        .eq('book_id', bookId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading reading progress:', error);
+        return;
+      }
+
+      if (progress) {
+        console.log('✅ Found saved progress:', progress.progress_percentage + '%');
+        setSavedProgress({
+          location: progress.current_location,
+          percentage: progress.progress_percentage
+        });
+        setCurrentProgress(progress.progress_percentage);
+        
+        // Restore scroll position if renderer is ready
+        if (epubRendererRef.current && progress.current_location && containerRef.current) {
+          // Parse the location format: "scrollTop:scrollHeight"
+          const [savedScrollTop, savedScrollHeight] = progress.current_location.split(':').map(Number);
+          
+          if (!isNaN(savedScrollTop) && !isNaN(savedScrollHeight)) {
+            const container = containerRef.current;
+            const currentScrollHeight = container.scrollHeight - container.clientHeight;
+            
+            // Calculate proportional scroll position
+            const scrollRatio = savedScrollTop / savedScrollHeight;
+            const newScrollTop = Math.max(0, Math.min(scrollRatio * currentScrollHeight, currentScrollHeight));
+            
+            console.log('🔄 Restoring scroll position:', newScrollTop);
+            container.scrollTop = newScrollTop;
+          }
+        }
+      } else {
+        console.log('📝 No saved progress found for this book');
+      }
+    } catch (error) {
+      console.error('Error loading reading progress:', error);
+    }
+  }, [bookId, authReady, supabase]);
+
+  // Save progress periodically while reading
+  useEffect(() => {
+    if (!bookId || !authReady) return;
+    
+    const interval = setInterval(() => {
+      if (currentProgress > 0) {
+        saveReadingProgress(currentProgress);
+      }
+    }, 30000); // Save every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [bookId, authReady, currentProgress, saveReadingProgress]);
+
+  // Auto-save progress with debouncing
+  useEffect(() => {
+    if (!bookId || currentProgress === 0) return;
+    
+    const timeoutId = setTimeout(() => {
+      saveReadingProgress(currentProgress);
+    }, 2000); // Save after 2 seconds of no scroll activity
+
+    return () => clearTimeout(timeoutId);
+  }, [currentProgress, bookId, saveReadingProgress]);
+
+  // Save progress on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (bookId && currentProgress > 0) {
+        // Use navigator.sendBeacon for reliable saving on page unload
+        const data = new FormData();
+        data.append('bookId', bookId);
+        data.append('progress', currentProgress.toString());
+        navigator.sendBeacon('/api/save-progress', data);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [bookId, currentProgress]);
 
   const onPick = useCallback(() => {
     inputRef.current?.click();
@@ -360,41 +374,33 @@ export default function ReaderPage() {
   }, [loadFromFile]);
 
   useEffect(() => {
-    // Only load default sample if no book ID is provided and not loading
     if (!loaded && !bookId && !isLoading) {
       void loadDefault();
     }
   }, [loaded, loadDefault, bookId, isLoading]);
 
-  // Keyboard navigation
+  // Apply theme when it changes
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!loaded?.rendition) return;
-      if (e.key === "ArrowRight") {
-        loaded.rendition.next();
-      } else if (e.key === "ArrowLeft") {
-        loaded.rendition.prev();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [loaded]);
+    if (epubRendererRef.current) {
+      epubRendererRef.current.setTheme(theme);
+    }
+  }, [theme]);
 
-  // Apply theme when system toggles or after loading
-  useEffect(() => {
-    if (loaded?.rendition) applyTheme(loaded.rendition, theme);
-  }, [loaded, theme, applyTheme]);
-
-  const onPrev = useCallback(() => loaded?.rendition?.prev(), [loaded]);
-  const onNext = useCallback(() => loaded?.rendition?.next(), [loaded]);
-  const onThemeToggle = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
+  const onThemeToggle = useCallback(() => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setLocalThemeOverride(newTheme);
+    
+    if (userTheme !== "system") {
+      setUserTheme(newTheme);
+    }
+  }, [theme, userTheme, setUserTheme]);
 
   const onTocJump = useCallback(async (href: string) => {
-    try {
-      await loaded?.rendition?.display(href);
+    if (epubRendererRef.current) {
+      epubRendererRef.current.jumpToChapter(href);
       setShowToc(false);
-    } catch {}
-  }, [loaded]);
+    }
+  }, []);
 
   const toggleToc = useCallback(() => {
     setShowToc(prev => !prev);
@@ -405,20 +411,17 @@ export default function ReaderPage() {
   }, []);
 
   const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = '#fbbf24', note?: string) => {
-    if (!bookId || !loaded?.rendition) return;
+    if (!bookId || !loaded?.renderer) return;
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const currentLocation = await loaded.rendition.currentLocation();
-      const cfi = currentLocation?.start?.cfi || "";
+      const currentChapter = loaded.renderer.getCurrentChapter();
       
       let content = "";
-      if (type === 'highlight' && selectedText) {
-        content = selectedText;
-      } else if (type === 'bookmark') {
-        content = chapterTitle || "Bookmark";
+      if (type === 'bookmark') {
+        content = currentChapter || "Bookmark";
       }
 
       const { error } = await supabase
@@ -428,30 +431,22 @@ export default function ReaderPage() {
           book_id: bookId,
           content,
           note: note || null,
-          location: selectionCfi || cfi,
+          location: '', // We'll need to implement CFI-like positioning later
           annotation_type: type,
           color
         });
 
       if (error) throw error;
       
-      // Clear selection
-      setSelectedText("");
-      setSelectionCfi("");
-      
     } catch (error) {
       console.error('Error creating annotation:', error);
     }
-  }, [bookId, loaded, selectedText, selectionCfi, chapterTitle, supabase]);
+  }, [bookId, loaded, supabase]);
 
   const jumpToAnnotation = useCallback(async (location: string) => {
-    if (!loaded?.rendition) return;
-    try {
-      await loaded.rendition.display(location);
-    } catch (error) {
-      console.error('Error jumping to annotation:', error);
-    }
-  }, [loaded]);
+    // TODO: Implement annotation jumping
+    console.log('Jump to annotation:', location);
+  }, []);
 
   const headerTitle = useMemo(() => {
     const t = loaded?.title || "EPUB";
@@ -473,7 +468,6 @@ export default function ReaderPage() {
     }, 1000);
   }, []);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) {
@@ -482,12 +476,68 @@ export default function ReaderPage() {
     };
   }, []);
 
-  // Show loading overlay instead of replacing entire component
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!epubRendererRef.current) return;
+      
+      // Prevent default for our handled keys
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowUp':
+        case 'PageUp':
+          e.preventDefault();
+          epubRendererRef.current.previousPage();
+          break;
+        case 'ArrowRight':
+        case 'ArrowDown':
+        case 'PageDown':
+        case ' ': // Space
+          e.preventDefault();
+          epubRendererRef.current.nextPage();
+          break;
+        case 'Home':
+          e.preventDefault();
+          containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+          break;
+        case 'End':
+          e.preventDefault();
+          if (containerRef.current) {
+            containerRef.current.scrollTo({ 
+              top: containerRef.current.scrollHeight, 
+              behavior: 'smooth' 
+            });
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Navigation handlers
+  const handleNextPage = useCallback(() => {
+    epubRendererRef.current?.nextPage();
+  }, []);
+
+  const handlePreviousPage = useCallback(() => {
+    epubRendererRef.current?.previousPage();
+  }, []);
+
+  const handleNextChapter = useCallback(() => {
+    epubRendererRef.current?.nextChapter();
+  }, []);
+
+  const handlePreviousChapter = useCallback(() => {
+    epubRendererRef.current?.previousChapter();
+  }, []);
+
   const showLoadingOverlay = isLoading && bookId;
 
   return (
     <div 
-      className="min-h-dvh relative overflow-hidden bg-[rgb(var(--bg))]"
+      className="min-h-dvh relative overflow-hidden bg-[rgb(var(--bg))] transition-colors duration-300"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -499,7 +549,7 @@ export default function ReaderPage() {
       {/* Hidden file input */}
       <input ref={inputRef} type="file" accept=".epub" className="hidden" onChange={onInputChange} />
 
-      {/* Floating Header - Premium navigation bar */}
+      {/* Floating Header */}
       <div 
         className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${(isHovering || !loaded) ? 'contextual show' : 'contextual'}`}
         onMouseEnter={handleMouseEnter}
@@ -536,28 +586,6 @@ export default function ReaderPage() {
                   <div className="h-5 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Tooltip content="Previous page">
-                    <button 
-                      onClick={onPrev} 
-                      className="btn-icon w-9 h-9"
-                      aria-label="Previous page"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="10 4 6 8 10 12" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Next page">
-                    <button 
-                      onClick={onNext} 
-                      className="btn-icon w-9 h-9"
-                      aria-label="Next page"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 4 10 8 6 12" />
-                      </svg>
-                    </button>
-                  </Tooltip>
                   <Tooltip content={theme === "dark" ? "Light mode" : "Dark mode"}>
                     <button 
                       onClick={onThemeToggle} 
@@ -612,6 +640,29 @@ export default function ReaderPage() {
                       </svg>
                     </button>
                   </Tooltip>
+                  <div className="h-5 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
+                  <Tooltip content="Previous page (←)">
+                    <button 
+                      onClick={handlePreviousPage}
+                      className="btn-icon w-9 h-9"
+                      aria-label="Previous page"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 3L5 8l5 5" />
+                      </svg>
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Next page (→)">
+                    <button 
+                      onClick={handleNextPage}
+                      className="btn-icon w-9 h-9"
+                      aria-label="Next page"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 3l5 5-5 5" />
+                      </svg>
+                    </button>
+                  </Tooltip>
                 </div>
               </>
             )}
@@ -619,7 +670,7 @@ export default function ReaderPage() {
         </div>
       </div>
 
-      {/* Floating TOC Sidebar - Premium design */}
+      {/* Floating TOC Sidebar */}
       {toc.length > 0 && (
         <div 
           className={`fixed left-6 top-1/2 -translate-y-1/2 z-40 w-[340px] max-h-[600px] transition-elegant ${showToc ? 'contextual show' : 'contextual'}`}
@@ -679,12 +730,12 @@ export default function ReaderPage() {
       )}
 
       {/* Main Reading Area */}
-      <main className="min-h-dvh flex items-center justify-center p-8">
+      <main className="min-h-dvh flex items-start justify-center p-8">
         <div className="w-full max-w-5xl relative">
-          {/* Chapter Title & Progress Overlay - Premium design */}
+          {/* Chapter Title & Progress Overlay */}
           {chapterTitle && loaded && (
             <div 
-              className={`absolute -top-24 left-1/2 -translate-x-1/2 z-[70] transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}
+              className={`fixed top-24 left-1/2 -translate-x-1/2 z-[70] transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
@@ -707,40 +758,31 @@ export default function ReaderPage() {
             </div>
           )}
           
-          {/* EPUB Container - Premium academic design */}
+          {/* EPUB Container - Clean scrollable container */}
           <div className="relative">
-            {/* Premium gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[rgb(var(--accent))]/5 via-transparent to-[rgb(var(--accent))]/3 opacity-10 rounded-[var(--radius-2xl)]" />
-            
             <div
               ref={containerRef}
-              className="card rounded-[var(--radius-2xl)] overflow-hidden transition-elegant relative"
+              className="card rounded-[var(--radius-2xl)] transition-all duration-300 relative"
               style={{
+                minHeight: "calc(100vh - 128px)",
                 height: "calc(100vh - 128px)",
                 maxWidth: "960px",
                 margin: "0 auto",
                 boxShadow: theme === "dark" 
                   ? "0 30px 90px -20px rgba(0, 0, 0, 0.6), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))" 
                   : "0 30px 90px -20px rgba(0, 0, 0, 0.15), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))",
+                backgroundColor: theme === "dark" ? "#101215" : "#fcfcfd",
+                overflowY: "auto",
+                overflowX: "hidden",
+                scrollBehavior: "smooth",
+                WebkitOverflowScrolling: "touch"
               }}
             />
           </div>
-          
-          {/* Invisible click areas for navigation */}
-          <button 
-            onClick={onPrev} 
-            className="absolute left-0 top-0 h-full w-1/4 opacity-0 z-20"
-            aria-label="Previous page" 
-          />
-          <button 
-            onClick={onNext} 
-            className="absolute right-0 top-0 h-full w-1/4 opacity-0 z-20"
-            aria-label="Next page" 
-          />
         </div>
       </main>
 
-      {/* Floating Status/Error Message - Premium design */}
+      {/* Floating Status/Error Message */}
       {(error || (isHovering && loaded)) && (
         <div 
           className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${(error || (isHovering && loaded)) ? 'contextual show' : 'contextual'}`}
@@ -759,20 +801,14 @@ export default function ReaderPage() {
               </div>
             ) : (
               <div className="flex items-center gap-6 text-muted text-sm font-medium">
-                <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-0.5 text-xs bg-[rgba(var(--muted),0.1)] rounded border border-[rgba(var(--border),var(--border-opacity))]">&larr;</kbd>
-                  <kbd className="px-2 py-0.5 text-xs bg-[rgba(var(--muted),0.1)] rounded border border-[rgba(var(--border),var(--border-opacity))]">&rarr;</kbd>
-                  <span>Navigate</span>
-                </div>
-                <div className="h-4 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
-                <span>Select text to highlight</span>
+                <span>← → Arrow keys to navigate • Space to scroll • Select text to highlight</span>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Loading Overlay - Premium design */}
+      {/* Loading Overlay */}
       {showLoadingOverlay && (
         <div className="fixed inset-0 bg-[rgba(var(--bg),0.85)] backdrop-blur-xl flex items-center justify-center z-50">
           <div className="floating rounded-[var(--radius-2xl)] p-12 animate-scale-in" style={{
