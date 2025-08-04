@@ -39,7 +39,10 @@ export default function ReaderPage() {
   const [isHovering, setIsHovering] = useState<boolean>(false);
   const [showToc, setShowToc] = useState<boolean>(false);
   const [showAnnotations, setShowAnnotations] = useState<boolean>(false);
+  const [isToolbarSticky, setIsToolbarSticky] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [bookData, setBookData] = useState<any>(null);
   const [currentProgress, setCurrentProgress] = useState<number>(0);
   const [savedProgress, setSavedProgress] = useState<{location: string, percentage: number} | null>(null);
@@ -143,7 +146,7 @@ export default function ReaderPage() {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
-  // Monitor container readiness
+  // Monitor container readiness and detect mobile
   useEffect(() => {
     const checkContainer = () => {
       if (containerRef.current) {
@@ -151,9 +154,20 @@ export default function ReaderPage() {
       }
     };
     
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
     checkContainer();
+    checkMobile();
+    
     const timeout = setTimeout(checkContainer, 100);
-    return () => clearTimeout(timeout);
+    
+    window.addEventListener('resize', checkMobile);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
   // Load book from Supabase if book ID is provided
@@ -410,6 +424,10 @@ export default function ReaderPage() {
     setShowAnnotations(prev => !prev);
   }, []);
 
+  const toggleStickyToolbar = useCallback(() => {
+    setIsToolbarSticky(prev => !prev);
+  }, []);
+
   const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = '#fbbf24', note?: string) => {
     if (!bookId || !loaded?.renderer) return;
     
@@ -465,7 +483,7 @@ export default function ReaderPage() {
   const handleMouseLeave = useCallback(() => {
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovering(false);
-    }, 1000);
+    }, 300);
   }, []);
 
   useEffect(() => {
@@ -533,13 +551,44 @@ export default function ReaderPage() {
     epubRendererRef.current?.previousChapter();
   }, []);
 
+  // Touch handlers for mobile gestures
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+  }, [isMobile]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isMobile || !touchStartRef.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    
+    // Only handle swipes that are quick and primarily horizontal
+    if (deltaTime < 300 && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        // Swipe right - previous page
+        handlePreviousPage();
+      } else {
+        // Swipe left - next page
+        handleNextPage();
+      }
+    }
+    
+    touchStartRef.current = null;
+  }, [isMobile, handlePreviousPage, handleNextPage]);
+
   const showLoadingOverlay = isLoading && bookId;
 
   return (
     <div 
       className="min-h-dvh relative overflow-hidden bg-[rgb(var(--bg))] transition-colors duration-300"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {/* Premium gradient background */}
       <div className="fixed inset-0 pointer-events-none">
@@ -549,12 +598,24 @@ export default function ReaderPage() {
       {/* Hidden file input */}
       <input ref={inputRef} type="file" accept=".epub" className="hidden" onChange={onInputChange} />
 
-      {/* Floating Header */}
-      <div 
-        className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${(isHovering || !loaded) ? 'contextual show' : 'contextual'}`}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      {/* Desktop Toolbar hover zone */}
+      {!isMobile && !isToolbarSticky && (
+        <div 
+          className="fixed top-0 left-0 right-0 h-32 z-[70]"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{ pointerEvents: 'auto', background: 'transparent' }}
+        />
+      )}
+
+      {/* Desktop Floating Header */}
+      {!isMobile && (
+        <div 
+          className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${(isHovering || !loaded || isToolbarSticky) ? 'contextual show' : 'contextual'}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{ pointerEvents: 'auto' }}
+        >
         <div className="floating rounded-[var(--radius-xl)] px-6 py-3.5" style={{
           boxShadow: "0 25px 80px -12px rgba(0, 0, 0, 0.25), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
         }}>
@@ -571,8 +632,8 @@ export default function ReaderPage() {
               onClick={() => router.push('/library')} 
               className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3L3 8l5 5" />
               </svg>
               Library
             </button>
@@ -586,6 +647,18 @@ export default function ReaderPage() {
                   <div className="h-5 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <Tooltip content="Pin toolbar">
+                    <button 
+                      onClick={toggleStickyToolbar} 
+                      className={`btn-icon w-9 h-9 ${isToolbarSticky ? 'bg-[rgba(var(--accent),0.1)] text-[rgb(var(--accent))]' : ''}`}
+                      aria-label="Pin toolbar"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 3v5l2-2 2 2V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" />
+                        <path d="M8 11v3" />
+                      </svg>
+                    </button>
+                  </Tooltip>
                   <Tooltip content={theme === "dark" ? "Light mode" : "Dark mode"}>
                     <button 
                       onClick={onThemeToggle} 
@@ -610,10 +683,11 @@ export default function ReaderPage() {
                         className="btn-icon w-9 h-9"
                         aria-label="Table of contents"
                       >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                          <line x1="3" y1="4" x2="13" y2="4" />
-                          <line x1="3" y1="8" x2="13" y2="8" />
-                          <line x1="3" y1="12" x2="13" y2="12" />
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M2 4h12M2 8h12M2 12h12" />
+                          <circle cx="2" cy="4" r="0.5" fill="currentColor" />
+                          <circle cx="2" cy="8" r="0.5" fill="currentColor" />
+                          <circle cx="2" cy="12" r="0.5" fill="currentColor" />
                         </svg>
                       </button>
                     </Tooltip>
@@ -624,8 +698,9 @@ export default function ReaderPage() {
                       className="btn-icon w-9 h-9"
                       aria-label="Annotations"
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12.5 1a2.5 2.5 0 0 1 0 5l-8 8-3.5.5.5-3.5 8-8a2.5 2.5 0 0 1 3 0z" />
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m13.498 1 .002.002.002.002a2.5 2.5 0 0 1-.003 3.536L4.5 13.5l-4 1 1-4L10.5 1.5a2.5 2.5 0 0 1 3 0z" />
+                        <path d="m10.5 4.5 2 2" />
                       </svg>
                     </button>
                   </Tooltip>
@@ -647,8 +722,8 @@ export default function ReaderPage() {
                       className="btn-icon w-9 h-9"
                       aria-label="Previous page"
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M10 3L5 8l5 5" />
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9.5 3.5L6 8l3.5 4.5" />
                       </svg>
                     </button>
                   </Tooltip>
@@ -658,8 +733,8 @@ export default function ReaderPage() {
                       className="btn-icon w-9 h-9"
                       aria-label="Next page"
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 3l5 5-5 5" />
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6.5 3.5L10 8l-3.5 4.5" />
                       </svg>
                     </button>
                   </Tooltip>
@@ -669,6 +744,7 @@ export default function ReaderPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Floating TOC Sidebar */}
       {toc.length > 0 && (
@@ -729,8 +805,106 @@ export default function ReaderPage() {
         </div>
       )}
 
+      {/* Mobile Bottom Toolbar */}
+      {isMobile && loaded && (
+        <div className="fixed bottom-0 left-0 right-0 z-[80] p-4 bg-gradient-to-t from-[rgb(var(--bg))] via-[rgb(var(--bg))]/95 to-transparent">
+          <div className="floating rounded-[var(--radius-xl)] px-4 py-3" style={{
+            boxShadow: "0 20px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
+          }}>
+            <div className="flex items-center justify-between">
+              {/* Left side - Navigation */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => router.push('/library')} 
+                  className="btn-icon w-11 h-11"
+                  aria-label="Library"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 16 16" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3L3 8l5 5" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={handlePreviousPage}
+                  className="btn-icon w-11 h-11"
+                  aria-label="Previous page"
+                >
+                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.5 3.5L6 8l3.5 4.5" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={handleNextPage}
+                  className="btn-icon w-11 h-11"
+                  aria-label="Next page"
+                >
+                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6.5 3.5L10 8l-3.5 4.5" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Center - Progress */}
+              <div className="flex-1 mx-4">
+                <div className="relative">
+                  <div className="h-2 bg-[rgba(var(--muted),0.1)] rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-[rgb(var(--accent))] rounded-full transition-all duration-300"
+                      style={{ width: `${currentProgress}%` }}
+                    />
+                  </div>
+                  <span className="absolute -top-6 right-0 text-xs font-medium tabular-nums text-muted">{currentProgress}%</span>
+                </div>
+              </div>
+
+              {/* Right side - Tools */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={onThemeToggle} 
+                  className="btn-icon w-11 h-11"
+                  aria-label="Toggle theme"
+                >
+                  {theme === "dark" ? (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+                    </svg>
+                  )}
+                </button>
+                {toc.length > 0 && (
+                  <button 
+                    onClick={toggleToc} 
+                    className="btn-icon w-11 h-11"
+                    aria-label="Table of contents"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M2 4h12M2 8h12M2 12h12" />
+                      <circle cx="2" cy="4" r="0.5" fill="currentColor" />
+                      <circle cx="2" cy="8" r="0.5" fill="currentColor" />
+                      <circle cx="2" cy="12" r="0.5" fill="currentColor" />
+                    </svg>
+                  </button>
+                )}
+                <button 
+                  onClick={toggleAnnotations} 
+                  className="btn-icon w-11 h-11"
+                  aria-label="Annotations"
+                >
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m13.498 1 .002.002.002.002a2.5 2.5 0 0 1-.003 3.536L4.5 13.5l-4 1 1-4L10.5 1.5a2.5 2.5 0 0 1 3 0z" />
+                    <path d="m10.5 4.5 2 2" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Reading Area */}
-      <main className="min-h-dvh flex items-start justify-center p-8">
+      <main className={`min-h-dvh flex items-start justify-center ${isMobile ? 'p-4 pb-24' : 'p-8'}`}>
         <div className="w-full max-w-5xl relative">
           {/* Chapter Title & Progress Overlay */}
           {chapterTitle && loaded && (
@@ -763,6 +937,8 @@ export default function ReaderPage() {
             <div
               ref={containerRef}
               className="card rounded-[var(--radius-2xl)] transition-all duration-300 relative"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
               style={{
                 minHeight: "calc(100vh - 128px)",
                 height: "calc(100vh - 128px)",
