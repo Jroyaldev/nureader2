@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { UserIcon, ArrowLeftIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "@/providers/ThemeProvider";
 
 interface Profile {
   id: string;
@@ -23,6 +24,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  const { theme: currentTheme, setTheme } = useTheme();
   
   const [formData, setFormData] = useState({
     username: '',
@@ -58,13 +61,18 @@ export default function ProfilePage() {
 
       if (profileData) {
         setProfile(profileData);
+        const savedTheme = profileData.preferences?.theme || 'system';
         setFormData({
           username: profileData.username || '',
           full_name: profileData.full_name || '',
-          theme: profileData.preferences?.theme || 'system',
+          theme: savedTheme,
           font_size: profileData.preferences?.font_size || 16,
           reading_goal: profileData.preferences?.reading_goal || 20
         });
+        // Sync theme with provider
+        if (savedTheme !== currentTheme) {
+          setTheme(savedTheme);
+        }
       } else {
         // Create default profile for new user
         const defaultProfile: Profile = {
@@ -92,11 +100,18 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router]);
+  }, [supabase.auth, supabase, router, currentTheme, setTheme]);
 
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+  
+  // Sync form data theme with current theme
+  useEffect(() => {
+    if (currentTheme) {
+      setFormData(prev => ({ ...prev, theme: currentTheme }));
+    }
+  }, [currentTheme]);
 
   const handleSave = async () => {
     if (!profile) return;
@@ -124,6 +139,12 @@ export default function ProfilePage() {
       if (error) throw error;
       
       setProfile({ ...profile, ...updatedProfile });
+      
+      // Update theme in provider
+      if (formData.theme !== currentTheme) {
+        setTheme(formData.theme);
+      }
+      
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       
