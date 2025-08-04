@@ -219,9 +219,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
       
       {/* Modal */}
       <div className="relative w-full max-w-lg animate-scale-in">
-        <div className="floating rounded-[var(--radius-2xl)] overflow-hidden" style={{
-          boxShadow: "0 25px 80px -12px rgba(0, 0, 0, 0.25), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
-        }}>
+        <div className="floating rounded-[var(--radius-2xl)] overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-[rgba(var(--border),var(--border-opacity))]">
             <div className="flex items-center gap-3">
@@ -308,7 +306,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
             )}
 
             {error && (
-              <div className="mt-6 p-4 bg-red-500/5 border border-red-500/20 rounded-[var(--radius-lg)]">
+              <div className="mt-6 p-4 bg-red-500/10 dark:bg-red-500/10 border border-red-500/20 dark:border-red-500/20 rounded-[var(--radius-lg)]">
                 <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
               </div>
             )}

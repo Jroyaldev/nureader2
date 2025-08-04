@@ -32,11 +32,11 @@ interface AnnotationPanelProps {
 }
 
 const HIGHLIGHT_COLORS = [
-  { name: 'Yellow', value: '#fbbf24', bg: 'bg-yellow-400' },
-  { name: 'Green', value: '#10b981', bg: 'bg-emerald-500' },
-  { name: 'Blue', value: '#3b82f6', bg: 'bg-blue-500' },
-  { name: 'Red', value: '#ef4444', bg: 'bg-red-500' },
-  { name: 'Purple', value: '#8b5cf6', bg: 'bg-violet-500' }
+  { name: 'Yellow', value: 'rgba(251, 191, 36, 0.5)', bg: 'bg-yellow-400' },
+  { name: 'Green', value: 'rgba(16, 185, 129, 0.5)', bg: 'bg-emerald-500' },
+  { name: 'Blue', value: 'rgba(59, 130, 246, 0.5)', bg: 'bg-blue-500' },
+  { name: 'Red', value: 'rgba(239, 68, 68, 0.5)', bg: 'bg-red-500' },
+  { name: 'Purple', value: 'rgba(139, 92, 246, 0.5)', bg: 'bg-violet-500' }
 ];
 
 export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnotation }: AnnotationPanelProps) {
@@ -141,9 +141,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   return (
     <div className="fixed inset-y-6 right-6 w-[380px] max-w-[90vw] z-[70] pointer-events-auto transition-elegant">
       {/* Panel surface - Apple style */}
-      <div className="floating rounded-[var(--radius-xl)] overflow-hidden flex flex-col h-[calc(100vh-48px)]" style={{
-        boxShadow: "0 25px 80px -12px rgba(0, 0, 0, 0.25), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
-      }}>
+      <div className="floating rounded-[var(--radius-xl)] overflow-hidden flex flex-col h-[calc(100vh-48px)]">
         {/* Header - Refined */}
         <div className="sticky top-0 z-20 backdrop-blur-xl bg-[rgba(var(--surface),0.8)]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(var(--border),var(--border-opacity))]">
@@ -233,8 +231,8 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                         </div>
                       )}
                       {annotation.annotation_type === 'bookmark' && (
-                        <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-emerald-500/10 flex items-center justify-center">
-                          <BookmarkIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[rgba(var(--accent),0.1)] flex items-center justify-center">
+                          <BookmarkIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
                         </div>
                       )}
                       <span className="text-xs text-muted font-medium tabular-nums">{formatDate(annotation.created_at)}</span>
@@ -256,7 +254,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                           e.stopPropagation();
                           deleteAnnotation(annotation.id);
                         }}
-                        className="btn-icon w-7 h-7 text-red-500"
+                          className="btn-icon w-7 h-7 text-red-500 dark:text-red-400"
                         aria-label="Delete annotation"
                       >
                         <TrashIcon className="w-3.5 h-3.5" />
