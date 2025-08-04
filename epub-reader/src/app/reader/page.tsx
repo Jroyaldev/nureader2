@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import AnnotationPanel from "@/components/AnnotationPanel";
+import AnnotationToolbar from "@/components/AnnotationToolbar";
+import NoteModal from "@/components/NoteModal";
 import Tooltip from "@/components/TooltipImproved";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
@@ -49,6 +51,11 @@ export default function ReaderPage() {
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [containerReady, setContainerReady] = useState<boolean>(false);
   const [navigationState, setNavigationState] = useState({ canGoNext: false, canGoPrev: false });
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [selectionCfi, setSelectionCfi] = useState<string>("");
+  const [annotationToolbarPos, setAnnotationToolbarPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [showAnnotationToolbar, setShowAnnotationToolbar] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -103,6 +110,24 @@ export default function ReaderPage() {
           canGoNext: position.canGoNext,
           canGoPrev: position.canGoPrev
         });
+      });
+
+      // Set up text selection tracking
+      renderer.onTextSelect((text, cfi) => {
+        setSelectedText(text);
+        setSelectionCfi(cfi);
+        
+        // Get selection coordinates for toolbar positioning
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setAnnotationToolbarPos({
+            x: rect.left + rect.width / 2,
+            y: rect.top + window.scrollY
+          });
+          setShowAnnotationToolbar(true);
+        }
       });
 
       // Load the book
@@ -251,12 +276,15 @@ export default function ReaderPage() {
 
       console.log('💾 Saving reading progress:', progress + '%', 'at location:', currentLocation);
 
+      // Get current CFI position
+      const cfi = epubRendererRef.current?.getCurrentCfi() || currentLocation;
+      
       const { error } = await supabase
         .from('reading_progress')
         .upsert({
           user_id: user.id,
           book_id: bookId,
-          current_location: currentLocation,
+          current_location: cfi,
           progress_percentage: progress,
           last_read_at: new Date().toISOString()
         }, {
@@ -303,21 +331,21 @@ export default function ReaderPage() {
         });
         setCurrentProgress(progress.progress_percentage);
         
-        // Restore scroll position if renderer is ready
-        if (epubRendererRef.current && progress.current_location && containerRef.current) {
-          // Parse the location format: "scrollTop:scrollHeight"
-          const [savedScrollTop, savedScrollHeight] = progress.current_location.split(':').map(Number);
-          
-          if (!isNaN(savedScrollTop) && !isNaN(savedScrollHeight)) {
-            const container = containerRef.current;
-            const currentScrollHeight = container.scrollHeight - container.clientHeight;
+        // Restore reading position if renderer is ready
+        if (epubRendererRef.current && progress.current_location) {
+          // Try to display the saved CFI
+          const restored = epubRendererRef.current.displayCfi(progress.current_location);
+          if (!restored) {
+            // Fallback to old format if CFI display fails
+            const [savedScrollTop, savedScrollHeight] = progress.current_location.split(':').map(Number);
             
-            // Calculate proportional scroll position
-            const scrollRatio = savedScrollTop / savedScrollHeight;
-            const newScrollTop = Math.max(0, Math.min(scrollRatio * currentScrollHeight, currentScrollHeight));
-            
-            console.log('🔄 Restoring scroll position:', newScrollTop);
-            container.scrollTop = newScrollTop;
+            if (!isNaN(savedScrollTop) && !isNaN(savedScrollHeight) && containerRef.current) {
+              const container = containerRef.current;
+              const currentScrollHeight = container.scrollHeight - container.clientHeight;
+              const scrollRatio = savedScrollTop / savedScrollHeight;
+              const newScrollTop = Math.max(0, Math.min(scrollRatio * currentScrollHeight, currentScrollHeight));
+              container.scrollTop = newScrollTop;
+            }
           }
         }
       } else {
@@ -438,8 +466,14 @@ export default function ReaderPage() {
       const currentChapter = loaded.renderer.getCurrentChapter();
       
       let content = "";
-      if (type === 'bookmark') {
+      let cfi = "";
+      
+      if (type === 'highlight' || type === 'note') {
+        content = selectedText;
+        cfi = selectionCfi;
+      } else if (type === 'bookmark') {
         content = currentChapter || "Bookmark";
+        cfi = loaded.renderer.getCurrentCfi();
       }
 
       const { error } = await supabase
@@ -449,21 +483,33 @@ export default function ReaderPage() {
           book_id: bookId,
           content,
           note: note || null,
-          location: '', // We'll need to implement CFI-like positioning later
+          location: cfi,
           annotation_type: type,
           color
         });
 
       if (error) throw error;
       
+      // Clear selection
+      setSelectedText("");
+      setSelectionCfi("");
+      setShowAnnotationToolbar(false);
+      window.getSelection()?.removeAllRanges();
+      
     } catch (error) {
       console.error('Error creating annotation:', error);
     }
-  }, [bookId, loaded, supabase]);
+  }, [bookId, loaded, supabase, selectedText, selectionCfi]);
 
   const jumpToAnnotation = useCallback(async (location: string) => {
-    // TODO: Implement annotation jumping
-    console.log('Jump to annotation:', location);
+    if (!epubRendererRef.current || !location) return;
+    
+    const jumped = epubRendererRef.current.displayCfi(location);
+    if (jumped) {
+      setShowAnnotations(false);
+    } else {
+      console.warn('Failed to jump to annotation:', location);
+    }
   }, []);
 
   const headerTitle = useMemo(() => {
@@ -1013,6 +1059,34 @@ export default function ReaderPage() {
         onClose={() => setShowAnnotations(false)}
         onJumpToAnnotation={jumpToAnnotation}
       />
+
+      {/* Annotation Toolbar */}
+      <AnnotationToolbar
+        isVisible={showAnnotationToolbar}
+        position={annotationToolbarPos}
+        selectedText={selectedText}
+        onHighlight={(color) => createAnnotation('highlight', color)}
+        onNote={() => setShowNoteModal(true)}
+        onBookmark={() => createAnnotation('bookmark')}
+        onClose={() => {
+          setShowAnnotationToolbar(false);
+          setSelectedText("");
+          setSelectionCfi("");
+          window.getSelection()?.removeAllRanges();
+        }}
+      />
+
+      {/* Note Modal */}
+      {showNoteModal && (
+        <NoteModal
+          selectedText={selectedText}
+          onSave={(note) => {
+            createAnnotation('note', '#fde047', note);
+            setShowNoteModal(false);
+          }}
+          onClose={() => setShowNoteModal(false)}
+        />
+      )}
     </div>
   );
 }

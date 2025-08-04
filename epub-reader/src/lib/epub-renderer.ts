@@ -26,10 +26,12 @@ export class EpubRenderer {
   private onProgressCallback?: (progress: number) => void;
   private onChapterCallback?: (title: string) => void;
   private currentChapterIndex: number = 0;
+  private onTextSelectCallback?: (text: string, cfi: string) => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.setupScrollListener();
+    this.setupTextSelectionListener();
   }
 
   async loadBook(file: File): Promise<{ title?: string; author?: string }> {
@@ -205,8 +207,25 @@ export class EpubRenderer {
         bodyContent = this.cleanHtmlContent(chapter.content);
       }
       
-      // Add chapter title if not already present
-      if (chapter.title && !bodyContent.includes('<h1>') && !bodyContent.includes('<h2>')) {
+      // Process images to fix relative URLs
+      bodyContent = this.processImages(bodyContent, chapter.href);
+      
+      // Check if content already has a chapter heading
+      const hasH1 = /<h1[^>]*>/i.test(bodyContent);
+      const hasH2 = /<h2[^>]*>/i.test(bodyContent);
+      const firstHeadingMatch = bodyContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i);
+      const firstHeadingText = firstHeadingMatch ? firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+      
+      // Only add chapter title if:
+      // 1. There's no h1 or h2, OR
+      // 2. The existing heading doesn't match the chapter title
+      if (chapter.title && !hasH1 && !hasH2) {
+        bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
+      } else if (chapter.title && firstHeadingText && 
+                 firstHeadingText.toLowerCase() !== chapter.title.toLowerCase() &&
+                 !chapter.title.toLowerCase().includes(firstHeadingText.toLowerCase()) &&
+                 !firstHeadingText.toLowerCase().includes(chapter.title.toLowerCase())) {
+        // If the heading exists but doesn't match the TOC title, prepend the TOC title
         bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
       }
       
@@ -225,6 +244,9 @@ export class EpubRenderer {
     this.container.innerHTML = '';
     this.container.appendChild(contentWrapper);
     
+    // Process all images after rendering
+    this.processAllImages();
+    
     console.log("✅ EpubRenderer: Continuous content rendered");
   }
 
@@ -236,6 +258,82 @@ export class EpubRenderer {
       .replace(/<link[^>]*>/gi, '')
       .replace(/<meta[^>]*>/gi, '')
       .replace(/<title[^>]*>.*?<\/title>/gi, '');
+  }
+
+  private processImages(html: string, chapterHref: string): string {
+    // Mark images that need processing with chapter href
+    return html.replace(/<img([^>]*)\ssrc=["']([^"']+)["']([^>]*)>/gi, (match, attrs1, src, attrs2) => {
+      // If it's already a data URL or absolute URL, leave it as is
+      if (src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://')) {
+        return match;
+      }
+      
+      // Add data attributes for later processing
+      return `<img${attrs1} src="${src}" data-chapter-href="${chapterHref}" data-needs-processing="true"${attrs2}>`;
+    });
+  }
+
+  private async processAllImages(): Promise<void> {
+    const images = this.container.querySelectorAll('img[data-needs-processing="true"]');
+    console.log(`🖼️ Processing ${images.length} images...`);
+    
+    for (const img of images) {
+      const imgElement = img as HTMLImageElement;
+      const src = imgElement.getAttribute('src');
+      const chapterHref = imgElement.getAttribute('data-chapter-href');
+      
+      if (!src || !chapterHref) continue;
+      
+      try {
+        // Resolve the image path relative to the chapter
+        const resolvedSrc = this.book.resolve(src, chapterHref);
+        
+        // Get the blob URL from the EPUB archive
+        const blobUrl = await this.book.archive.getUrl(resolvedSrc);
+        
+        // Update the image src
+        imgElement.src = blobUrl;
+        imgElement.removeAttribute('data-needs-processing');
+        
+        // Add loading and error handlers
+        imgElement.onload = () => {
+          console.log(`✅ Image loaded: ${src}`);
+        };
+        
+        imgElement.onerror = () => {
+          console.warn(`❌ Failed to load image: ${src}`);
+          // Try alternative approaches
+          this.tryAlternativeImageLoad(imgElement, src, chapterHref);
+        };
+      } catch (error) {
+        console.warn(`Failed to process image: ${src}`, error);
+        // Try alternative approaches
+        this.tryAlternativeImageLoad(imgElement, src, chapterHref);
+      }
+    }
+  }
+
+  private async tryAlternativeImageLoad(img: HTMLImageElement, src: string, chapterHref: string): Promise<void> {
+    try {
+      // Try to get the image as a data URL
+      const resolvedSrc = this.book.resolve(src, chapterHref);
+      const blob = await this.book.archive.getBlob(resolvedSrc);
+      
+      if (blob) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            img.src = e.target.result as string;
+            console.log(`✅ Image loaded as data URL: ${src}`);
+          }
+        };
+        reader.readAsDataURL(blob);
+      }
+    } catch (error) {
+      console.error(`Failed alternative image load: ${src}`, error);
+      // Set a placeholder or hide the image
+      img.style.display = 'none';
+    }
   }
 
   private setupScrollListener(): void {
@@ -544,9 +642,29 @@ export class EpubRenderer {
       .epub-continuous-content img {
         max-width: 100%;
         height: auto;
-        margin: 1em 0;
+        margin: 2em auto;
+        display: block;
         border-radius: 4px;
         opacity: ${theme === 'dark' ? '0.9' : '1'};
+        box-shadow: ${theme === 'dark' 
+          ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+          : '0 4px 12px rgba(0, 0, 0, 0.1)'};
+      }
+      
+      .epub-continuous-content figure {
+        margin: 2em 0;
+        text-align: center;
+      }
+      
+      .epub-continuous-content figure img {
+        margin: 0 auto 1em;
+      }
+      
+      .epub-continuous-content figcaption {
+        font-size: 0.9em;
+        color: ${themeColors.muted};
+        font-style: italic;
+        margin-top: 0.5em;
       }
 
       /* Tables */
@@ -708,5 +826,187 @@ export class EpubRenderer {
       canGoNext: this.currentChapterIndex < this.chapters.length - 1,
       canGoPrev: this.currentChapterIndex > 0
     };
+  }
+
+  // Generate CFI-like identifier for current position or selection
+  generateCfi(range?: Range): string {
+    try {
+      const scrollTop = this.container.scrollTop;
+      const viewportHeight = this.container.clientHeight;
+      
+      if (range) {
+        // Generate CFI for a specific text selection
+        const startContainer = range.startContainer;
+        const endContainer = range.endContainer;
+        const startOffset = range.startOffset;
+        const endOffset = range.endOffset;
+        
+        // Find the chapter element
+        let chapterElement = startContainer.parentElement;
+        while (chapterElement && !chapterElement.classList.contains('epub-chapter')) {
+          chapterElement = chapterElement.parentElement;
+        }
+        
+        if (!chapterElement) return '';
+        
+        const chapterIndex = chapterElement.getAttribute('data-chapter-index') || '0';
+        const chapterId = chapterElement.getAttribute('data-chapter-id') || '';
+        
+        // Create a unique path to the text node
+        const path = this.getNodePath(startContainer, chapterElement);
+        const endPath = startContainer === endContainer ? path : this.getNodePath(endContainer, chapterElement);
+        
+        // Format: chapterIndex/chapterId/path:startOffset-endPath:endOffset@scrollTop
+        return `${chapterIndex}/${chapterId}/${path}:${startOffset}-${endPath}:${endOffset}@${scrollTop}`;
+      } else {
+        // Generate CFI for current reading position
+        const midPoint = scrollTop + viewportHeight / 2;
+        const chapters = this.container.querySelectorAll('.epub-chapter');
+        
+        for (const chapter of chapters) {
+          const rect = (chapter as HTMLElement).getBoundingClientRect();
+          const chapterTop = scrollTop + rect.top;
+          const chapterBottom = chapterTop + rect.height;
+          
+          if (midPoint >= chapterTop && midPoint <= chapterBottom) {
+            const chapterIndex = (chapter as HTMLElement).getAttribute('data-chapter-index') || '0';
+            const chapterId = (chapter as HTMLElement).getAttribute('data-chapter-id') || '';
+            const relativePosition = (midPoint - chapterTop) / rect.height;
+            
+            // Format: chapterIndex/chapterId@relativePosition
+            return `${chapterIndex}/${chapterId}@${relativePosition.toFixed(4)}`;
+          }
+        }
+      }
+      
+      // Fallback to simple scroll position
+      return `@${scrollTop}`;
+    } catch (error) {
+      console.error('Error generating CFI:', error);
+      return '';
+    }
+  }
+
+  // Navigate to a CFI location
+  displayCfi(cfi: string): boolean {
+    try {
+      if (!cfi) return false;
+      
+      // Parse CFI format
+      if (cfi.startsWith('@')) {
+        // Simple scroll position
+        const scrollTop = parseFloat(cfi.substring(1));
+        if (!isNaN(scrollTop)) {
+          this.container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+          return true;
+        }
+      } else {
+        // Parse chapter-based CFI
+        const parts = cfi.split('@');
+        const locationParts = parts[0].split('/');
+        
+        if (locationParts.length >= 2) {
+          const chapterIndex = locationParts[0];
+          const chapterId = locationParts[1];
+          
+          // Find the chapter
+          const chapter = this.container.querySelector(
+            `[data-chapter-index="${chapterIndex}"][data-chapter-id="${chapterId}"]`
+          ) as HTMLElement;
+          
+          if (chapter) {
+            const rect = chapter.getBoundingClientRect();
+            const chapterTop = this.container.scrollTop + rect.top;
+            
+            if (parts[1]) {
+              // Has relative position
+              const relativePosition = parseFloat(parts[1]);
+              if (!isNaN(relativePosition)) {
+                const targetScroll = chapterTop + (rect.height * relativePosition) - (this.container.clientHeight / 2);
+                this.container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                return true;
+              }
+            } else {
+              // Just scroll to chapter
+              chapter.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              return true;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error displaying CFI:', error);
+    }
+    
+    return false;
+  }
+
+  // Get node path for CFI generation
+  private getNodePath(node: Node, root: Element): string {
+    const path: number[] = [];
+    let current: Node | null = node;
+    
+    while (current && current !== root) {
+      const parent = current.parentNode;
+      if (parent) {
+        const siblings = Array.from(parent.childNodes);
+        const index = siblings.indexOf(current as ChildNode);
+        path.unshift(index);
+      }
+      current = parent;
+    }
+    
+    return path.join('/');
+  }
+
+  // Setup text selection listener
+  private setupTextSelectionListener(): void {
+    let selectionTimeout: NodeJS.Timeout | null = null;
+    
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+        return;
+      }
+      
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
+      
+      // Check if selection is within our container
+      if (!this.container.contains(range.commonAncestorContainer)) {
+        return;
+      }
+      
+      // Generate CFI for the selection
+      const cfi = this.generateCfi(range);
+      
+      if (this.onTextSelectCallback && selectedText && cfi) {
+        this.onTextSelectCallback(selectedText, cfi);
+      }
+    };
+    
+    // Listen for selection changes
+    document.addEventListener('selectionchange', () => {
+      if (selectionTimeout) {
+        clearTimeout(selectionTimeout);
+      }
+      
+      selectionTimeout = setTimeout(handleSelection, 500);
+    });
+    
+    // Also handle mouseup for immediate selection
+    this.container.addEventListener('mouseup', () => {
+      setTimeout(handleSelection, 100);
+    });
+  }
+
+  // Callback for text selection
+  onTextSelect(callback: (text: string, cfi: string) => void): void {
+    this.onTextSelectCallback = callback;
+  }
+
+  // Get current CFI
+  getCurrentCfi(): string {
+    return this.generateCfi();
   }
 }
