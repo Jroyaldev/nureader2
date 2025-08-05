@@ -27,6 +27,7 @@ export class EpubRenderer {
   private onChapterCallback?: (title: string) => void;
   private currentChapterIndex: number = 0;
   private onTextSelectCallback?: (text: string, cfi: string) => void;
+  private _imageObjectUrls: Set<string> = new Set();
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -38,13 +39,47 @@ export class EpubRenderer {
     console.log("📚 EpubRenderer: Loading book", file.name);
     
     try {
-      // Use epub.js only for parsing
+      // Use epub.js with proper resource handling
       const mod = await import("epubjs");
       const EpubCtor = mod?.default ?? mod;
-      this.book = new (EpubCtor as any)(await file.arrayBuffer());
+      
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      this.book = new (EpubCtor as any)(arrayBuffer, {
+        replacements: "blobUrl", // Enable blob URL generation for images
+        requestMethod: async (url: string) => {
+          // Custom request method to handle resources
+          console.log(`📥 Requesting resource: ${url}`);
+          return url;
+        }
+      });
 
       // Wait for book to be ready
       await this.book.ready;
+      
+      // Debug: List all files in the archive
+      try {
+        if (this.book.archive) {
+          console.log("📦 EPUB Archive contents:");
+          
+          // Try to get the file list from the archive
+          if (this.book.archive.zip && this.book.archive.zip.files) {
+            const files = Object.keys(this.book.archive.zip.files);
+            console.log("📁 Files in EPUB:", files.filter(f => f.includes('image') || f.includes('Image') || f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.jpeg')));
+          }
+        }
+        
+        // Load resources safely
+        try {
+          await this.book.loaded.resources;
+          console.log("✅ Resources loaded");
+        } catch (resourceError: any) {
+          console.log("⚠️ Resources loading skipped:", resourceError?.message || resourceError);
+        }
+      } catch (e) {
+        console.warn("⚠️ Could not list archive contents:", e);
+      }
 
       // Extract metadata
       const metadata = await this.book.loaded.metadata;
@@ -58,7 +93,7 @@ export class EpubRenderer {
       await this.extractChapters();
       
       // Render as single continuous document
-      this.renderContinuousContent();
+      await this.renderContinuousContent();
       
       // Apply initial theme
       this.applyTheme(this.currentTheme);
@@ -179,7 +214,7 @@ export class EpubRenderer {
     return href.split('/').pop()?.split('.')[0] || `Chapter ${this.chapters.length + 1}`;
   }
 
-  private renderContinuousContent(): void {
+  private async renderContinuousContent(): Promise<void> {
     console.log("🎨 EpubRenderer: Rendering continuous content...");
     
     // Create main content wrapper
@@ -187,7 +222,7 @@ export class EpubRenderer {
     contentWrapper.className = 'epub-continuous-content';
     contentWrapper.setAttribute('data-theme', this.currentTheme);
     
-    this.chapters.forEach((chapter, index) => {
+    for (const [index, chapter] of this.chapters.entries()) {
       const section = document.createElement('section');
       section.className = 'epub-chapter';
       section.setAttribute('data-chapter-id', chapter.id);
@@ -207,8 +242,11 @@ export class EpubRenderer {
         bodyContent = this.cleanHtmlContent(chapter.content);
       }
       
-      // Process images to fix relative URLs
-      bodyContent = this.processImages(bodyContent, chapter.href);
+      // Process images to fix relative URLs  
+      console.log(`🔧 About to process images for chapter ${chapter.index}: ${chapter.href}`);
+      console.log(`📋 Body content preview: ${bodyContent.substring(0, 300)}...`);
+      bodyContent = await this.processImages(bodyContent, chapter.href);
+      console.log(`✅ Finished processing images for chapter ${chapter.index}`);
       
       // Check if content already has a chapter heading
       const hasH1 = /<h1[^>]*>/i.test(bodyContent);
@@ -238,16 +276,65 @@ export class EpubRenderer {
         separator.className = 'chapter-separator';
         contentWrapper.appendChild(separator);
       }
-    });
+    }
 
     // Clear container and add continuous content
     this.container.innerHTML = '';
     this.container.appendChild(contentWrapper);
     
-    // Process all images after rendering
-    this.processAllImages();
+    // Post-process images in DOM as a fallback
+    await this.postProcessImagesInDOM();
     
     console.log("✅ EpubRenderer: Continuous content rendered");
+  }
+
+  private async postProcessImagesInDOM(): Promise<void> {
+    console.log("🔧 Post-processing images in DOM");
+    
+    const images = this.container.querySelectorAll('img');
+    console.log(`📊 Found ${images.length} img elements in DOM`);
+    
+    const imagePromises: Promise<void>[] = [];
+    
+    for (const img of images) {
+      const src = img.getAttribute('src');
+      
+      // Skip if already processed or is a valid URL
+      if (!src || src.startsWith('blob:') || src.startsWith('data:') || 
+          src.startsWith('http://') || src.startsWith('https://')) {
+        continue;
+      }
+      
+      console.log(`🔍 Found unprocessed image in DOM: ${src}`);
+      
+      // Find the chapter this image belongs to
+      let chapterElement = img.closest('.epub-chapter');
+      let chapterHref = '';
+      if (chapterElement) {
+        chapterHref = chapterElement.getAttribute('data-chapter-href') || '';
+      }
+      
+      const promise = this.createImageUrl(src, chapterHref).then(blobUrl => {
+        if (blobUrl) {
+          img.setAttribute('src', blobUrl);
+          console.log(`✅ Replaced DOM image ${src} with blob URL`);
+        } else {
+          // Use placeholder
+          img.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+          img.style.opacity = '0';
+          console.log(`⚠️ Using transparent placeholder for ${src}`);
+        }
+      }).catch(error => {
+        console.error(`❌ Error processing DOM image ${src}:`, error);
+        img.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+        img.style.opacity = '0';
+      });
+      
+      imagePromises.push(promise);
+    }
+    
+    await Promise.all(imagePromises);
+    console.log("✅ DOM image post-processing complete");
   }
 
   private cleanHtmlContent(html: string): string {
@@ -260,81 +347,257 @@ export class EpubRenderer {
       .replace(/<title[^>]*>.*?<\/title>/gi, '');
   }
 
-  private processImages(html: string, chapterHref: string): string {
-    // Mark images that need processing with chapter href
-    return html.replace(/<img([^>]*)\ssrc=["']([^"']+)["']([^>]*)>/gi, (match, attrs1, src, attrs2) => {
-      // If it's already a data URL or absolute URL, leave it as is
-      if (src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://')) {
-        return match;
-      }
-      
-      // Add data attributes for later processing
-      return `<img${attrs1} src="${src}" data-chapter-href="${chapterHref}" data-needs-processing="true"${attrs2}>`;
-    });
-  }
-
-  private async processAllImages(): Promise<void> {
-    const images = this.container.querySelectorAll('img[data-needs-processing="true"]');
-    console.log(`🖼️ Processing ${images.length} images...`);
+  private async processImages(html: string, chapterHref: string): Promise<string> {
+    // Process images using epub.js Resources API
+    console.log(`🖼️ Processing images for chapter: ${chapterHref}`);
     
-    for (const img of images) {
-      const imgElement = img as HTMLImageElement;
-      const src = imgElement.getAttribute('src');
-      const chapterHref = imgElement.getAttribute('data-chapter-href');
-      
-      if (!src || !chapterHref) continue;
-      
-      try {
-        // Resolve the image path relative to the chapter
-        const resolvedSrc = this.book.resolve(src, chapterHref);
-        
-        // Get the blob URL from the EPUB archive
-        const blobUrl = await this.book.archive.getUrl(resolvedSrc);
-        
-        // Update the image src
-        imgElement.src = blobUrl;
-        imgElement.removeAttribute('data-needs-processing');
-        
-        // Add loading and error handlers
-        imgElement.onload = () => {
-          console.log(`✅ Image loaded: ${src}`);
-        };
-        
-        imgElement.onerror = () => {
-          console.warn(`❌ Failed to load image: ${src}`);
-          // Try alternative approaches
-          this.tryAlternativeImageLoad(imgElement, src, chapterHref);
-        };
-      } catch (error) {
-        console.warn(`Failed to process image: ${src}`, error);
-        // Try alternative approaches
-        this.tryAlternativeImageLoad(imgElement, src, chapterHref);
+    // More flexible regex to catch all image variations
+    const imgPatterns = [
+      /<img([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
+      /<img([^>]*?)src\s*=\s*([^\s>]+)([^>]*?)>/gi,
+      /<image([^>]*?)xlink:href\s*=\s*["']([^"']+)["']([^>]*?)>/gi
+    ];
+    
+    const imageSrcs = new Set<string>();
+    
+    // Find all images with all patterns
+    for (const pattern of imgPatterns) {
+      let match;
+      pattern.lastIndex = 0; // Reset regex
+      while ((match = pattern.exec(html)) !== null) {
+        const src = match[2];
+        if (src && !src.startsWith('data:') && !src.startsWith('http://') && 
+            !src.startsWith('https://') && !src.startsWith('blob:')) {
+          imageSrcs.add(src);
+          console.log(`🔍 Found image to process: ${src}`);
+        }
       }
+    }
+    
+    console.log(`📊 Total unique images found: ${imageSrcs.size}`);
+    
+    if (imageSrcs.size === 0) {
+      console.log(`⚠️ No images found in chapter HTML`);
+      return html;
+    }
+    
+    // Create a map of original src to blob URL
+    const imageMap = new Map<string, string>();
+    
+    // Process all unique images
+    for (const src of imageSrcs) {
+      try {
+        console.log(`🔄 Processing image: ${src}`);
+        const imageUrl = await this.createImageUrl(src, chapterHref);
+        
+        if (imageUrl) {
+          imageMap.set(src, imageUrl);
+          console.log(`✅ Created blob URL for ${src}`);
+        } else {
+          console.log(`⚠️ Could not create blob URL for ${src}, will use placeholder`);
+          // Use a transparent 1x1 placeholder
+          imageMap.set(src, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+        }
+      } catch (error) {
+        console.error(`❌ Error processing ${src}:`, error);
+        // Use placeholder on error
+        imageMap.set(src, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+      }
+    }
+    
+    // Replace all image srcs in the HTML
+    let processedHtml = html;
+    
+    // Replace img tags
+    processedHtml = processedHtml.replace(/<img([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*?)>/gi, 
+      (fullMatch, attrs1, src, attrs2) => {
+        const newSrc = imageMap.get(src);
+        if (newSrc) {
+          console.log(`🔄 Replacing ${src} with blob URL in HTML`);
+          return `<img${attrs1}src="${newSrc}"${attrs2}>`;
+        }
+        return fullMatch;
+      });
+    
+    // Also handle img tags without quotes
+    processedHtml = processedHtml.replace(/<img([^>]*?)src\s*=\s*([^\s>]+)([^>]*?)>/gi, 
+      (fullMatch, attrs1, src, attrs2) => {
+        // Skip if already a blob/data URL
+        if (src.startsWith('data:') || src.startsWith('blob:') || 
+            src.startsWith('http://') || src.startsWith('https://')) {
+          return fullMatch;
+        }
+        const newSrc = imageMap.get(src);
+        if (newSrc) {
+          console.log(`🔄 Replacing unquoted ${src} with blob URL in HTML`);
+          return `<img${attrs1}src="${newSrc}"${attrs2}>`;
+        }
+        return fullMatch;
+      });
+    
+    console.log(`✅ Image processing complete for chapter ${chapterHref}`);
+    return processedHtml;
+  }
+  
+  private async createImageUrl(src: string, chapterHref: string): Promise<string | null> {
+    console.log(`🔄 createImageUrl called with src: ${src}, chapterHref: ${chapterHref}`);
+    try {
+      // First try to get the image from resources
+      if (this.book?.resources) {
+        // Try multiple path resolution strategies
+        let resolvedSrc = src;
+        
+        // Remove quotes if present
+        resolvedSrc = resolvedSrc.replace(/^["']|["']$/g, '');
+        
+        // Strategy 1: Try the path as-is (but without quotes)
+        let pathsToTry = [resolvedSrc];
+        
+        // Strategy 2: If it's a relative path, resolve it
+        if (resolvedSrc.startsWith('../')) {
+          // Remove the ../ and try direct path
+          const withoutDotDot = resolvedSrc.replace(/^\.\.\//, '');
+          pathsToTry.push(withoutDotDot);
+          
+          // Also try with images/ prefix removed if present
+          if (withoutDotDot.startsWith('images/')) {
+            pathsToTry.push(withoutDotDot.substring(7));
+          }
+        }
+        
+        // Strategy 3: If absolute path, remove leading slash
+        if (resolvedSrc.startsWith('/')) {
+          const withoutSlash = resolvedSrc.substring(1);
+          pathsToTry.push(withoutSlash);
+        }
+        
+        // Strategy 4: Try resolving with epub.js resolver
+        if (this.book.resources.resolve) {
+          try {
+            const epubResolved = this.book.resources.resolve(resolvedSrc, chapterHref);
+            if (epubResolved && !pathsToTry.includes(epubResolved)) {
+              pathsToTry.push(epubResolved);
+            }
+          } catch (e) {
+            console.log(`⚠️ epub.js resolver failed:`, e);
+          }
+        }
+        
+        // Strategy 5: Try common EPUB image paths
+        const imageName = resolvedSrc.split('/').pop();
+        if (imageName) {
+          pathsToTry.push(`images/${imageName}`);
+          pathsToTry.push(`Images/${imageName}`);
+          pathsToTry.push(`image/${imageName}`);
+          pathsToTry.push(imageName);
+        }
+        
+        console.log(`🔍 Trying paths:`, pathsToTry);
+        
+        // Try each path with multiple methods
+        for (const pathToTry of pathsToTry) {
+          console.log(`🔄 Trying path: ${pathToTry}`);
+          
+          // Method 0: Direct ZIP file access (most reliable)
+          if (this.book.archive?.zip?.files) {
+            try {
+              // Try to find the file in the ZIP
+              const zipFiles = this.book.archive.zip.files;
+              let foundFile = null;
+              
+              // Check exact match
+              if (zipFiles[pathToTry]) {
+                foundFile = zipFiles[pathToTry];
+              } else {
+                // Check all files for a match (case-insensitive)
+                for (const [zipPath, file] of Object.entries(zipFiles)) {
+                  if (zipPath.toLowerCase().endsWith(pathToTry.toLowerCase()) ||
+                      zipPath.toLowerCase().endsWith(pathToTry.toLowerCase().replace(/^\.\.\//, ''))) {
+                    foundFile = file;
+                    console.log(`📍 Found image in ZIP at: ${zipPath}`);
+                    break;
+                  }
+                }
+              }
+              
+              if (foundFile) {
+                // Get the file as blob
+                const blob = await (foundFile as any).async('blob');
+                const url = URL.createObjectURL(blob);
+                console.log(`✅ Created blob URL directly from ZIP for: ${pathToTry}`);
+                this._imageObjectUrls.add(url);
+                return url;
+              }
+            } catch (e) {
+              console.log(`⚠️ Direct ZIP access failed:`, e);
+            }
+          }
+          
+          // Method 1: Try resources.createUrl
+          if (this.book.resources?.createUrl) {
+            try {
+              const url = await this.book.resources.createUrl(pathToTry);
+              if (url) {
+                console.log(`✅ Success with resources.createUrl for path: ${pathToTry}`);
+                return url;
+              }
+            } catch (e) {
+              // Silent fail, try next method
+            }
+          }
+          
+          // Method 2: Try resources.get
+          if (this.book.resources.get) {
+            try {
+              const resource = this.book.resources.get(pathToTry);
+              if (resource && resource.url) {
+                console.log(`✅ Success with resources.get for path: ${pathToTry}`);
+                return resource.url;
+              }
+            } catch (e) {
+              // Silent fail, try next method
+            }
+          }
+          
+          // Method 3: Try archive.createUrl
+          if (this.book.archive?.createUrl) {
+            try {
+              const url = await this.book.archive.createUrl(pathToTry);
+              if (url) {
+                console.log(`✅ Success with archive.createUrl for path: ${pathToTry}`);
+                return url;
+              }
+            } catch (e) {
+              // Silent fail, try next method
+            }
+          }
+          
+          // Method 4: Try archive.getBlob
+          if (this.book.archive?.getBlob) {
+            try {
+              const blob = await this.book.archive.getBlob(pathToTry);
+              if (blob) {
+                const url = URL.createObjectURL(blob);
+                console.log(`✅ Success with archive.getBlob for path: ${pathToTry}`);
+                this._imageObjectUrls.add(url);
+                return url;
+              }
+            } catch (e) {
+              // Silent fail, try next path
+            }
+          }
+        }
+      }
+      
+      console.log(`❌ All paths and methods failed for: ${src}`);
+      return null;
+    } catch (error) {
+      console.log(`❌ Error in createImageUrl:`, error);
+      return null;
     }
   }
 
-  private async tryAlternativeImageLoad(img: HTMLImageElement, src: string, chapterHref: string): Promise<void> {
-    try {
-      // Try to get the image as a data URL
-      const resolvedSrc = this.book.resolve(src, chapterHref);
-      const blob = await this.book.archive.getBlob(resolvedSrc);
-      
-      if (blob) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            img.src = e.target.result as string;
-            console.log(`✅ Image loaded as data URL: ${src}`);
-          }
-        };
-        reader.readAsDataURL(blob);
-      }
-    } catch (error) {
-      console.error(`Failed alternative image load: ${src}`, error);
-      // Set a placeholder or hide the image
-      img.style.display = 'none';
-    }
-  }
+  // Legacy image processing methods removed - now using Resources API
 
   private setupScrollListener(): void {
     let ticking = false;
@@ -811,10 +1074,20 @@ export class EpubRenderer {
   }
 
   destroy(): void {
-    // Clean up
+    // Clean up style
     const styleEl = document.getElementById('epub-renderer-styles');
     if (styleEl) {
       styleEl.remove();
+    }
+
+    // Revoke any object URLs we created for images
+    if (this._imageObjectUrls.size > 0) {
+      for (const url of this._imageObjectUrls) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+      this._imageObjectUrls.clear();
     }
   }
 
@@ -947,13 +1220,13 @@ export class EpubRenderer {
     let current: Node | null = node;
     
     while (current && current !== root) {
-      const parent = current.parentNode;
-      if (parent) {
-        const siblings = Array.from(parent.childNodes);
+      const parentNode = (current as Node).parentNode as (Node & ParentNode) | null;
+      if (parentNode) {
+        const siblings = Array.from(parentNode.childNodes);
         const index = siblings.indexOf(current as ChildNode);
         path.unshift(index);
       }
-      current = parent;
+      current = parentNode;
     }
     
     return path.join('/');
