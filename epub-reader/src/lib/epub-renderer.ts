@@ -252,7 +252,7 @@ export class EpubRenderer {
       const hasH1 = /<h1[^>]*>/i.test(bodyContent);
       const hasH2 = /<h2[^>]*>/i.test(bodyContent);
       const firstHeadingMatch = bodyContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i);
-      const firstHeadingText = firstHeadingMatch ? firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+      const firstHeadingText = firstHeadingMatch && firstHeadingMatch[1] ? firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
       
       // Only add chapter title if:
       // 1. There's no h1 or h2, OR
@@ -1176,7 +1176,7 @@ export class EpubRenderer {
       } else {
         // Parse chapter-based CFI
         const parts = cfi.split('@');
-        const locationParts = parts[0].split('/');
+        const locationParts = parts[0] ? parts[0].split('/') : [];
         
         if (locationParts.length >= 2) {
           const chapterIndex = locationParts[0];

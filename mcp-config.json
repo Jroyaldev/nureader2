@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp"],
+      "env": {
+        "HEADLESS": "false",
+        "DEFAULT_TIMEOUT": "30000"
+      }
+    }
+  }
+}
