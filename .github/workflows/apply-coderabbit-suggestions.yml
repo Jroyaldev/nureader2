@@ -68,10 +68,22 @@ jobs:
           FAILED=$(echo "$OUTPUT" | grep -o '"failed": [0-9]*' | grep -o '[0-9]*' || echo "0")
           TOTAL=$(echo "$OUTPUT" | grep -o '"total": [0-9]*' | grep -o '[0-9]*' || echo "0")
           
+          # Find the execution log file
+          LOG_FILE=$(ls coderabbit-execution-*.json 2>/dev/null | head -1)
+          
           echo "summary=$OUTPUT" >> $GITHUB_OUTPUT
           echo "has_suggestions=$([[ $TOTAL -gt 0 ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "applied_count=$APPLIED" >> $GITHUB_OUTPUT
           echo "failed_count=$FAILED" >> $GITHUB_OUTPUT
+          echo "log_file=$LOG_FILE" >> $GITHUB_OUTPUT
+      
+      - name: Upload execution log
+        if: steps.apply-suggestions.outputs.log_file != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coderabbit-execution-log
+          path: ${{ steps.apply-suggestions.outputs.log_file }}
+          retention-days: 30
       
       - name: Commit and push changes
         if: steps.apply-suggestions.outputs.has_suggestions == 'true'

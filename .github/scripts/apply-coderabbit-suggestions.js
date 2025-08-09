@@ -227,13 +227,33 @@ class CodeRabbitSuggestionApplier {
   }
 
   /**
-   * Apply a single suggestion to a file
+   * Apply a single suggestion to a file with retry logic
    */
-  async applySuggestion(suggestion) {
+  async applySuggestion(suggestion, retries = 3) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await this._applySuggestionImpl(suggestion);
+      } catch (error) {
+        console.error(`Attempt ${attempt}/${retries} failed: ${error.message}`);
+        if (attempt === retries) {
+          throw error;
+        }
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
+  }
+
+  /**
+   * Internal implementation of applying a suggestion
+   */
+  async _applySuggestionImpl(suggestion) {
+    const startTime = Date.now();
+    
     try {
       const filePath = path.resolve(suggestion.file);
       
-      // Check if file exists
+      // Validate file exists
       if (!fs.existsSync(filePath)) {
         // Try to find the file
         const basename = path.basename(suggestion.file);
@@ -246,6 +266,10 @@ class CodeRabbitSuggestionApplier {
           throw new Error(`File not found: ${suggestion.file}`);
         }
       }
+      
+      // Create backup before modification
+      const backupPath = `${suggestion.file}.backup.${Date.now()}`;
+      fs.copyFileSync(suggestion.file, backupPath);
       
       // Read current file content
       const currentContent = fs.readFileSync(suggestion.file, 'utf-8');
@@ -311,18 +335,41 @@ class CodeRabbitSuggestionApplier {
         return;
       }
       
+      // Validate the changes before applying
+      if (!this.validateChanges(currentContent, newContent)) {
+        throw new Error('Validation failed: Changes would break the file');
+      }
+      
       // Write the new content if changed
       if (newContent !== currentContent) {
         fs.writeFileSync(suggestion.file, newContent, 'utf-8');
         
+        // Verify the file was written correctly
+        const verifyContent = fs.readFileSync(suggestion.file, 'utf-8');
+        if (verifyContent !== newContent) {
+          // Restore from backup
+          fs.copyFileSync(backupPath, suggestion.file);
+          throw new Error('File write verification failed');
+        }
+        
+        // Clean up backup on success
+        fs.unlinkSync(backupPath);
+        
+        const duration = Date.now() - startTime;
+        
         this.results.push({
           file: suggestion.file,
           status: 'applied',
-          message: 'Successfully applied suggestion'
+          message: 'Successfully applied suggestion',
+          duration: duration,
+          linesChanged: Math.abs(newContent.split('\n').length - currentContent.split('\n').length)
         });
         
-        console.log(`✅ Applied suggestion to ${suggestion.file}`);
+        console.log(`✅ Applied suggestion to ${suggestion.file} (${duration}ms)`);
       } else {
+        // Clean up backup
+        fs.unlinkSync(backupPath);
+        
         this.results.push({
           file: suggestion.file,
           status: 'no_change',
@@ -331,14 +378,66 @@ class CodeRabbitSuggestionApplier {
       }
       
     } catch (error) {
+      // Restore from backup if it exists
+      if (fs.existsSync(backupPath)) {
+        fs.copyFileSync(backupPath, suggestion.file);
+        fs.unlinkSync(backupPath);
+      }
+      
       console.error(`❌ Failed to apply suggestion to ${suggestion.file}: ${error.message}`);
       
       this.results.push({
         file: suggestion.file,
         status: 'failed',
-        error: error.message
+        error: error.message,
+        duration: Date.now() - startTime
       });
     }
+  }
+
+  /**
+   * Validate changes before applying
+   */
+  validateChanges(originalContent, newContent) {
+    // Basic validation checks
+    
+    // Check for balanced braces
+    const countChar = (str, char) => (str.match(new RegExp('\\' + char, 'g')) || []).length;
+    const braces = ['{', '}', '[', ']', '(', ')'];
+    
+    for (let i = 0; i < braces.length; i += 2) {
+      const openCount = countChar(newContent, braces[i]);
+      const closeCount = countChar(newContent, braces[i + 1]);
+      if (openCount !== closeCount) {
+        console.error(`Validation failed: Unbalanced ${braces[i]}${braces[i + 1]} - open: ${openCount}, close: ${closeCount}`);
+        return false;
+      }
+    }
+    
+    // Check for syntax markers that shouldn't be in final code
+    const invalidPatterns = [
+      '<<<<<<< HEAD',
+      '>>>>>>>',
+      '======='
+    ];
+    
+    for (const pattern of invalidPatterns) {
+      if (newContent.includes(pattern)) {
+        console.error(`Validation failed: Found merge conflict marker: ${pattern}`);
+        return false;
+      }
+    }
+    
+    // Check file size isn't drastically different (potential corruption)
+    const sizeDiff = Math.abs(newContent.length - originalContent.length);
+    const sizeRatio = sizeDiff / originalContent.length;
+    
+    if (sizeRatio > 0.5 && sizeDiff > 1000) {
+      console.error(`Validation failed: File size changed dramatically (${(sizeRatio * 100).toFixed(1)}%)`);
+      return false;
+    }
+    
+    return true;
   }
 
   /**
@@ -350,6 +449,26 @@ class CodeRabbitSuggestionApplier {
     console.log('useCallback suggestion detected but not automatically applied');
     return content;
   }
+
+  /**
+   * Generate execution log
+   */
+  generateExecutionLog() {
+    return {
+      timestamp: new Date().toISOString(),
+      commentBody: this.commentBody.substring(0, 500) + '...',
+      suggestionsFound: this.suggestions.length,
+      results: this.results,
+      statistics: {
+        applied: this.results.filter(r => r.status === 'applied').length,
+        failed: this.results.filter(r => r.status === 'failed').length,
+        reviewRequired: this.results.filter(r => r.status === 'review_required').length,
+        noChange: this.results.filter(r => r.status === 'no_change').length,
+        totalDuration: this.results.reduce((sum, r) => sum + (r.duration || 0), 0),
+        totalLinesChanged: this.results.reduce((sum, r) => sum + (r.linesChanged || 0), 0)
+      }
+    };
+  }
 }
 
 // Main execution
@@ -359,17 +478,30 @@ if (require.main === module) {
   const applier = new CodeRabbitSuggestionApplier(commentBody);
   
   applier.apply().then(result => {
+    // Generate execution log
+    const executionLog = applier.generateExecutionLog();
+    
+    // Write execution log to file for audit trail
+    const logFile = `coderabbit-execution-${Date.now()}.json`;
+    fs.writeFileSync(logFile, JSON.stringify(executionLog, null, 2));
+    console.log(`Execution log saved to: ${logFile}`);
+    
+    // Output result for GitHub Actions
     console.log(JSON.stringify(result, null, 2));
     
+    // Set exit code based on results
     if (result.applied > 0) {
+      console.log(`\n✅ Successfully applied ${result.applied} suggestion(s)`);
       process.exit(0);
     } else if (result.failed > 0) {
+      console.error(`\n⚠️ Failed to apply ${result.failed} suggestion(s)`);
       process.exit(1);
     } else {
+      console.log('\n📝 No actionable suggestions found');
       process.exit(0);
     }
   }).catch(error => {
-    console.error('Error:', error);
+    console.error('Fatal error:', error);
     process.exit(1);
   });
 }
