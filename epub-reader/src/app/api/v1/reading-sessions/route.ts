@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+
 import { 
+  ApiError,
   apiHandler, 
   requireAuth, 
-  validateRequest,
   successResponse,
-  ApiError 
+  validateRequest
 } from '@/lib/api/middleware';
 import { readingSessionSchema, uuidSchema } from '@/lib/validations';
+import { createClient } from '@/utils/supabase/server';
 
 // POST /api/v1/reading-sessions - Start or update a reading session
 export const POST = apiHandler(async (request: NextRequest) => {

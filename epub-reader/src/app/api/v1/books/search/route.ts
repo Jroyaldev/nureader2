@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+
 import { 
-  apiHandler, 
-  requireAuth, 
-  validateRequest, 
-  paginatedResponse,
   ApiError,
-  rateLimit 
+  apiHandler, 
+  paginatedResponse,
+  rateLimit,
+  requireAuth, 
+  validateRequest
 } from '@/lib/api/middleware';
 import { bookSearchSchema } from '@/lib/validations';
+import { createClient } from '@/utils/supabase/server';
 
 export const GET = apiHandler(async (request: NextRequest) => {
   // Rate limiting for search

@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { z } from 'zod';
+
 import { 
+  ApiError,
   apiHandler, 
   requireAuth, 
   successResponse,
-  ApiError,
   validateRequest
 } from '@/lib/api/middleware';
 import { bookMetadataSchema, uuidSchema } from '@/lib/validations';
-import { z } from 'zod';
+import { createClient } from '@/utils/supabase/server';
 
 // GET /api/v1/books/[id] - Get a single book
 export const GET = apiHandler(async (

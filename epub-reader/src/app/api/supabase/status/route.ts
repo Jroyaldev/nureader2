@@ -26,11 +26,12 @@ export async function GET() {
       timestamp: new Date().toISOString()
     });
     
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json({
       status: "error",
       message: "Configuration error",
-      error: e?.message ?? "Unknown error"
+      error: errorMessage
     }, { status: 500 });
   }
 }
