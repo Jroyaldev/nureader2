@@ -28,7 +28,8 @@ interface AnnotationPanelProps {
   bookId: string;
   isOpen: boolean;
   onClose: () => void;
-  onJumpToAnnotation: (location: string) => void;
+  onJumpToAnnotation: (location: string, annotationId: string) => void;
+  onDeleteAnnotation?: (annotationId: string) => void;
 }
 
 const HIGHLIGHT_COLORS = [
@@ -39,7 +40,7 @@ const HIGHLIGHT_COLORS = [
   { name: 'Purple', value: 'rgba(139, 92, 246, 0.5)', bg: 'bg-violet-500' }
 ];
 
-export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnotation }: AnnotationPanelProps) {
+export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnotation, onDeleteAnnotation }: AnnotationPanelProps) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'highlight' | 'note' | 'bookmark'>('all');
@@ -87,6 +88,11 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
 
       if (error) throw error;
       setAnnotations(prev => prev.filter(a => a.id !== annotationId));
+      
+      // Notify parent component to remove from renderer
+      if (onDeleteAnnotation) {
+        onDeleteAnnotation(annotationId);
+      }
     } catch (error) {
       console.error('Error deleting annotation:', error);
     }
@@ -139,7 +145,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-6 right-6 w-[380px] max-w-[90vw] z-[70] pointer-events-auto transition-elegant">
+    <div className="fixed inset-y-6 right-6 w-[380px] max-w-[90vw] z-[85] pointer-events-auto transition-elegant">
       {/* Panel surface - Apple style */}
       <div className="floating rounded-[var(--radius-xl)] overflow-hidden flex flex-col h-[calc(100vh-48px)]">
         {/* Header - Refined */}
@@ -210,7 +216,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                 <div
                   key={annotation.id}
                   className="card rounded-[var(--radius-lg)] p-4 hover:shadow-lg transition-elegant cursor-pointer group"
-                  onClick={() => onJumpToAnnotation(annotation.location)}
+                  onClick={() => onJumpToAnnotation(annotation.location, annotation.id)}
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">

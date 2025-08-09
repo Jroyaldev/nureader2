@@ -68,7 +68,7 @@ export default function AnnotationToolbar({
       className="fixed z-[10000] animate-scale-in flex flex-col items-center"
       style={{
         left: `${position.x}px`,
-        top: `${position.y - 60}px`, // Adjust this value to position toolbar above selection
+        top: `${Math.max(10, position.y - 50)}px`, // Position above selection with minimum distance from top
         transform: 'translateX(-50%)',
       }}
     >
