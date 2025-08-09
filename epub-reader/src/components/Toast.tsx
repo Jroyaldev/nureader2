@@ -46,6 +46,9 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
 
   return (
     <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       className={`fixed bottom-8 right-8 z-[100] transition-all duration-300 ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
       }`}

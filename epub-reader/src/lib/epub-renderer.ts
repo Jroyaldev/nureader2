@@ -1446,18 +1446,44 @@ export class EpubRenderer {
     }
   }
 
-  // Find text in document
+  // Find text in document with better duplicate handling
   private findTextInDocument(searchText: string, cfi?: string): Range | null {
     try {
-      // If we have a valid CFI, try to use it first
+      // Priority 1: If we have a valid CFI, try to use it first
       if (cfi && cfi.includes('/')) {
         const range = this.getRangeFromCfi(cfi);
-        if (range && range.toString().trim() === searchText.trim()) {
-          return range;
+        if (range) {
+          const rangeText = range.toString().trim();
+          // Check if the range text matches or contains our search text
+          if (rangeText === searchText.trim() || rangeText.includes(searchText.trim())) {
+            return range;
+          }
         }
       }
       
-      // Fallback to text search
+      // Priority 2: Try to find text near the CFI location if available
+      if (cfi) {
+        // Extract chapter info from CFI to narrow search
+        const cfiParts = cfi.split('/');
+        if (cfiParts.length >= 2) {
+          const chapterIndex = cfiParts[0];
+          const chapterId = cfiParts[1];
+          
+          // Find the chapter element to search within
+          const chapter = this.container.querySelector(
+            `[data-chapter-index="${chapterIndex}"][data-chapter-id="${chapterId}"]`
+          );
+          
+          if (chapter) {
+            // Search within the specific chapter first
+            const range = this.searchTextInElement(searchText, chapter as Element);
+            if (range) return range;
+          }
+        }
+      }
+      
+      // Priority 3: Fallback to full document search with occurrence tracking
+      const matches: { range: Range; context: string }[] = [];
       const walker = document.createTreeWalker(
         this.container,
         NodeFilter.SHOW_TEXT,
@@ -1467,14 +1493,50 @@ export class EpubRenderer {
       let node: Node | null;
       while (node = walker.nextNode()) {
         const text = node.textContent || '';
-        const index = text.indexOf(searchText);
+        let index = text.indexOf(searchText);
         
-        if (index !== -1) {
+        while (index !== -1) {
           const range = document.createRange();
           range.setStart(node, index);
           range.setEnd(node, index + searchText.length);
-          return range;
+          
+          // Get surrounding context for disambiguation
+          const contextStart = Math.max(0, index - 20);
+          const contextEnd = Math.min(text.length, index + searchText.length + 20);
+          const context = text.substring(contextStart, contextEnd);
+          
+          matches.push({ range, context });
+          
+          // Look for next occurrence in the same node
+          index = text.indexOf(searchText, index + 1);
         }
+      }
+      
+      // If we found matches, return the best one
+      if (matches.length > 0) {
+        // If only one match, return it
+        if (matches.length === 1) {
+          return matches[0].range;
+        }
+        
+        // If multiple matches and we have CFI context, try to match based on position
+        if (cfi && cfi.includes('@')) {
+          // Extract position hint from CFI
+          const positionMatch = cfi.match(/@([\d.]+)/);
+          if (positionMatch) {
+            const targetPosition = parseFloat(positionMatch[1]);
+            // Return the match closest to the target position
+            // For simplicity, return the match at the approximate position
+            const matchIndex = Math.min(
+              Math.floor(targetPosition * matches.length),
+              matches.length - 1
+            );
+            return matches[matchIndex].range;
+          }
+        }
+        
+        // Default to first match if no better selection criteria
+        return matches[0].range;
       }
       
       return null;
@@ -1482,6 +1544,30 @@ export class EpubRenderer {
       console.warn('Error finding text:', error);
       return null;
     }
+  }
+
+  // Helper method to search within a specific element
+  private searchTextInElement(searchText: string, element: Element): Range | null {
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    let node: Node | null;
+    while (node = walker.nextNode()) {
+      const text = node.textContent || '';
+      const index = text.indexOf(searchText);
+      
+      if (index !== -1) {
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + searchText.length);
+        return range;
+      }
+    }
+    
+    return null;
   }
 
   // Get range from CFI

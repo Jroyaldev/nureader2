@@ -305,12 +305,10 @@ export default function ReaderPage() {
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
         
-        // Load saved reading progress and annotations after a short delay
+        // Load saved reading progress and annotations after book is loaded
         if (bookId) {
-          setTimeout(() => {
-            loadReadingProgress();
-            loadAnnotations();
-          }, 1000);
+          await loadReadingProgress();
+          await loadAnnotations();
         }
         
       } catch (err) {
@@ -323,9 +321,44 @@ export default function ReaderPage() {
     loadBookFromDatabase();
   }, [bookId, authReady, containerReady, loadFromFile, router, supabase, loadAnnotations]);
 
+  // Helper function to perform the actual save
+  const performProgressSave = useCallback(async (userId: string, progress: number) => {
+    if (!bookId) return false;
+    
+    try {
+      // Get current CFI position
+      const cfi = epubRendererRef.current?.getCurrentCfi() || '';
+      
+      const { error } = await supabase
+        .from('reading_progress')
+        .upsert({
+          user_id: userId,
+          book_id: bookId,
+          current_location: cfi,
+          progress_percentage: progress,
+          last_read_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,book_id'
+        });
+
+      if (!error) {
+        console.log('✅ Progress saved:', progress + '%');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error saving reading progress:', error);
+      return false;
+    }
+  }, [bookId, supabase]);
+
   // Save reading progress to database with queue
   const saveReadingProgress = useCallback(async (progress: number, immediate: boolean = false) => {
     if (!bookId || !authReady) return;
+    
+    // Get user once per invocation
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     
     // Queue the save request
     saveProgressQueueRef.current = { progress, timestamp: Date.now() };
@@ -338,71 +371,21 @@ export default function ReaderPage() {
     // If immediate save requested, save now
     if (immediate) {
       const toSave = saveProgressQueueRef.current;
-      if (!toSave) return;
-      
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        // Get current CFI position
-        const cfi = epubRendererRef.current?.getCurrentCfi() || '';
-        
-        const { error } = await supabase
-          .from('reading_progress')
-          .upsert({
-            user_id: user.id,
-            book_id: bookId,
-            current_location: cfi,
-            progress_percentage: toSave.progress,
-            last_read_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id,book_id'
-          });
-
-        if (!error) {
-          console.log('✅ Progress saved:', toSave.progress + '%');
-        }
-      } catch (error) {
-        console.error('Error saving reading progress:', error);
+      if (toSave) {
+        await performProgressSave(user.id, toSave.progress);
+        saveProgressQueueRef.current = null;
       }
-      
-      saveProgressQueueRef.current = null;
     } else {
       // Debounce saves to every 2 seconds
       saveProgressTimeoutRef.current = setTimeout(async () => {
         const toSave = saveProgressQueueRef.current;
-        if (!toSave) return;
-        
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-
-          // Get current CFI position
-          const cfi = epubRendererRef.current?.getCurrentCfi() || '';
-          
-          const { error } = await supabase
-            .from('reading_progress')
-            .upsert({
-              user_id: user.id,
-              book_id: bookId,
-              current_location: cfi,
-              progress_percentage: toSave.progress,
-              last_read_at: new Date().toISOString()
-            }, {
-              onConflict: 'user_id,book_id'
-            });
-
-          if (!error) {
-            console.log('✅ Progress saved:', toSave.progress + '%');
-          }
-        } catch (error) {
-          console.error('Error saving reading progress:', error);
+        if (toSave) {
+          await performProgressSave(user.id, toSave.progress);
+          saveProgressQueueRef.current = null;
         }
-        
-        saveProgressQueueRef.current = null;
       }, 2000);
     }
-  }, [bookId, authReady, supabase]);
+  }, [bookId, authReady, supabase, performProgressSave]);
 
   // Load reading progress from database
   const loadReadingProgress = useCallback(async () => {
