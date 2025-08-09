@@ -78,6 +78,9 @@ export default function ReaderPage() {
 
   // Listen for annotation click events from the renderer
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
     const handleAnnotationClick = (e: CustomEvent) => {
       const annotation = e.detail;
       if (annotation) {
@@ -86,16 +89,12 @@ export default function ReaderPage() {
       }
     };
 
-    if (containerRef.current) {
-      containerRef.current.addEventListener('annotationClick', handleAnnotationClick as EventListener);
-    }
+    container.addEventListener('annotationClick', handleAnnotationClick as EventListener);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('annotationClick', handleAnnotationClick as EventListener);
-      }
+      container.removeEventListener('annotationClick', handleAnnotationClick as EventListener);
     };
-  }, []);
+  }, [containerRef.current]);
 
   const loadFromFile = useCallback(async (file: File) => {
     setError("");
