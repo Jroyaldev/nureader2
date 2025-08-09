@@ -7,6 +7,7 @@ import AnnotationPanel from "@/components/AnnotationPanel";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import NoteModal from "@/components/NoteModal";
 import Tooltip from "@/components/TooltipImproved";
+import Toast from "@/components/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
 
@@ -51,11 +52,14 @@ export default function ReaderPage() {
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [containerReady, setContainerReady] = useState<boolean>(false);
   const [navigationState, setNavigationState] = useState({ canGoNext: false, canGoPrev: false });
+  const saveProgressQueueRef = useRef<{ progress: number; timestamp: number } | null>(null);
+  const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [selectionCfi, setSelectionCfi] = useState<string>("");
   const [annotationToolbarPos, setAnnotationToolbarPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showAnnotationToolbar, setShowAnnotationToolbar] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,6 +72,27 @@ export default function ReaderPage() {
       if (epubRendererRef.current) {
         epubRendererRef.current.destroy();
         epubRendererRef.current = null;
+      }
+    };
+  }, []);
+
+  // Listen for annotation click events from the renderer
+  useEffect(() => {
+    const handleAnnotationClick = (e: CustomEvent) => {
+      const annotation = e.detail;
+      if (annotation) {
+        // Show annotations panel and highlight the clicked annotation
+        setShowAnnotations(true);
+      }
+    };
+
+    if (containerRef.current) {
+      containerRef.current.addEventListener('annotationClick', handleAnnotationClick as EventListener);
+    }
+
+    return () => {
+      if (containerRef.current) {
+        containerRef.current.removeEventListener('annotationClick', handleAnnotationClick as EventListener);
       }
     };
   }, []);
@@ -122,9 +147,12 @@ export default function ReaderPage() {
         if (selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
           const rect = range.getBoundingClientRect();
+          
+          // Calculate position relative to viewport, not document
+          // This ensures the toolbar appears at the correct position even when scrolled
           setAnnotationToolbarPos({
             x: rect.left + rect.width / 2,
-            y: rect.top + window.scrollY
+            y: rect.top - 10 // Position above selection, not using scrollY
           });
           setShowAnnotationToolbar(true);
         }
@@ -195,6 +223,40 @@ export default function ReaderPage() {
     };
   }, []);
 
+  // Load annotations for the book
+  const loadAnnotations = useCallback(async () => {
+    if (!bookId || !epubRendererRef.current) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: annotations, error } = await supabase
+        .from('annotations')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('book_id', bookId)
+        .order('created_at', { ascending: false });
+
+      if (!error && annotations) {
+        // Convert to renderer format
+        const formattedAnnotations = annotations.map(a => ({
+          id: a.id,
+          location: a.location,
+          content: a.content,
+          color: a.color,
+          annotation_type: a.annotation_type,
+          note: a.note
+        }));
+        
+        epubRendererRef.current.loadAnnotations(formattedAnnotations);
+        console.log(`✅ Loaded ${annotations.length} annotations`);
+      }
+    } catch (error) {
+      console.error('Error loading annotations:', error);
+    }
+  }, [bookId, supabase]);
+
   // Load book from Supabase if book ID is provided
   useEffect(() => {
     const loadBookFromDatabase = async () => {
@@ -243,10 +305,11 @@ export default function ReaderPage() {
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
         
-        // Load saved reading progress after a short delay
+        // Load saved reading progress and annotations after a short delay
         if (bookId) {
           setTimeout(() => {
             loadReadingProgress();
+            loadAnnotations();
           }, 1000);
         }
         
@@ -258,46 +321,86 @@ export default function ReaderPage() {
     };
 
     loadBookFromDatabase();
-  }, [bookId, authReady, containerReady, loadFromFile, router, supabase]);
+  }, [bookId, authReady, containerReady, loadFromFile, router, supabase, loadAnnotations]);
 
-  // Save reading progress to database
-  const saveReadingProgress = useCallback(async (progress: number) => {
+  // Save reading progress to database with queue
+  const saveReadingProgress = useCallback(async (progress: number, immediate: boolean = false) => {
     if (!bookId || !authReady) return;
     
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const container = containerRef.current;
-      if (!container) return;
-
-      const scrollHeight = container.scrollHeight - container.clientHeight;
-      const currentLocation = `${container.scrollTop}:${scrollHeight}`;
-
-      console.log('💾 Saving reading progress:', progress + '%', 'at location:', currentLocation);
-
-      // Get current CFI position
-      const cfi = epubRendererRef.current?.getCurrentCfi() || currentLocation;
+    // Queue the save request
+    saveProgressQueueRef.current = { progress, timestamp: Date.now() };
+    
+    // Clear existing timeout
+    if (saveProgressTimeoutRef.current) {
+      clearTimeout(saveProgressTimeoutRef.current);
+    }
+    
+    // If immediate save requested, save now
+    if (immediate) {
+      const toSave = saveProgressQueueRef.current;
+      if (!toSave) return;
       
-      const { error } = await supabase
-        .from('reading_progress')
-        .upsert({
-          user_id: user.id,
-          book_id: bookId,
-          current_location: cfi,
-          progress_percentage: progress,
-          last_read_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,book_id'
-        });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      if (error) {
+        // Get current CFI position
+        const cfi = epubRendererRef.current?.getCurrentCfi() || '';
+        
+        const { error } = await supabase
+          .from('reading_progress')
+          .upsert({
+            user_id: user.id,
+            book_id: bookId,
+            current_location: cfi,
+            progress_percentage: toSave.progress,
+            last_read_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,book_id'
+          });
+
+        if (!error) {
+          console.log('✅ Progress saved:', toSave.progress + '%');
+        }
+      } catch (error) {
         console.error('Error saving reading progress:', error);
-      } else {
-        console.log('✅ Progress saved successfully');
       }
-    } catch (error) {
-      console.error('Error saving reading progress:', error);
+      
+      saveProgressQueueRef.current = null;
+    } else {
+      // Debounce saves to every 2 seconds
+      saveProgressTimeoutRef.current = setTimeout(async () => {
+        const toSave = saveProgressQueueRef.current;
+        if (!toSave) return;
+        
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          // Get current CFI position
+          const cfi = epubRendererRef.current?.getCurrentCfi() || '';
+          
+          const { error } = await supabase
+            .from('reading_progress')
+            .upsert({
+              user_id: user.id,
+              book_id: bookId,
+              current_location: cfi,
+              progress_percentage: toSave.progress,
+              last_read_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id,book_id'
+            });
+
+          if (!error) {
+            console.log('✅ Progress saved:', toSave.progress + '%');
+          }
+        } catch (error) {
+          console.error('Error saving reading progress:', error);
+        }
+        
+        saveProgressQueueRef.current = null;
+      }, 2000);
     }
   }, [bookId, authReady, supabase]);
 
@@ -356,45 +459,32 @@ export default function ReaderPage() {
     }
   }, [bookId, authReady, supabase]);
 
-  // Save progress periodically while reading
-  useEffect(() => {
-    if (!bookId || !authReady) return;
-    
-    const interval = setInterval(() => {
-      if (currentProgress > 0) {
-        saveReadingProgress(currentProgress);
-      }
-    }, 30000); // Save every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [bookId, authReady, currentProgress, saveReadingProgress]);
-
-  // Auto-save progress with debouncing
+  // Auto-save progress when it changes
   useEffect(() => {
     if (!bookId || currentProgress === 0) return;
     
-    const timeoutId = setTimeout(() => {
-      saveReadingProgress(currentProgress);
-    }, 2000); // Save after 2 seconds of no scroll activity
-
-    return () => clearTimeout(timeoutId);
+    // Save with debouncing (not immediate)
+    saveReadingProgress(currentProgress, false);
   }, [currentProgress, bookId, saveReadingProgress]);
 
   // Save progress on page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (bookId && currentProgress > 0) {
-        // Use navigator.sendBeacon for reliable saving on page unload
-        const data = new FormData();
-        data.append('bookId', bookId);
-        data.append('progress', currentProgress.toString());
-        navigator.sendBeacon('/api/save-progress', data);
+        // Save immediately on unload
+        saveReadingProgress(currentProgress, true);
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [bookId, currentProgress]);
+    return () => {
+      // Save when component unmounts
+      if (bookId && currentProgress > 0) {
+        saveReadingProgress(currentProgress, true);
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [bookId, currentProgress, saveReadingProgress]);
 
   const onPick = useCallback(() => {
     inputRef.current?.click();
@@ -476,7 +566,7 @@ export default function ReaderPage() {
         cfi = loaded.renderer.getCurrentCfi();
       }
 
-      const { error } = await supabase
+      const { data: newAnnotation, error } = await supabase
         .from('annotations')
         .insert({
           user_id: user.id,
@@ -486,9 +576,31 @@ export default function ReaderPage() {
           location: cfi,
           annotation_type: type,
           color
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Immediately apply the highlight if it's a highlight or note
+      if (newAnnotation && epubRendererRef.current && (type === 'highlight' || type === 'note')) {
+        epubRendererRef.current.addAnnotation({
+          id: newAnnotation.id,
+          location: newAnnotation.location,
+          content: newAnnotation.content,
+          color: newAnnotation.color,
+          annotation_type: newAnnotation.annotation_type,
+          note: newAnnotation.note
+        });
+      }
+      
+      // Show success toast
+      const messages = {
+        highlight: 'Highlight saved',
+        note: 'Note added',
+        bookmark: 'Bookmark created'
+      };
+      setToast({ message: messages[type], type: 'success' });
       
       // Clear selection
       setSelectedText("");
@@ -498,13 +610,14 @@ export default function ReaderPage() {
       
     } catch (error) {
       console.error('Error creating annotation:', error);
+      setToast({ message: 'Failed to save annotation', type: 'error' });
     }
   }, [bookId, loaded, supabase, selectedText, selectionCfi]);
 
-  const jumpToAnnotation = useCallback(async (location: string) => {
+  const jumpToAnnotation = useCallback(async (location: string, annotationId: string) => {
     if (!epubRendererRef.current || !location) return;
     
-    const jumped = epubRendererRef.current.displayCfi(location);
+    const jumped = epubRendererRef.current.navigateToAnnotation(annotationId);
     if (jumped) {
       setShowAnnotations(false);
     } else {
@@ -544,6 +657,16 @@ export default function ReaderPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!epubRendererRef.current) return;
+      
+      // Don't handle navigation if text is being selected or input is focused
+      const selection = window.getSelection();
+      const hasSelection = selection && !selection.isCollapsed;
+      const isInputFocused = document.activeElement?.tagName === 'INPUT' || 
+                            document.activeElement?.tagName === 'TEXTAREA';
+      
+      if (hasSelection || isInputFocused) {
+        return; // Let default behavior handle it
+      }
       
       // Prevent default for our handled keys
       switch (e.key) {
@@ -616,8 +739,16 @@ export default function ReaderPage() {
     const deltaY = touch.clientY - touchStartRef.current.y;
     const deltaTime = Date.now() - touchStartRef.current.time;
     
-    // Only handle swipes that are quick and primarily horizontal
-    if (deltaTime < 300 && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+    // Increased threshold to 100px and added velocity check
+    const minSwipeDistance = 100;
+    const maxSwipeTime = 500; // Increased time allowance
+    const velocity = Math.abs(deltaX) / deltaTime;
+    const minVelocity = 0.3; // pixels per millisecond
+    
+    // Only handle swipes that are primarily horizontal with sufficient distance or velocity
+    if (deltaTime < maxSwipeTime && 
+        Math.abs(deltaX) > Math.abs(deltaY) * 2 && // More horizontal than vertical
+        (Math.abs(deltaX) > minSwipeDistance || velocity > minVelocity)) {
       if (deltaX > 0) {
         // Swipe right - previous page
         handlePreviousPage();
@@ -647,7 +778,7 @@ export default function ReaderPage() {
       {/* Desktop Toolbar hover zone */}
       {!isMobile && !isToolbarSticky && (
         <div 
-          className="fixed top-0 left-0 right-0 h-32 z-[70]"
+          className="fixed top-0 left-0 right-0 h-32 z-[60]"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           style={{ pointerEvents: 'auto', background: 'transparent' }}
@@ -657,7 +788,7 @@ export default function ReaderPage() {
       {/* Desktop Floating Header */}
       {!isMobile && (
         <div 
-          className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${(isHovering || !loaded || isToolbarSticky) ? 'contextual show' : 'contextual'}`}
+          className={`fixed top-6 left-1/2 -translate-x-1/2 z-[70] transition-elegant ${(isHovering || !loaded || isToolbarSticky) ? 'contextual show' : 'contextual'}`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           style={{ pointerEvents: 'auto' }}
@@ -795,7 +926,7 @@ export default function ReaderPage() {
       {/* Floating TOC Sidebar */}
       {toc.length > 0 && (
         <div 
-          className={`fixed left-6 top-1/2 -translate-y-1/2 z-40 w-[340px] max-h-[600px] transition-elegant ${showToc ? 'contextual show' : 'contextual'}`}
+          className={`fixed left-6 top-1/2 -translate-y-1/2 z-[75] w-[340px] max-h-[600px] transition-elegant ${showToc ? 'contextual show' : 'contextual'}`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
@@ -853,7 +984,7 @@ export default function ReaderPage() {
 
       {/* Mobile Bottom Toolbar */}
       {isMobile && loaded && (
-        <div className="fixed bottom-0 left-0 right-0 z-[80] p-4 bg-gradient-to-t from-[rgb(var(--bg))] via-[rgb(var(--bg))]/95 to-transparent">
+        <div className="fixed bottom-0 left-0 right-0 z-[70] p-4 bg-gradient-to-t from-[rgb(var(--bg))] via-[rgb(var(--bg))]/95 to-transparent">
           <div className="floating rounded-[var(--radius-xl)] px-4 py-3" style={{
             boxShadow: "0 20px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
           }}>
@@ -955,7 +1086,7 @@ export default function ReaderPage() {
           {/* Chapter Title & Progress Overlay */}
           {chapterTitle && loaded && (
             <div 
-              className={`fixed top-24 left-1/2 -translate-x-1/2 z-[70] transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}
+              className={`fixed top-24 left-1/2 -translate-x-1/2 z-[65] transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
@@ -1007,7 +1138,7 @@ export default function ReaderPage() {
       {/* Floating Status/Error Message */}
       {(error || (isHovering && loaded)) && (
         <div 
-          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] transition-elegant ${(error || (isHovering && loaded)) ? 'contextual show' : 'contextual'}`}
+          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[65] transition-elegant ${(error || (isHovering && loaded)) ? 'contextual show' : 'contextual'}`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
@@ -1058,6 +1189,11 @@ export default function ReaderPage() {
         isOpen={showAnnotations}
         onClose={() => setShowAnnotations(false)}
         onJumpToAnnotation={jumpToAnnotation}
+        onDeleteAnnotation={(annotationId) => {
+          if (epubRendererRef.current) {
+            epubRendererRef.current.removeAnnotation(annotationId);
+          }
+        }}
       />
 
       {/* Annotation Toolbar */}
@@ -1085,6 +1221,15 @@ export default function ReaderPage() {
             setShowNoteModal(false);
           }}
           onClose={() => setShowNoteModal(false)}
+        />
+      )}
+
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

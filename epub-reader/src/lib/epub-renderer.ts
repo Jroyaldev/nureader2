@@ -17,6 +17,15 @@ interface TocItem {
   subitems?: TocItem[];
 }
 
+interface SavedAnnotation {
+  id: string;
+  location: string;
+  content: string;
+  color: string;
+  annotation_type: 'highlight' | 'note' | 'bookmark';
+  note?: string;
+}
+
 export class EpubRenderer {
   private book: any;
   private container: HTMLElement;
@@ -28,6 +37,8 @@ export class EpubRenderer {
   private currentChapterIndex: number = 0;
   private onTextSelectCallback?: (text: string, cfi: string) => void;
   private _imageObjectUrls: Set<string> = new Set();
+  private savedAnnotations: SavedAnnotation[] = [];
+  private highlightedRanges: Map<string, Range> = new Map();
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -973,6 +984,40 @@ export class EpubRenderer {
         font-family: "Crimson Text", "Georgia", serif;
         text-shadow: ${theme === 'dark' ? '0 0 8px rgba(212, 175, 55, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.1)'};
       }
+
+      /* Highlight styles */
+      .epub-highlight {
+        transition: all 0.3s ease;
+        border-radius: 2px;
+        padding: 0 2px;
+      }
+
+      .epub-highlight:hover {
+        filter: brightness(1.2);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Pulse animation for navigation */
+      @keyframes highlightPulse {
+        0%, 100% {
+          box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+          transform: scale(1);
+        }
+        25% {
+          box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.3);
+          transform: scale(1.02);
+        }
+        50% {
+          box-shadow: 0 0 0 12px rgba(251, 191, 36, 0);
+          transform: scale(1);
+        }
+      }
+
+      .epub-highlight-pulse {
+        animation: highlightPulse 2s ease-in-out;
+        position: relative;
+        z-index: 10;
+      }
     `;
 
     // Apply or update styles
@@ -1160,10 +1205,27 @@ export class EpubRenderer {
     }
   }
 
-  // Navigate to a CFI location
-  displayCfi(cfi: string): boolean {
+  // Navigate to a CFI location with highlighting
+  displayCfi(cfi: string, highlightId?: string): boolean {
     try {
       if (!cfi) return false;
+      
+      // First, try to find and highlight the annotation if ID provided
+      if (highlightId) {
+        const highlightEl = this.container.querySelector(`[data-annotation-id="${highlightId}"]`) as HTMLElement;
+        if (highlightEl) {
+          // Scroll to highlight
+          highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add pulse animation
+          highlightEl.classList.add('epub-highlight-pulse');
+          setTimeout(() => {
+            highlightEl.classList.remove('epub-highlight-pulse');
+          }, 2000);
+          
+          return true;
+        }
+      }
       
       // Parse CFI format
       if (cfi.startsWith('@')) {
@@ -1212,6 +1274,29 @@ export class EpubRenderer {
     }
     
     return false;
+  }
+
+  // Navigate to an annotation
+  navigateToAnnotation(annotationId: string): boolean {
+    const annotation = this.savedAnnotations.find(a => a.id === annotationId);
+    if (!annotation) return false;
+    
+    // First try to find the highlight element
+    const highlightEl = this.container.querySelector(`[data-annotation-id="${annotationId}"]`) as HTMLElement;
+    if (highlightEl) {
+      highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Add pulse animation
+      highlightEl.classList.add('epub-highlight-pulse');
+      setTimeout(() => {
+        highlightEl.classList.remove('epub-highlight-pulse');
+      }, 2000);
+      
+      return true;
+    }
+    
+    // Fallback to CFI navigation
+    return this.displayCfi(annotation.location, annotationId);
   }
 
   // Get node path for CFI generation
@@ -1281,5 +1366,215 @@ export class EpubRenderer {
   // Get current CFI
   getCurrentCfi(): string {
     return this.generateCfi();
+  }
+
+  // Load saved annotations
+  loadAnnotations(annotations: SavedAnnotation[]): void {
+    this.savedAnnotations = annotations;
+    this.applyHighlights();
+  }
+
+  // Apply highlights to the rendered content
+  private applyHighlights(): void {
+    // Clear existing highlights first
+    this.clearHighlights();
+    
+    // Filter for highlights and notes (not bookmarks)
+    const highlightAnnotations = this.savedAnnotations.filter(
+      a => a.annotation_type === 'highlight' || a.annotation_type === 'note'
+    );
+    
+    for (const annotation of highlightAnnotations) {
+      this.applyHighlight(annotation);
+    }
+  }
+
+  // Clear all highlights
+  private clearHighlights(): void {
+    // Remove all highlight spans
+    const highlights = this.container.querySelectorAll('.epub-highlight');
+    highlights.forEach(el => {
+      const parent = el.parentNode;
+      while (el.firstChild) {
+        parent?.insertBefore(el.firstChild, el);
+      }
+      parent?.removeChild(el);
+    });
+    
+    this.highlightedRanges.clear();
+  }
+
+  // Apply a single highlight
+  private applyHighlight(annotation: SavedAnnotation): void {
+    try {
+      // Try to find the text in the document
+      const searchText = annotation.content;
+      if (!searchText) return;
+      
+      // Use the CFI if available to narrow down search
+      const range = this.findTextInDocument(searchText, annotation.location);
+      if (!range) return;
+      
+      // Create highlight span
+      const highlightSpan = document.createElement('span');
+      highlightSpan.className = 'epub-highlight';
+      highlightSpan.dataset.annotationId = annotation.id;
+      highlightSpan.style.backgroundColor = annotation.color || 'rgba(251, 191, 36, 0.3)';
+      highlightSpan.style.cursor = 'pointer';
+      highlightSpan.title = annotation.note || 'Click to view annotation';
+      
+      // Add click handler
+      highlightSpan.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onHighlightClick(annotation);
+      });
+      
+      // Wrap the range content in highlight span
+      try {
+        range.surroundContents(highlightSpan);
+        this.highlightedRanges.set(annotation.id, range);
+      } catch (e) {
+        // If surroundContents fails (e.g., range spans multiple elements),
+        // extract and wrap the contents manually
+        const contents = range.extractContents();
+        highlightSpan.appendChild(contents);
+        range.insertNode(highlightSpan);
+        this.highlightedRanges.set(annotation.id, range);
+      }
+    } catch (error) {
+      console.warn('Failed to apply highlight:', error);
+    }
+  }
+
+  // Find text in document
+  private findTextInDocument(searchText: string, cfi?: string): Range | null {
+    try {
+      // If we have a valid CFI, try to use it first
+      if (cfi && cfi.includes('/')) {
+        const range = this.getRangeFromCfi(cfi);
+        if (range && range.toString().trim() === searchText.trim()) {
+          return range;
+        }
+      }
+      
+      // Fallback to text search
+      const walker = document.createTreeWalker(
+        this.container,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+      
+      let node: Node | null;
+      while (node = walker.nextNode()) {
+        const text = node.textContent || '';
+        const index = text.indexOf(searchText);
+        
+        if (index !== -1) {
+          const range = document.createRange();
+          range.setStart(node, index);
+          range.setEnd(node, index + searchText.length);
+          return range;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn('Error finding text:', error);
+      return null;
+    }
+  }
+
+  // Get range from CFI
+  private getRangeFromCfi(cfi: string): Range | null {
+    try {
+      // Parse our custom CFI format
+      if (cfi.includes('/')) {
+        const parts = cfi.split('@')[0].split('/');
+        if (parts.length >= 3) {
+          const chapterIndex = parts[0];
+          const chapterId = parts[1];
+          const pathAndOffsets = parts.slice(2).join('/');
+          
+          // Find the chapter element
+          const chapter = this.container.querySelector(
+            `[data-chapter-index="${chapterIndex}"][data-chapter-id="${chapterId}"]`
+          );
+          
+          if (chapter && pathAndOffsets.includes(':')) {
+            // Parse path and offsets
+            const [startPath, endPath] = pathAndOffsets.split('-');
+            const [startNodePath, startOffset] = startPath.split(':');
+            const [endNodePath, endOffset] = endPath ? endPath.split(':') : [startNodePath, startOffset];
+            
+            // Navigate to the text nodes
+            const startNode = this.getNodeFromPath(startNodePath, chapter as Element);
+            const endNode = this.getNodeFromPath(endNodePath, chapter as Element);
+            
+            if (startNode && endNode) {
+              const range = document.createRange();
+              range.setStart(startNode, parseInt(startOffset));
+              range.setEnd(endNode, parseInt(endOffset));
+              return range;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Error parsing CFI:', error);
+    }
+    return null;
+  }
+
+  // Get node from path string
+  private getNodeFromPath(path: string, root: Element): Node | null {
+    try {
+      const indices = path.split('/').map(n => parseInt(n));
+      let current: Node = root;
+      
+      for (const index of indices) {
+        if (current.childNodes[index]) {
+          current = current.childNodes[index];
+        } else {
+          return null;
+        }
+      }
+      
+      return current;
+    } catch {
+      return null;
+    }
+  }
+
+  // Handle highlight click
+  private onHighlightClick(annotation: SavedAnnotation): void {
+    // Dispatch custom event that the reader page can listen to
+    const event = new CustomEvent('annotationClick', {
+      detail: annotation,
+      bubbles: true
+    });
+    this.container.dispatchEvent(event);
+  }
+
+  // Add new annotation (for when user creates one)
+  addAnnotation(annotation: SavedAnnotation): void {
+    this.savedAnnotations.push(annotation);
+    this.applyHighlight(annotation);
+  }
+
+  // Remove annotation
+  removeAnnotation(annotationId: string): void {
+    this.savedAnnotations = this.savedAnnotations.filter(a => a.id !== annotationId);
+    
+    // Remove the highlight span
+    const highlightEl = this.container.querySelector(`[data-annotation-id="${annotationId}"]`);
+    if (highlightEl) {
+      const parent = highlightEl.parentNode;
+      while (highlightEl.firstChild) {
+        parent?.insertBefore(highlightEl.firstChild, highlightEl);
+      }
+      parent?.removeChild(highlightEl);
+    }
+    
+    this.highlightedRanges.delete(annotationId);
   }
 }
