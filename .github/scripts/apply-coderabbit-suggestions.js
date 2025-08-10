@@ -6,7 +6,7 @@ const { execSync } = require('child_process');
 
 /**
  * Parse CodeRabbit suggestions from PR comments
- * Handles both inline suggestions and review table suggestions
+ * Handles AI Agent prompts, inline suggestions, and review table suggestions
  */
 class CodeRabbitSuggestionApplier {
   constructor(commentBody) {
@@ -49,6 +49,9 @@ class CodeRabbitSuggestionApplier {
    * Parse suggestions from CodeRabbit comment
    */
   parseSuggestions() {
+    // Parse AI Agent prompts (primary format)
+    this.parseAIAgentPrompts();
+    
     // Parse inline code suggestions (```suggestion blocks)
     this.parseInlineSuggestions();
     
@@ -57,6 +60,67 @@ class CodeRabbitSuggestionApplier {
     
     // Parse diff suggestions
     this.parseDiffSuggestions();
+  }
+
+  /**
+   * Parse AI Agent prompts from CodeRabbit comments
+   * These are natural language instructions in "🤖 Prompt for AI Agents" sections
+   */
+  parseAIAgentPrompts() {
+    // Look for AI Agent prompt sections
+    const aiAgentRegex = /<summary>🤖 Prompt for AI Agents<\/summary>\s*```([\s\S]*?)```/g;
+    let match;
+    
+    while ((match = aiAgentRegex.exec(this.commentBody)) !== null) {
+      const promptContent = match[1].trim();
+      
+      if (promptContent) {
+        this.suggestions.push({
+          type: 'ai_agent',
+          prompt: promptContent,
+          instruction: this.extractInstructionFromPrompt(promptContent)
+        });
+      }
+    }
+    
+    // Also handle simpler format without code blocks
+    const simpleAIAgentRegex = /<summary>🤖 Prompt for AI Agents<\/summary>\s*([\s\S]*?)(?=<\/details>|$)/g;
+    
+    while ((match = simpleAIAgentRegex.exec(this.commentBody)) !== null) {
+      let promptContent = match[1].trim();
+      
+      // Remove any markdown formatting
+      promptContent = promptContent.replace(/```[\s\S]*?```/g, '').trim();
+      
+      if (promptContent && !promptContent.includes('```')) {
+        this.suggestions.push({
+          type: 'ai_agent',
+          prompt: promptContent,
+          instruction: this.extractInstructionFromPrompt(promptContent)
+        });
+      }
+    }
+  }
+  
+  /**
+   * Extract key information from AI Agent prompts
+   */
+  extractInstructionFromPrompt(prompt) {
+    // Extract file path if mentioned
+    const fileMatch = prompt.match(/In ([^\s]+\.(?:ts|tsx|js|jsx|yml|yaml|json))/);
+    const file = fileMatch ? fileMatch[1] : null;
+    
+    // Extract line numbers if mentioned
+    const lineMatch = prompt.match(/around lines? (\d+)(?: to (\d+))?/);
+    const lineStart = lineMatch ? parseInt(lineMatch[1]) : null;
+    const lineEnd = lineMatch && lineMatch[2] ? parseInt(lineMatch[2]) : lineStart;
+    
+    return {
+      file: file ? this.normalizeFilePath(file) : null,
+      lineStart,
+      lineEnd,
+      description: prompt
+    };
   }
 
   /**
@@ -249,8 +313,14 @@ class CodeRabbitSuggestionApplier {
    */
   async _applySuggestionImpl(suggestion) {
     const startTime = Date.now();
+    let backupPath = null;
     
     try {
+      // Handle AI Agent prompts by delegating to Claude Code
+      if (suggestion.type === 'ai_agent') {
+        return await this.applyAIAgentPrompt(suggestion);
+      }
+      
       const filePath = path.resolve(suggestion.file);
       
       // Validate file exists
@@ -268,7 +338,7 @@ class CodeRabbitSuggestionApplier {
       }
       
       // Create backup before modification
-      const backupPath = `${suggestion.file}.backup.${Date.now()}`;
+      backupPath = `${suggestion.file}.backup.${Date.now()}`;
       fs.copyFileSync(suggestion.file, backupPath);
       
       // Read current file content
@@ -293,9 +363,7 @@ class CodeRabbitSuggestionApplier {
       else if (suggestion.type === 'diff' || (suggestion.type === 'inline' && suggestion.original)) {
         // Find and replace based on original content
         if (suggestion.original) {
-          // Escape special regex characters
-          const escapedOriginal = suggestion.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(escapedOriginal, 'g');
+          // Simple string replacement (no regex needed for exact matches)
           
           if (currentContent.includes(suggestion.original)) {
             newContent = currentContent.replace(suggestion.original, suggestion.suggestion);
@@ -353,7 +421,7 @@ class CodeRabbitSuggestionApplier {
         }
         
         // Clean up backup on success
-        fs.unlinkSync(backupPath);
+        if (backupPath) fs.unlinkSync(backupPath);
         
         const duration = Date.now() - startTime;
         
@@ -368,7 +436,7 @@ class CodeRabbitSuggestionApplier {
         console.log(`✅ Applied suggestion to ${suggestion.file} (${duration}ms)`);
       } else {
         // Clean up backup
-        fs.unlinkSync(backupPath);
+        if (backupPath) fs.unlinkSync(backupPath);
         
         this.results.push({
           file: suggestion.file,
@@ -379,7 +447,7 @@ class CodeRabbitSuggestionApplier {
       
     } catch (error) {
       // Restore from backup if it exists
-      if (fs.existsSync(backupPath)) {
+      if (backupPath && fs.existsSync(backupPath)) {
         fs.copyFileSync(backupPath, suggestion.file);
         fs.unlinkSync(backupPath);
       }
@@ -441,9 +509,79 @@ class CodeRabbitSuggestionApplier {
   }
 
   /**
+   * Apply AI Agent prompt by calling Claude Code
+   */
+  async applyAIAgentPrompt(suggestion) {
+    const startTime = Date.now();
+    
+    try {
+      console.log('Processing AI Agent prompt:', suggestion.prompt.substring(0, 100) + '...');
+      
+      // Check if Claude CLI is available
+      try {
+        execSync('which claude', { stdio: 'ignore' });
+      } catch (error) {
+        throw new Error('Claude CLI not found. Please install Claude Code first.');
+      }
+      
+      // Create a temporary file with the prompt
+      const promptFile = path.join(process.cwd(), `claude-prompt-${Date.now()}.txt`);
+      fs.writeFileSync(promptFile, suggestion.prompt);
+      
+      try {
+        // Execute Claude Code with the prompt (using --print for non-interactive and bypassing permissions)
+        const claudeCommand = `claude --print --dangerously-skip-permissions < "${promptFile}"`;
+        console.log('Executing Claude Code...');
+        
+        const result = execSync(claudeCommand, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 300000, // 5 minutes timeout
+          cwd: process.cwd()
+        });
+        
+        console.log('Claude Code execution completed');
+        console.log('Output:', result.substring(0, 500) + (result.length > 500 ? '...' : ''));
+        
+        // Clean up temporary file
+        fs.unlinkSync(promptFile);
+        
+        const duration = Date.now() - startTime;
+        
+        this.results.push({
+          type: 'ai_agent',
+          status: 'applied',
+          message: 'Successfully applied AI Agent prompt via Claude Code',
+          duration: duration,
+          output: result.substring(0, 1000) // Limit stored output
+        });
+        
+        console.log(`✅ Applied AI Agent prompt via Claude Code (${duration}ms)`);
+        
+      } catch (claudeError) {
+        // Clean up temporary file on error
+        if (fs.existsSync(promptFile)) {
+          fs.unlinkSync(promptFile);
+        }
+        throw claudeError;
+      }
+      
+    } catch (error) {
+      console.error(`❌ Failed to apply AI Agent prompt: ${error.message}`);
+      
+      this.results.push({
+        type: 'ai_agent',
+        status: 'failed',
+        error: error.message,
+        duration: Date.now() - startTime
+      });
+    }
+  }
+
+  /**
    * Special handler for useCallback suggestions
    */
-  applyUseCallbackSuggestion(content, suggestion) {
+  applyUseCallbackSuggestion(content) {
     // This would need to be implemented based on specific patterns
     // For now, return unchanged content
     console.log('useCallback suggestion detected but not automatically applied');

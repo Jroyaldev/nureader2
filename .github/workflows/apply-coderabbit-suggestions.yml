@@ -52,6 +52,20 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Install Claude Code
+        env:
+          CLAUDE_TOKEN: ${{ secrets.CLAUDE_TOKEN }}
+        run: |
+          curl -fsSL https://claude.ai/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          # Set up authentication token if provided
+          if [ ! -z "$CLAUDE_TOKEN" ]; then
+            echo "Setting up Claude authentication token..."
+            echo "$CLAUDE_TOKEN" | claude setup-token
+          else
+            echo "No CLAUDE_TOKEN found. Manual authentication may be needed."
+          fi
+      
       - name: Make script executable
         run: chmod +x .github/scripts/apply-coderabbit-suggestions.js
       

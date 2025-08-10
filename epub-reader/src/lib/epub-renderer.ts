@@ -211,7 +211,8 @@ export class EpubRenderer {
       let bodyContent = '';
       const bodyElement = tempDiv.querySelector('body');
       if (bodyElement) {
-        bodyContent = bodyElement.innerHTML;
+        // Sanitize body content to prevent XSS attacks
+        bodyContent = this.cleanHtmlContent(bodyElement.innerHTML);
       } else {
         // If no body tag, use the content as-is but clean it
         bodyContent = this.cleanHtmlContent(chapter.content);
