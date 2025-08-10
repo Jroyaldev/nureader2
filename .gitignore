@@ -46,3 +46,7 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Temporary and backup files
+*.backup.*
+coderabbit-execution-*.json

@@ -12,21 +12,21 @@ jobs:
     if: |
       (github.event.issue.pull_request || github.event.pull_request) &&
       github.event.comment.user.login == 'coderabbitai[bot]'
-    
+
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: write
       pull-requests: write
       issues: write
-    
+
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+
       - name: Get PR details
         id: pr-details
         uses: actions/github-script@v7
@@ -38,32 +38,32 @@ jobs:
               repo: context.repo.repo,
               pull_number: pr_number
             });
-            
+
             core.setOutput('branch', pr.head.ref);
             core.setOutput('pr_number', pr_number);
             return pr;
-      
+
       - name: Switch to PR branch
         run: |
           git checkout ${{ steps.pr-details.outputs.branch }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install Claude Code
         run: |
           curl -fsSL https://claude.ai/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-          
+
       - name: Setup Claude Authentication
         env:
           CLAUDE_TOKEN: ${{ secrets.CLAUDE_TOKEN }}
         run: |
           # Wait for claude to be available
           export PATH="$HOME/.local/bin:$PATH"
-          
+
           # Set up authentication token if provided
           if [ -n "$CLAUDE_TOKEN" ]; then
             echo "Setting up Claude authentication token..."
@@ -71,10 +71,10 @@ jobs:
           else
             echo "No CLAUDE_TOKEN found. Manual authentication may be needed."
           fi
-      
+
       - name: Make script executable
         run: chmod +x .github/scripts/apply-coderabbit-suggestions.js
-      
+
       - name: Parse and apply suggestions
         id: apply-suggestions
         env:
@@ -83,37 +83,37 @@ jobs:
           echo "🤖 Starting Claude Code automation..."
           echo "Processing comment from: ${{ github.event.comment.user.login }}"
           echo "Comment length: $(echo '${{ github.event.comment.body }}' | wc -c) characters"
-          
+
           # Check if Claude is available
           export PATH="$HOME/.local/bin:$PATH"
           if ! command -v claude &> /dev/null; then
             echo "❌ Claude Code not found in PATH"
             exit 1
           fi
-          
+
           echo "✅ Claude Code found: $(claude --version || echo 'version unknown')"
-          
+
           # Run the automation
           OUTPUT=$(node .github/scripts/apply-coderabbit-suggestions.js)
           echo "$OUTPUT"
-          
+
           # Extract summary for GitHub Actions output
           APPLIED=$(echo "$OUTPUT" | grep -o '"applied": [0-9]*' | grep -o '[0-9]*' || echo "0")
           FAILED=$(echo "$OUTPUT" | grep -o '"failed": [0-9]*' | grep -o '[0-9]*' || echo "0")
           TOTAL=$(echo "$OUTPUT" | grep -o '"total": [0-9]*' | grep -o '[0-9]*' || echo "0")
-          
+
           # Find the execution log file
           LOG_FILE=$(ls coderabbit-execution-*.json 2>/dev/null | head -1)
-          
+
           echo "📊 Summary: $TOTAL total, $APPLIED applied, $FAILED failed"
-          
+
           echo "summary=$OUTPUT" >> $GITHUB_OUTPUT
           echo "has_suggestions=$([[ $TOTAL -gt 0 ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "applied_count=$APPLIED" >> $GITHUB_OUTPUT
           echo "failed_count=$FAILED" >> $GITHUB_OUTPUT
           echo "total_count=$TOTAL" >> $GITHUB_OUTPUT
           echo "log_file=$LOG_FILE" >> $GITHUB_OUTPUT
-      
+
       - name: Upload execution log
         if: steps.apply-suggestions.outputs.log_file != ''
         uses: actions/upload-artifact@v4
@@ -121,13 +121,13 @@ jobs:
           name: coderabbit-execution-log
           path: ${{ steps.apply-suggestions.outputs.log_file }}
           retention-days: 30
-      
+
       - name: Commit and push changes
         if: steps.apply-suggestions.outputs.has_suggestions == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Check if there are changes
           if [[ -n $(git status -s) ]]; then
             git add -A
@@ -138,7 +138,7 @@ jobs:
           else
             echo "No changes to commit"
           fi
-      
+
       - name: Comment on PR
         if: always()
         uses: actions/github-script@v7
@@ -148,9 +148,9 @@ jobs:
             const failedCount = parseInt('${{ steps.apply-suggestions.outputs.failed_count }}') || 0;
             const totalCount = parseInt('${{ steps.apply-suggestions.outputs.total_count }}') || 0;
             const workflowFailed = '${{ job.status }}' === 'failure';
-            
+
             let comment = '## 🤖 Claude Code Auto-Execution Report\n\n';
-            
+
             if (workflowFailed) {
               comment += '❌ **Workflow Failed**\n\n';
               comment += 'The automation encountered an error. Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.\n\n';
@@ -159,31 +159,31 @@ jobs:
               comment += 'No `🤖 Prompt for AI Agents` sections were detected in the comment.\n\n';
             } else {
               comment += `📊 **Execution Summary**: ${totalCount} prompts processed\n\n`;
-              
+
               if (appliedCount > 0) {
                 comment += `✅ **Successfully applied ${appliedCount} suggestion(s)**\n`;
                 comment += 'Changes have been automatically committed to this branch.\n\n';
               }
-              
+
               if (failedCount > 0) {
                 comment += `⚠️ **Failed to apply ${failedCount} suggestion(s)**\n`;
                 comment += 'Some prompts may require manual review or had execution errors.\n\n';
               }
             }
-            
+
             comment += '### 🔧 How This Works:\n';
             comment += '1. **Detection**: Parses `🤖 Prompt for AI Agents` sections from CodeRabbit\n';
             comment += '2. **Execution**: Runs natural language instructions via Claude Code\n';
             comment += '3. **Application**: Automatically applies code changes and commits them\n';
             comment += '4. **Reporting**: Provides detailed logs and status updates\n\n';
-            
+
             comment += '**🔗 Links:**\n';
             comment += `- [Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
             comment += '- [Automation Code](.github/workflows/apply-coderabbit-suggestions.yml)\n\n';
-            
+
             comment += '---\n';
             comment += '_🤖 Automated by Claude Code • [Learn More](https://claude.ai/code)_';
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

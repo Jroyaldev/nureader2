@@ -26,8 +26,36 @@ interface SavedAnnotation {
   note?: string;
 }
 
+// Define a minimal Book interface for epub.js
+interface EpubBook {
+  loaded: {
+    metadata: Promise<any>;
+    spine: Promise<any>;
+    navigation: Promise<any>;
+  };
+  spine: {
+    spineItems: Array<{
+      href: string;
+      index: number;
+      cfiBase: string;
+    }>;
+  };
+  navigation: {
+    toc: Array<{
+      label: string;
+      href: string;
+      subitems?: Array<any>;
+    }>;
+  };
+  archive: {
+    zip: any;
+  };
+  locations: any;
+  destroy(): void;
+}
+
 export class EpubRenderer {
-  private book: any;
+  private book: EpubBook | null = null;
   private container: HTMLElement;
   private chapters: ChapterData[] = [];
   private toc: TocItem[] = [];
@@ -402,6 +430,17 @@ export class EpubRenderer {
         }
         return fullMatch;
       });
+
+    // Replace SVG <image> tags (xlink:href)
+    processedHtml = processedHtml.replace(
+      /<image([^>]*?)xlink:href\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
+      (fullMatch, attrs1, href, attrs2) => {
+        const newHref = imageMap.get(href);
+        return newHref
+          ? `<image${attrs1}xlink:href="${newHref}"${attrs2}>`
+          : fullMatch;
+      }
+    );
     
     return processedHtml;
   }

@@ -384,7 +384,7 @@ class CodeRabbitSuggestionApplier {
           // For simple replacements, try to find the pattern
           if (suggestion.suggestion.includes('useCallback')) {
             // Special handling for useCallback suggestions
-            newContent = this.applyUseCallbackSuggestion(currentContent, suggestion);
+            newContent = this.applyUseCallbackSuggestion(currentContent);
           } else {
             throw new Error('Cannot apply suggestion without original content or line numbers');
           }
@@ -519,8 +519,8 @@ class CodeRabbitSuggestionApplier {
       
       // Check if Claude CLI is available
       try {
-        execSync('which claude', { stdio: 'ignore' });
-      } catch (error) {
+        execSync('claude --version', { stdio: 'ignore' });
+      } catch {
         throw new Error('Claude CLI not found. Please install Claude Code first.');
       }
       
