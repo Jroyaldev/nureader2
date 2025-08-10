@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-08-10T03:57:08.088Z",
+  "commentBody": "<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n```\nIn epub-reader/src/lib/epub-renderer.ts around lines 211 to 221, sanitize chapter HTML before injecting to prevent XSS attacks. Add a cleanHtmlContent call to bodyElement.innerHTML before setting bodyContent to ensure safe content injection.\n```\n\n</details>...",
+  "suggestionsFound": 1,
+  "results": [
+    {
+      "type": "ai_agent",
+      "status": "applied",
+      "message": "Successfully applied AI Agent prompt via Claude Code",
+      "duration": 42131,
+      "output": "I need permission to edit the file. Once granted, I'll add the `cleanHtmlContent` call to sanitize the body element's innerHTML before using it, which will prevent XSS attacks by removing potentially dangerous elements like `<script>`, `<style>`, `<link>`, `<meta>`, and `<title>` tags.\n"
+    }
+  ],
+  "statistics": {
+    "applied": 1,
+    "failed": 0,
+    "reviewRequired": 0,
+    "noChange": 0,
+    "totalDuration": 42131,
+    "totalLinesChanged": 0
+  }
+}

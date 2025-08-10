@@ -11,7 +11,7 @@ jobs:
     # Only run on PR comments from CodeRabbit
     if: |
       (github.event.issue.pull_request || github.event.pull_request) &&
-      (github.event.comment.user.login == 'coderabbitai[bot]' || contains(github.event.comment.body, '🤖 Prompt for AI Agents'))
+      github.event.comment.user.login == 'coderabbitai[bot]'
     
     runs-on: ubuntu-latest
     

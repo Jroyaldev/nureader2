@@ -322,6 +322,11 @@ export class EpubRenderer {
       .replace(/<title[^>]*>.*?<\/title>/gi, '');
   }
 
+  /**
+   * Processes image tags in HTML content to resolve relative paths and create blob URLs.
+   * Handles various EPUB image path formats and replaces them with accessible blob URLs.
+   * Returns the HTML with all image src attributes updated to working URLs.
+   */
   private async processImages(html: string, chapterHref: string): Promise<string> {
     // Process images using improved path resolution
     const imgPatterns = [
