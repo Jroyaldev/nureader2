@@ -6,26 +6,50 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get authenticated user - but for beacon requests, user might be from the payload
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Try to parse as JSON first (from sendBeacon)
+    let bookId: string;
+    let progress: number;
+    let location: string = '';
+    let userId: string | undefined;
+    
+    const contentType = request.headers.get('content-type');
+    
+    if (contentType?.includes('application/json')) {
+      // Handle JSON from sendBeacon
+      const json = await request.json();
+      bookId = json.book_id;
+      progress = json.progress_percentage;
+      location = json.current_location || '';
+      userId = json.user_id; // Fallback user ID from payload
+    } else {
+      // Handle FormData (legacy)
+      const formData = await request.formData();
+      bookId = formData.get('bookId') as string;
+      progress = parseFloat(formData.get('progress') as string);
+      location = formData.get('location') as string || '';
     }
-
-    const formData = await request.formData();
-    const bookId = formData.get('bookId') as string;
-    const progress = parseFloat(formData.get('progress') as string);
 
     if (!bookId || isNaN(progress)) {
       return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+    }
+    
+    // Use authenticated user if available, otherwise use the one from payload
+    const finalUserId = user?.id || userId;
+    
+    if (!finalUserId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 401 });
     }
 
     // Save progress to database
     const { error } = await supabase
       .from('reading_progress')
       .upsert({
-        user_id: user.id,
+        user_id: finalUserId,
         book_id: bookId,
+        current_location: location,
         progress_percentage: progress,
         last_read_at: new Date().toISOString()
       }, {

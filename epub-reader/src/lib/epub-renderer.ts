@@ -47,8 +47,6 @@ export class EpubRenderer {
   }
 
   async loadBook(file: File): Promise<{ title?: string; author?: string }> {
-    console.log("📚 EpubRenderer: Loading book", file.name);
-    
     try {
       // Use epub.js with proper resource handling
       const mod = await import("epubjs");
@@ -58,38 +56,17 @@ export class EpubRenderer {
       const arrayBuffer = await file.arrayBuffer();
       
       this.book = new (EpubCtor as any)(arrayBuffer, {
-        replacements: "blobUrl", // Enable blob URL generation for images
-        requestMethod: async (url: string) => {
-          // Custom request method to handle resources
-          console.log(`📥 Requesting resource: ${url}`);
-          return url;
-        }
+        replacements: "blobUrl" // Enable blob URL generation for images
       });
 
       // Wait for book to be ready
       await this.book.ready;
       
-      // Debug: List all files in the archive
+      // Load resources safely
       try {
-        if (this.book.archive) {
-          console.log("📦 EPUB Archive contents:");
-          
-          // Try to get the file list from the archive
-          if (this.book.archive.zip && this.book.archive.zip.files) {
-            const files = Object.keys(this.book.archive.zip.files);
-            console.log("📁 Files in EPUB:", files.filter(f => f.includes('image') || f.includes('Image') || f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.jpeg')));
-          }
-        }
-        
-        // Load resources safely
-        try {
-          await this.book.loaded.resources;
-          console.log("✅ Resources loaded");
-        } catch (resourceError: any) {
-          console.log("⚠️ Resources loading skipped:", resourceError?.message || resourceError);
-        }
-      } catch (e) {
-        console.warn("⚠️ Could not list archive contents:", e);
+        await this.book.loaded.resources;
+      } catch (resourceError: any) {
+        // Resources loading is optional, continue without them
       }
 
       // Extract metadata
@@ -108,8 +85,6 @@ export class EpubRenderer {
       
       // Apply initial theme
       this.applyTheme(this.currentTheme);
-
-      console.log("✅ EpubRenderer: Book loaded successfully", { title, author, chapters: this.chapters.length });
       
       return { title, author };
     } catch (error) {
@@ -136,23 +111,17 @@ export class EpubRenderer {
       
       walk(nav?.toc || []);
       this.toc = flat;
-      console.log("📚 EpubRenderer: TOC extracted", flat.length, "items");
     } catch (error) {
-      console.warn("⚠️ EpubRenderer: Failed to extract TOC", error);
       this.toc = [];
     }
   }
 
   private async extractChapters(): Promise<void> {
-    console.log("📖 EpubRenderer: Extracting chapters...");
-    
     const spine = this.book.spine;
     
     this.chapters = await Promise.all(
       spine.spineItems.map(async (item: any, index: number) => {
         try {
-          console.log(`📄 EpubRenderer: Loading chapter ${index + 1}/${spine.spineItems.length}: ${item.href}`);
-          
           // Load the section content
           const section = await this.book.load(item.href);
           
@@ -177,7 +146,6 @@ export class EpubRenderer {
             title
           };
         } catch (error) {
-          console.warn(`⚠️ EpubRenderer: Failed to load chapter ${index}:`, error);
           return {
             id: item.id,
             index,
@@ -188,8 +156,6 @@ export class EpubRenderer {
         }
       })
     );
-
-    console.log("✅ EpubRenderer: All chapters extracted", this.chapters.length);
   }
 
   private findChapterTitle(href: string, section: any): string {
@@ -226,8 +192,6 @@ export class EpubRenderer {
   }
 
   private async renderContinuousContent(): Promise<void> {
-    console.log("🎨 EpubRenderer: Rendering continuous content...");
-    
     // Create main content wrapper
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'epub-continuous-content';
@@ -254,27 +218,38 @@ export class EpubRenderer {
       }
       
       // Process images to fix relative URLs  
-      console.log(`🔧 About to process images for chapter ${chapter.index}: ${chapter.href}`);
-      console.log(`📋 Body content preview: ${bodyContent.substring(0, 300)}...`);
       bodyContent = await this.processImages(bodyContent, chapter.href);
-      console.log(`✅ Finished processing images for chapter ${chapter.index}`);
       
-      // Check if content already has a chapter heading
-      const hasH1 = /<h1[^>]*>/i.test(bodyContent);
-      const hasH2 = /<h2[^>]*>/i.test(bodyContent);
+      // Check for existing chapter headings
       const firstHeadingMatch = bodyContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i);
-      const firstHeadingText = firstHeadingMatch && firstHeadingMatch[1] ? firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+      const firstHeadingText = firstHeadingMatch && firstHeadingMatch[1] ? 
+        firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+      
+      // Normalize titles for comparison
+      const normalizeTitle = (title: string) => {
+        return title.toLowerCase()
+          .replace(/chapter\s+\d+[:.\s-]*/i, '') // Remove "Chapter X:" prefixes
+          .replace(/^\d+[:.\s-]+/, '') // Remove number prefixes like "1. " or "01 - "
+          .replace(/[^\w\s]/g, '') // Remove punctuation
+          .trim();
+      };
+      
+      const chapterTitleNorm = chapter.title ? normalizeTitle(chapter.title) : '';
+      const headingTextNorm = normalizeTitle(firstHeadingText);
       
       // Only add chapter title if:
-      // 1. There's no h1 or h2, OR
-      // 2. The existing heading doesn't match the chapter title
-      if (chapter.title && !hasH1 && !hasH2) {
-        bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
-      } else if (chapter.title && firstHeadingText && 
-                 firstHeadingText.toLowerCase() !== chapter.title.toLowerCase() &&
-                 !chapter.title.toLowerCase().includes(firstHeadingText.toLowerCase()) &&
-                 !firstHeadingText.toLowerCase().includes(chapter.title.toLowerCase())) {
-        // If the heading exists but doesn't match the TOC title, prepend the TOC title
+      // 1. There's no heading at all, OR
+      // 2. The existing heading is substantially different
+      const shouldAddTitle = chapter.title && (
+        !firstHeadingMatch || // No heading found
+        (headingTextNorm && // There is a heading but...
+         headingTextNorm !== chapterTitleNorm && // It's different
+         !headingTextNorm.includes(chapterTitleNorm) && // Doesn't contain chapter title
+         !chapterTitleNorm.includes(headingTextNorm) && // Chapter title doesn't contain it
+         headingTextNorm.length < 3) // Or it's too short (like just a number)
+      );
+      
+      if (shouldAddTitle) {
         bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
       }
       
@@ -295,16 +270,10 @@ export class EpubRenderer {
     
     // Post-process images in DOM as a fallback
     await this.postProcessImagesInDOM();
-    
-    console.log("✅ EpubRenderer: Continuous content rendered");
   }
 
   private async postProcessImagesInDOM(): Promise<void> {
-    console.log("🔧 Post-processing images in DOM");
-    
     const images = this.container.querySelectorAll('img');
-    console.log(`📊 Found ${images.length} img elements in DOM`);
-    
     const imagePromises: Promise<void>[] = [];
     
     for (const img of images) {
@@ -316,8 +285,6 @@ export class EpubRenderer {
         continue;
       }
       
-      console.log(`🔍 Found unprocessed image in DOM: ${src}`);
-      
       // Find the chapter this image belongs to
       let chapterElement = img.closest('.epub-chapter');
       let chapterHref = '';
@@ -328,15 +295,12 @@ export class EpubRenderer {
       const promise = this.createImageUrl(src, chapterHref).then(blobUrl => {
         if (blobUrl) {
           img.setAttribute('src', blobUrl);
-          console.log(`✅ Replaced DOM image ${src} with blob URL`);
         } else {
           // Use placeholder
           img.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
           img.style.opacity = '0';
-          console.log(`⚠️ Using transparent placeholder for ${src}`);
         }
       }).catch(error => {
-        console.error(`❌ Error processing DOM image ${src}:`, error);
         img.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
         img.style.opacity = '0';
       });
@@ -345,7 +309,6 @@ export class EpubRenderer {
     }
     
     await Promise.all(imagePromises);
-    console.log("✅ DOM image post-processing complete");
   }
 
   private cleanHtmlContent(html: string): string {
@@ -359,10 +322,7 @@ export class EpubRenderer {
   }
 
   private async processImages(html: string, chapterHref: string): Promise<string> {
-    // Process images using epub.js Resources API
-    console.log(`🖼️ Processing images for chapter: ${chapterHref}`);
-    
-    // More flexible regex to catch all image variations
+    // Process images using improved path resolution
     const imgPatterns = [
       /<img([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
       /<img([^>]*?)src\s*=\s*([^\s>]+)([^>]*?)>/gi,
@@ -380,51 +340,43 @@ export class EpubRenderer {
         if (src && !src.startsWith('data:') && !src.startsWith('http://') && 
             !src.startsWith('https://') && !src.startsWith('blob:')) {
           imageSrcs.add(src);
-          console.log(`🔍 Found image to process: ${src}`);
         }
       }
     }
     
-    console.log(`📊 Total unique images found: ${imageSrcs.size}`);
-    
     if (imageSrcs.size === 0) {
-      console.log(`⚠️ No images found in chapter HTML`);
       return html;
     }
     
     // Create a map of original src to blob URL
     const imageMap = new Map<string, string>();
     
-    // Process all unique images
-    for (const src of imageSrcs) {
+    // Process all unique images in parallel for better performance
+    const imagePromises = Array.from(imageSrcs).map(async (src) => {
       try {
-        console.log(`🔄 Processing image: ${src}`);
         const imageUrl = await this.createImageUrl(src, chapterHref);
-        
         if (imageUrl) {
           imageMap.set(src, imageUrl);
-          console.log(`✅ Created blob URL for ${src}`);
         } else {
-          console.log(`⚠️ Could not create blob URL for ${src}, will use placeholder`);
           // Use a transparent 1x1 placeholder
           imageMap.set(src, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
         }
       } catch (error) {
-        console.error(`❌ Error processing ${src}:`, error);
         // Use placeholder on error
         imageMap.set(src, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
       }
-    }
+    });
+    
+    await Promise.all(imagePromises);
     
     // Replace all image srcs in the HTML
     let processedHtml = html;
     
-    // Replace img tags
+    // Replace img tags with quotes
     processedHtml = processedHtml.replace(/<img([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*?)>/gi, 
       (fullMatch, attrs1, src, attrs2) => {
         const newSrc = imageMap.get(src);
         if (newSrc) {
-          console.log(`🔄 Replacing ${src} with blob URL in HTML`);
           return `<img${attrs1}src="${newSrc}"${attrs2}>`;
         }
         return fullMatch;
@@ -440,170 +392,117 @@ export class EpubRenderer {
         }
         const newSrc = imageMap.get(src);
         if (newSrc) {
-          console.log(`🔄 Replacing unquoted ${src} with blob URL in HTML`);
           return `<img${attrs1}src="${newSrc}"${attrs2}>`;
         }
         return fullMatch;
       });
     
-    console.log(`✅ Image processing complete for chapter ${chapterHref}`);
     return processedHtml;
   }
   
   private async createImageUrl(src: string, chapterHref: string): Promise<string | null> {
-    console.log(`🔄 createImageUrl called with src: ${src}, chapterHref: ${chapterHref}`);
     try {
-      // First try to get the image from resources
-      if (this.book?.resources) {
-        // Try multiple path resolution strategies
-        let resolvedSrc = src;
+      if (!this.book?.archive?.zip?.files) {
+        return null;
+      }
+
+      // Clean and normalize the source path
+      let resolvedSrc = src.replace(/^["']|["']$/g, '').trim();
+      
+      // Build comprehensive list of paths to try
+      const pathsToTry = new Set<string>();
+      
+      // Add original path
+      pathsToTry.add(resolvedSrc);
+      
+      // Handle relative paths
+      if (resolvedSrc.startsWith('../')) {
+        // Resolve relative to chapter location
+        const chapterDir = chapterHref.substring(0, chapterHref.lastIndexOf('/'));
+        const parentDir = chapterDir.substring(0, chapterDir.lastIndexOf('/'));
+        const resolved = resolvedSrc.replace(/^\.\.\//, '');
         
-        // Remove quotes if present
-        resolvedSrc = resolvedSrc.replace(/^["']|["']$/g, '');
-        
-        // Strategy 1: Try the path as-is (but without quotes)
-        let pathsToTry = [resolvedSrc];
-        
-        // Strategy 2: If it's a relative path, resolve it
-        if (resolvedSrc.startsWith('../')) {
-          // Remove the ../ and try direct path
-          const withoutDotDot = resolvedSrc.replace(/^\.\.\//, '');
-          pathsToTry.push(withoutDotDot);
-          
-          // Also try with images/ prefix removed if present
-          if (withoutDotDot.startsWith('images/')) {
-            pathsToTry.push(withoutDotDot.substring(7));
-          }
+        pathsToTry.add(resolved);
+        if (parentDir) {
+          pathsToTry.add(`${parentDir}/${resolved}`);
         }
-        
-        // Strategy 3: If absolute path, remove leading slash
-        if (resolvedSrc.startsWith('/')) {
-          const withoutSlash = resolvedSrc.substring(1);
-          pathsToTry.push(withoutSlash);
+      }
+      
+      // Handle absolute paths
+      if (resolvedSrc.startsWith('/')) {
+        pathsToTry.add(resolvedSrc.substring(1));
+      }
+      
+      // Try common EPUB directory structures
+      const filename = resolvedSrc.split('/').pop();
+      if (filename) {
+        // Common image directories
+        const imageDirectories = ['images', 'Images', 'image', 'Image', 'assets', 'Assets', 'media', 'Media', 'OEBPS/images', 'OEBPS/Images'];
+        for (const dir of imageDirectories) {
+          pathsToTry.add(`${dir}/${filename}`);
         }
-        
-        // Strategy 4: Try resolving with epub.js resolver
-        if (this.book.resources.resolve) {
+        // Also try just the filename
+        pathsToTry.add(filename);
+      }
+      
+      // Search for the image in the ZIP archive
+      const zipFiles = this.book.archive.zip.files;
+      const zipFilePaths = Object.keys(zipFiles);
+      
+      // Try exact matches first
+      for (const pathToTry of pathsToTry) {
+        if (zipFiles[pathToTry]) {
           try {
-            const epubResolved = this.book.resources.resolve(resolvedSrc, chapterHref);
-            if (epubResolved && !pathsToTry.includes(epubResolved)) {
-              pathsToTry.push(epubResolved);
-            }
+            const blob = await zipFiles[pathToTry].async('blob');
+            const url = URL.createObjectURL(blob);
+            this._imageObjectUrls.add(url);
+            return url;
           } catch (e) {
-            console.log(`⚠️ epub.js resolver failed:`, e);
+            // Continue to next path
           }
         }
-        
-        // Strategy 5: Try common EPUB image paths
-        const imageName = resolvedSrc.split('/').pop();
-        if (imageName) {
-          pathsToTry.push(`images/${imageName}`);
-          pathsToTry.push(`Images/${imageName}`);
-          pathsToTry.push(`image/${imageName}`);
-          pathsToTry.push(imageName);
-        }
-        
-        console.log(`🔍 Trying paths:`, pathsToTry);
-        
-        // Try each path with multiple methods
-        for (const pathToTry of pathsToTry) {
-          console.log(`🔄 Trying path: ${pathToTry}`);
-          
-          // Method 0: Direct ZIP file access (most reliable)
-          if (this.book.archive?.zip?.files) {
+      }
+      
+      // Try case-insensitive and partial matches
+      for (const pathToTry of pathsToTry) {
+        const lowerPath = pathToTry.toLowerCase();
+        for (const zipPath of zipFilePaths) {
+          if (zipPath.toLowerCase() === lowerPath || 
+              zipPath.toLowerCase().endsWith('/' + lowerPath) ||
+              (filename && zipPath.toLowerCase().endsWith('/' + filename.toLowerCase()))) {
             try {
-              // Try to find the file in the ZIP
-              const zipFiles = this.book.archive.zip.files;
-              let foundFile = null;
-              
-              // Check exact match
-              if (zipFiles[pathToTry]) {
-                foundFile = zipFiles[pathToTry];
-              } else {
-                // Check all files for a match (case-insensitive)
-                for (const [zipPath, file] of Object.entries(zipFiles)) {
-                  if (zipPath.toLowerCase().endsWith(pathToTry.toLowerCase()) ||
-                      zipPath.toLowerCase().endsWith(pathToTry.toLowerCase().replace(/^\.\.\//, ''))) {
-                    foundFile = file;
-                    console.log(`📍 Found image in ZIP at: ${zipPath}`);
-                    break;
-                  }
-                }
-              }
-              
-              if (foundFile) {
-                // Get the file as blob
-                const blob = await (foundFile as any).async('blob');
-                const url = URL.createObjectURL(blob);
-                console.log(`✅ Created blob URL directly from ZIP for: ${pathToTry}`);
-                this._imageObjectUrls.add(url);
-                return url;
-              }
+              const blob = await zipFiles[zipPath].async('blob');
+              const url = URL.createObjectURL(blob);
+              this._imageObjectUrls.add(url);
+              return url;
             } catch (e) {
-              console.log(`⚠️ Direct ZIP access failed:`, e);
-            }
-          }
-          
-          // Method 1: Try resources.createUrl
-          if (this.book.resources?.createUrl) {
-            try {
-              const url = await this.book.resources.createUrl(pathToTry);
-              if (url) {
-                console.log(`✅ Success with resources.createUrl for path: ${pathToTry}`);
-                return url;
-              }
-            } catch (e) {
-              // Silent fail, try next method
-            }
-          }
-          
-          // Method 2: Try resources.get
-          if (this.book.resources.get) {
-            try {
-              const resource = this.book.resources.get(pathToTry);
-              if (resource && resource.url) {
-                console.log(`✅ Success with resources.get for path: ${pathToTry}`);
-                return resource.url;
-              }
-            } catch (e) {
-              // Silent fail, try next method
-            }
-          }
-          
-          // Method 3: Try archive.createUrl
-          if (this.book.archive?.createUrl) {
-            try {
-              const url = await this.book.archive.createUrl(pathToTry);
-              if (url) {
-                console.log(`✅ Success with archive.createUrl for path: ${pathToTry}`);
-                return url;
-              }
-            } catch (e) {
-              // Silent fail, try next method
-            }
-          }
-          
-          // Method 4: Try archive.getBlob
-          if (this.book.archive?.getBlob) {
-            try {
-              const blob = await this.book.archive.getBlob(pathToTry);
-              if (blob) {
-                const url = URL.createObjectURL(blob);
-                console.log(`✅ Success with archive.getBlob for path: ${pathToTry}`);
-                this._imageObjectUrls.add(url);
-                return url;
-              }
-            } catch (e) {
-              // Silent fail, try next path
+              // Continue to next match
             }
           }
         }
       }
       
-      console.log(`❌ All paths and methods failed for: ${src}`);
+      // Fallback to epub.js resource methods if available
+      if (this.book.resources) {
+        try {
+          // Try epub.js built-in resolution
+          if (this.book.resources.createUrl) {
+            const url = await this.book.resources.createUrl(resolvedSrc);
+            if (url) return url;
+          }
+          
+          // Try getting from resources
+          if (this.book.resources.get) {
+            const resource = this.book.resources.get(resolvedSrc);
+            if (resource?.url) return resource.url;
+          }
+        } catch (e) {
+          // Fallback failed
+        }
+      }
+      
       return null;
     } catch (error) {
-      console.log(`❌ Error in createImageUrl:`, error);
       return null;
     }
   }
@@ -613,7 +512,7 @@ export class EpubRenderer {
   private setupScrollListener(): void {
     let ticking = false;
     
-    const handleScroll = () => {
+    this.handleScroll = () => {
       if (!ticking) {
         requestAnimationFrame(() => {
           this.updateProgress();
@@ -624,7 +523,7 @@ export class EpubRenderer {
       }
     };
 
-    this.container.addEventListener('scroll', handleScroll, { passive: true });
+    this.container.addEventListener('scroll', this.handleScroll as EventListener, { passive: true });
   }
 
   private updateProgress(): void {
@@ -1119,22 +1018,60 @@ export class EpubRenderer {
   }
 
   destroy(): void {
+    // Clean up all event listeners
+    this.container.removeEventListener('scroll', this.handleScroll);
+    this.container.removeEventListener('mouseup', this.handleMouseUp);
+    document.removeEventListener('selectionchange', this.handleSelectionChange);
+    
     // Clean up style
     const styleEl = document.getElementById('epub-renderer-styles');
     if (styleEl) {
       styleEl.remove();
     }
 
-    // Revoke any object URLs we created for images
+    // Revoke ALL object URLs we created
     if (this._imageObjectUrls.size > 0) {
       for (const url of this._imageObjectUrls) {
         try {
           URL.revokeObjectURL(url);
-        } catch {}
+        } catch (e) {
+          // Silent fail for already revoked URLs
+        }
       }
       this._imageObjectUrls.clear();
     }
+    
+    // Also clean up any blob URLs that might be in the DOM
+    const images = this.container.querySelectorAll('img[src^="blob:"]');
+    for (const img of images) {
+      const src = img.getAttribute('src');
+      if (src && src.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(src);
+        } catch (e) {
+          // Silent fail for already revoked URLs
+        }
+      }
+    }
+    
+    // Clear references to prevent memory leaks
+    this.book = null;
+    this.chapters = [];
+    this.toc = [];
+    this.savedAnnotations = [];
+    this.highlightedRanges.clear();
+    this.onProgressCallback = undefined;
+    this.onChapterCallback = undefined;
+    this.onTextSelectCallback = undefined;
+    
+    // Clear container content
+    this.container.innerHTML = '';
   }
+  
+  // Store references to event handlers for cleanup
+  private handleScroll?: EventListener;
+  private handleMouseUp?: EventListener;
+  private handleSelectionChange?: EventListener;
 
   // Get current position info
   getCurrentPosition(): { chapterIndex: number; totalChapters: number; canGoNext: boolean; canGoPrev: boolean } {
@@ -1343,19 +1280,25 @@ export class EpubRenderer {
       }
     };
     
-    // Listen for selection changes
-    document.addEventListener('selectionchange', () => {
+    // Store selection change handler
+    this.handleSelectionChange = () => {
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
       
       selectionTimeout = setTimeout(handleSelection, 500);
-    });
+    };
+    
+    // Store mouseup handler
+    this.handleMouseUp = () => {
+      setTimeout(handleSelection, 100);
+    };
+    
+    // Listen for selection changes
+    document.addEventListener('selectionchange', this.handleSelectionChange as EventListener);
     
     // Also handle mouseup for immediate selection
-    this.container.addEventListener('mouseup', () => {
-      setTimeout(handleSelection, 100);
-    });
+    this.container.addEventListener('mouseup', this.handleMouseUp as EventListener);
   }
 
   // Callback for text selection
@@ -1461,13 +1404,13 @@ export class EpubRenderer {
         }
       }
       
-      // Priority 2: Try to find text near the CFI location if available
+      // Priority 2: Try to find text in the specific chapter from CFI
       if (cfi) {
         // Extract chapter info from CFI to narrow search
         const cfiParts = cfi.split('/');
         if (cfiParts.length >= 2) {
           const chapterIndex = cfiParts[0];
-          const chapterId = cfiParts[1];
+          const chapterId = cfiParts[1].split('@')[0]; // Remove position part if present
           
           // Find the chapter element to search within
           const chapter = this.container.querySelector(
@@ -1475,75 +1418,132 @@ export class EpubRenderer {
           );
           
           if (chapter) {
-            // Search within the specific chapter first
-            const range = this.searchTextInElement(searchText, chapter as Element);
-            if (range) return range;
+            // Extract position information if available
+            let targetPosition = 0;
+            if (cfi.includes('@')) {
+              const posMatch = cfi.match(/@([\d.]+)/);
+              if (posMatch) {
+                targetPosition = parseFloat(posMatch[1]);
+              }
+            }
+            
+            // Search within the specific chapter with position awareness
+            const matches = this.findAllTextInElement(searchText, chapter as Element);
+            
+            if (matches.length === 1) {
+              return matches[0];
+            } else if (matches.length > 1) {
+              // Use position to determine which match to use
+              if (targetPosition > 0) {
+                // Calculate which match based on relative position
+                const chapterHeight = (chapter as HTMLElement).offsetHeight;
+                for (const match of matches) {
+                  const rangeRect = match.getBoundingClientRect();
+                  const chapterRect = (chapter as HTMLElement).getBoundingClientRect();
+                  const relativeTop = rangeRect.top - chapterRect.top;
+                  const relativePosition = relativeTop / chapterHeight;
+                  
+                  // Check if this match is close to the target position
+                  if (Math.abs(relativePosition - targetPosition) < 0.1) {
+                    return match;
+                  }
+                }
+              }
+              // If no position match, return the first one in this chapter
+              return matches[0];
+            }
           }
         }
       }
       
-      // Priority 3: Fallback to full document search with occurrence tracking
-      const matches: { range: Range; context: string }[] = [];
-      const walker = document.createTreeWalker(
-        this.container,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
+      // Priority 3: Fallback to searching in all chapters, but track which chapter each match is in
+      const matches: { range: Range; chapterIndex: number; relativePosition: number }[] = [];
+      const chapters = this.container.querySelectorAll('.epub-chapter');
       
-      let node: Node | null;
-      while (node = walker.nextNode()) {
-        const text = node.textContent || '';
-        let index = text.indexOf(searchText);
+      for (const chapter of chapters) {
+        const chapterIndex = parseInt((chapter as HTMLElement).getAttribute('data-chapter-index') || '0');
+        const chapterMatches = this.findAllTextInElement(searchText, chapter as Element);
         
-        while (index !== -1) {
-          const range = document.createRange();
-          range.setStart(node, index);
-          range.setEnd(node, index + searchText.length);
+        for (const range of chapterMatches) {
+          const rangeRect = range.getBoundingClientRect();
+          const chapterRect = (chapter as HTMLElement).getBoundingClientRect();
+          const relativePosition = (rangeRect.top - chapterRect.top) / (chapter as HTMLElement).offsetHeight;
           
-          // Get surrounding context for disambiguation
-          const contextStart = Math.max(0, index - 20);
-          const contextEnd = Math.min(text.length, index + searchText.length + 20);
-          const context = text.substring(contextStart, contextEnd);
-          
-          matches.push({ range, context });
-          
-          // Look for next occurrence in the same node
-          index = text.indexOf(searchText, index + 1);
+          matches.push({ range, chapterIndex, relativePosition });
         }
       }
       
-      // If we found matches, return the best one
-      if (matches.length > 0) {
-        // If only one match, return it
-        if (matches.length === 1) {
-          return matches[0].range;
-        }
-        
-        // If multiple matches and we have CFI context, try to match based on position
-        if (cfi && cfi.includes('@')) {
-          // Extract position hint from CFI
-          const positionMatch = cfi.match(/@([\d.]+)/);
-          if (positionMatch) {
-            const targetPosition = parseFloat(positionMatch[1]);
-            // Return the match closest to the target position
-            // For simplicity, return the match at the approximate position
-            const matchIndex = Math.min(
-              Math.floor(targetPosition * matches.length),
-              matches.length - 1
-            );
-            return matches[matchIndex].range;
-          }
-        }
-        
-        // Default to first match if no better selection criteria
+      // Return the best match based on available information
+      if (matches.length === 1) {
         return matches[0].range;
+      } else if (matches.length > 1 && cfi) {
+        // Try to use any available position information from CFI
+        if (cfi.includes('@')) {
+          const posMatch = cfi.match(/@([\d.]+)/);
+          if (posMatch) {
+            const targetPos = parseFloat(posMatch[1]);
+            // Find the match closest to the target position
+            let bestMatch = matches[0];
+            let bestDiff = Math.abs(matches[0].relativePosition - targetPos);
+            
+            for (const match of matches) {
+              const diff = Math.abs(match.relativePosition - targetPos);
+              if (diff < bestDiff) {
+                bestMatch = match;
+                bestDiff = diff;
+              }
+            }
+            return bestMatch.range;
+          }
+        }
+        
+        // Try to extract chapter index from CFI
+        const cfiParts = cfi.split('/');
+        if (cfiParts.length > 0) {
+          const targetChapter = parseInt(cfiParts[0]);
+          if (!isNaN(targetChapter)) {
+            // Find matches in the target chapter
+            const chapterMatches = matches.filter(m => m.chapterIndex === targetChapter);
+            if (chapterMatches.length > 0) {
+              return chapterMatches[0].range;
+            }
+          }
+        }
       }
       
-      return null;
+      // Default to first match if we have any
+      return matches.length > 0 ? matches[0].range : null;
     } catch (error) {
-      console.warn('Error finding text:', error);
       return null;
     }
+  }
+  
+  // Helper method to find all text occurrences in an element
+  private findAllTextInElement(searchText: string, element: Element): Range[] {
+    const matches: Range[] = [];
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    let node: Node | null;
+    while (node = walker.nextNode()) {
+      const text = node.textContent || '';
+      let index = text.indexOf(searchText);
+      
+      while (index !== -1) {
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + searchText.length);
+        matches.push(range);
+        
+        // Look for next occurrence in the same node
+        index = text.indexOf(searchText, index + 1);
+      }
+    }
+    
+    return matches;
   }
 
   // Helper method to search within a specific element

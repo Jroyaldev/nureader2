@@ -147,12 +147,34 @@ export default function ReaderPage() {
           const range = selection.getRangeAt(0);
           const rect = range.getBoundingClientRect();
           
-          // Calculate position relative to viewport, not document
-          // This ensures the toolbar appears at the correct position even when scrolled
-          setAnnotationToolbarPos({
-            x: rect.left + rect.width / 2,
-            y: rect.top - 10 // Position above selection, not using scrollY
-          });
+          // Calculate position relative to viewport
+          // Ensure toolbar stays within viewport bounds
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          const toolbarWidth = 200; // Approximate toolbar width
+          const toolbarHeight = 50; // Approximate toolbar height
+          
+          let x = rect.left + rect.width / 2;
+          let y = rect.top - toolbarHeight - 10; // Position above selection
+          
+          // Keep toolbar within horizontal bounds
+          if (x - toolbarWidth / 2 < 10) {
+            x = toolbarWidth / 2 + 10;
+          } else if (x + toolbarWidth / 2 > viewportWidth - 10) {
+            x = viewportWidth - toolbarWidth / 2 - 10;
+          }
+          
+          // If toolbar would appear above viewport, position below selection
+          if (y < 10) {
+            y = rect.bottom + 10;
+          }
+          
+          // Ensure toolbar doesn't go below viewport
+          if (y + toolbarHeight > viewportHeight - 10) {
+            y = viewportHeight - toolbarHeight - 10;
+          }
+          
+          setAnnotationToolbarPos({ x, y });
           setShowAnnotationToolbar(true);
         }
       });
@@ -449,24 +471,53 @@ export default function ReaderPage() {
     saveReadingProgress(currentProgress, false);
   }, [currentProgress, bookId, saveReadingProgress]);
 
-  // Save progress on page unload
+  // Save progress on page unload with synchronous fallback
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (bookId && currentProgress > 0) {
-        // Save immediately on unload
+        // Try to save synchronously using sendBeacon API
+        const saveData = {
+          user_id: bookData?.user_id,
+          book_id: bookId,
+          current_location: epubRendererRef.current?.getCurrentCfi() || '',
+          progress_percentage: currentProgress,
+          last_read_at: new Date().toISOString()
+        };
+        
+        // Use sendBeacon for reliable saving on page unload
+        const blob = new Blob([JSON.stringify(saveData)], { type: 'application/json' });
+        navigator.sendBeacon('/api/save-progress', blob);
+        
+        // Also try async save as backup
         saveReadingProgress(currentProgress, true);
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
-      // Save when component unmounts
-      if (bookId && currentProgress > 0) {
-        saveReadingProgress(currentProgress, true);
+      // Ensure any pending saves complete before unmount
+      if (saveProgressTimeoutRef.current) {
+        clearTimeout(saveProgressTimeoutRef.current);
+        // Execute any pending save immediately
+        const toSave = saveProgressQueueRef.current;
+        if (toSave && bookId) {
+          // Try synchronous save on unmount
+          const saveData = {
+            user_id: bookData?.user_id,
+            book_id: bookId,
+            current_location: epubRendererRef.current?.getCurrentCfi() || '',
+            progress_percentage: toSave.progress,
+            last_read_at: new Date().toISOString()
+          };
+          
+          const blob = new Blob([JSON.stringify(saveData)], { type: 'application/json' });
+          navigator.sendBeacon('/api/save-progress', blob);
+        }
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [bookId, currentProgress, saveReadingProgress]);
+  }, [bookId, currentProgress, saveReadingProgress, bookData]);
 
   const onPick = useCallback(() => {
     inputRef.current?.click();
