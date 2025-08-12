@@ -4,7 +4,7 @@
  * and chapter transition management
  */
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "sepia" | "night";
 
 interface ThemeConfig {
   light: {
@@ -19,20 +19,44 @@ interface ThemeConfig {
     selectionBg: string;
     linkColor: string;
   };
+  sepia: {
+    background: string;
+    color: string;
+    selectionBg: string;
+    linkColor: string;
+  };
+  night: {
+    background: string;
+    color: string;
+    selectionBg: string;
+    linkColor: string;
+  };
 }
 
 const THEME_CONFIG: ThemeConfig = {
   light: {
-    background: "#fcfcfd",
-    color: "#1c2024",
+    background: "rgb(252, 252, 253)",
+    color: "rgb(28, 32, 36)",
     selectionBg: "rgba(0, 113, 227, 0.15)",
-    linkColor: "#0071e3"
+    linkColor: "rgb(0, 113, 227)"
   },
   dark: {
-    background: "#101215",
-    color: "#f5f5f7",
+    background: "rgb(16, 18, 21)",
+    color: "rgb(245, 245, 247)",
     selectionBg: "rgba(64, 156, 255, 0.3)",
-    linkColor: "#409cff"
+    linkColor: "rgb(64, 156, 255)"
+  },
+  sepia: {
+    background: "rgb(244, 236, 216)",
+    color: "rgb(92, 75, 55)",
+    selectionBg: "rgba(139, 69, 19, 0.2)",
+    linkColor: "rgb(139, 69, 19)"
+  },
+  night: {
+    background: "rgb(0, 0, 0)",
+    color: "rgb(136, 136, 136)",
+    selectionBg: "rgba(128, 128, 128, 0.3)",
+    linkColor: "rgb(128, 128, 128)"
   }
 };
 
@@ -41,6 +65,7 @@ interface RenditionType {
     register: (name: string, styles: Record<string, any>) => void;
     select: (name: string) => void;
     default: (styles: Record<string, any>) => void;
+    override: (property: string, value: string) => void;
   };
   hooks?: {
     content: {
@@ -90,7 +115,7 @@ export class EpubThemeManager {
     this.setupContentHooks();
     
     // Register themes immediately
-    this.registerThemes();
+    this.registerBaseTheme();
     
     // Hook into all relevant events
     this.setupEventListeners();
@@ -178,7 +203,7 @@ export class EpubThemeManager {
           'margin': '0 !important`,
           'padding': `${isMobile ? '16px' : '20px'} !important`,
           'visibility': 'visible !important`,
-          '-webkit-font-smoothing': 'antialiased !important',
+          '-webkit-font-smoothing': 'antialiased !important`,
           'overflow-x': 'hidden !important'
         }
       };
@@ -430,16 +455,16 @@ export class EpubThemeManager {
     };
   }
 
-  private registerThemes() {
-    this.log("Registering themes");
+  private registerBaseTheme() {
+    this.log("Registering base theme");
     
-    // Register light theme
-    this.rendition.themes.register("light", {
+    // Register single reader theme with variables
+    this.rendition.themes.register("reader", {
       body: {
-        background: `${THEME_CONFIG.light.background} !important`,
-        color: `${THEME_CONFIG.light.color} !important`,
+        background: `var(--reader-bg) !important`,
+        color: `var(--reader-text) !important`,
         fontFamily: "var(--font-geist-sans), -apple-system, system-ui, sans-serif",
-        fontSize: `${this.fontSize}px`,
+        fontSize: `var(--reader-font-size)`,
         lineHeight: "1.7",
         letterSpacing: "-0.003em",
         margin: "0 !important",
@@ -460,10 +485,10 @@ export class EpubThemeManager {
         transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "::selection": { 
-        background: `${THEME_CONFIG.light.selectionBg} !important` 
+        background: `var(--reader-selection-bg) !important` 
       },
       a: { 
-        color: `${THEME_CONFIG.light.linkColor} !important`, 
+        color: `var(--reader-link) !important`, 
         textDecoration: "none",
         transition: "color 0.3s ease !important"
       },
@@ -472,44 +497,8 @@ export class EpubThemeManager {
       }
     });
 
-    // Register dark theme
-    this.rendition.themes.register("dark", {
-      body: {
-        background: `${THEME_CONFIG.dark.background} !important`,
-        color: `${THEME_CONFIG.dark.color} !important`,
-        fontFamily: "var(--font-geist-sans), -apple-system, system-ui, sans-serif",
-        fontSize: `${this.fontSize}px`,
-        lineHeight: "1.7",
-        letterSpacing: "-0.003em",
-        margin: "0 !important",
-        padding: "40px 60px !important",
-        boxSizing: "border-box !important",
-        maxWidth: "100% !important",
-        overflow: "hidden !important",
-        transition: "background-color 0.3s ease, color 0.3s ease !important"
-      },
-      "*": {
-        backgroundColor: "transparent !important",
-        color: "inherit !important",
-        transition: "background-color 0.3s ease, color 0.3s ease !important"
-      },
-      "p, div, span, li, td, th": {
-        backgroundColor: "transparent !important",
-        color: "inherit !important",
-        transition: "background-color 0.3s ease, color 0.3s ease !important"
-      },
-      "::selection": { 
-        background: `${THEME_CONFIG.dark.selectionBg} !important` 
-      },
-      a: { 
-        color: `${THEME_CONFIG.dark.linkColor} !important`, 
-        textDecoration: "none",
-        transition: "color 0.3s ease !important"
-      },
-      "a:hover": { 
-        textDecoration: "underline" 
-      }
-    });
+    // Select the base theme
+    this.rendition.themes.select("reader");
 
     // Register default styles that apply to both themes
     this.rendition.themes.default({
@@ -1044,6 +1033,21 @@ export class EpubThemeManager {
     this.themeAppliedCallbacks.forEach(cb => cb());
   }
 
+  private applyVariables() {
+    const config = THEME_CONFIG[this.currentTheme];
+
+    this.rendition.themes.override("--reader-bg", config.background);
+    this.rendition.themes.override("--reader-text", config.color);
+    this.rendition.themes.override("--reader-selection-bg", config.selectionBg);
+    this.rendition.themes.override("--reader-link", config.linkColor);
+    this.rendition.themes.override("--reader-font-size", `${this.fontSize}px`);
+
+    this.log("Applied theme variables");
+    
+    // To ensure update, force content refresh
+    this.forceContentRefresh();
+  }
+
   public applyTheme(theme: Theme, force = false) {
     if (theme === this.currentTheme && !force) {
       this.log("Theme already applied:", theme);
@@ -1053,20 +1057,8 @@ export class EpubThemeManager {
     this.log("Applying theme:", theme);
     this.currentTheme = theme;
 
-    // Update rendition theme
-    try {
-      this.rendition.themes.select(theme);
-    } catch (e) {
-      this.log("Error selecting theme:", e);
-    }
-
-    // Ensure immediate application
-    this.ensureThemeApplied();
-
-    // Force a re-render if needed
-    if (force && this.rendition.manager) {
-      this.rendition.manager.updateLayout();
-    }
+    // Apply variables instead of selecting theme
+    this.applyVariables();
   }
 
   public setTheme(theme: Theme) {
@@ -1170,11 +1162,8 @@ export class EpubThemeManager {
     this.log("Updating font size:", fontSize);
     this.fontSize = fontSize;
     
-    // Re-register themes with new font size
-    this.registerThemes();
-    
-    // Reapply current theme
-    this.applyTheme(this.currentTheme, true);
+    // Apply updated variables
+    this.applyVariables();
   }
 
   public getFontSize(): number {
