@@ -66,15 +66,16 @@ export default function ReaderPage() {
   const supabase = createClient();
   const bookId = searchParams.get('id');
 
-  // Clean up renderer on unmount
+  // Clean up renderer on unmount or book change
   useEffect(() => {
     return () => {
       if (epubRendererRef.current) {
+        console.log('🧹 Cleaning up EPUB renderer');
         epubRendererRef.current.destroy();
         epubRendererRef.current = null;
       }
     };
-  }, []);
+  }, [bookId]); // Also cleanup when bookId changes
 
   // Listen for annotation click events from the renderer
   useEffect(() => {
@@ -129,6 +130,17 @@ export default function ReaderPage() {
       renderer.onChapterChange((title) => {
         setChapterTitle(title);
         // Update navigation state
+        const position = renderer.getCurrentPosition();
+        setNavigationState({
+          canGoNext: position.canGoNext,
+          canGoPrev: position.canGoPrev
+        });
+      });
+      
+      // Also listen for progress updates to update navigation state
+      renderer.onProgress((progress) => {
+        setCurrentProgress(progress);
+        // Update navigation state on progress change too
         const position = renderer.getCurrentPosition();
         setNavigationState({
           canGoNext: position.canGoNext,
