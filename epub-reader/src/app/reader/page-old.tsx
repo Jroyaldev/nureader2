@@ -7,6 +7,7 @@ import AnnotationPanel from "@/components/AnnotationPanel";
 import Tooltip from "@/components/TooltipImproved";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubThemeManager } from "@/lib/epub-theme-manager";
+import { useSettings } from "@/contexts/SettingsContext"; // Added import for settings integration
 
 // Remove next/dynamic usage for non-component library; use on-demand import instead
 
@@ -56,6 +57,10 @@ export default function ReaderPage() {
   const themeManagerRef = useRef<EpubThemeManager | null>(null);
   const isLoadingRef = useRef<boolean>(false);
   const loadedBookIdRef = useRef<string | null>(null);
+  
+  // Use settings context
+  const { settings: appSettings, updateSettings: updateAppSettings } = useSettings();
+  const readingSettings = appSettings.reading; // Use global reading settings
   
   // Fix iframe heights for proper scrolling in continuous mode
   const fixIframeHeights = useCallback(() => {
@@ -117,6 +122,7 @@ export default function ReaderPage() {
   // Debug function to check and reset loading state
   const resetLoadingState = useCallback(() => {
     console.log("🔄 Resetting loading state", { isLoading, loaded: !!loaded });
+    isLoadingRef.current = false; // Ensure ref is reset
     setIsLoading(false);
   }, [isLoading, loaded]);
   
@@ -125,12 +131,12 @@ export default function ReaderPage() {
     if (isLoading && !loaded) {
       const timeout = setTimeout(() => {
         console.log("⏰ Loading timeout - auto-resetting loading state");
-        setIsLoading(false);
+        resetLoadingState();
       }, 10000); // 10 second timeout
       
       return () => clearTimeout(timeout);
     }
-  }, [isLoading, loaded]);
+  }, [isLoading, loaded, resetLoadingState]);
   
   // Expose reset function for debugging
   useEffect(() => {
@@ -243,6 +249,7 @@ export default function ReaderPage() {
         await new Promise(resolve => setTimeout(resolve, 100));
         if (!containerRef.current) {
           setError("Reader container not ready");
+          resetLoadingState(); // Reset on error
           return;
         }
       }
@@ -260,8 +267,8 @@ export default function ReaderPage() {
       const rendition = book.renderTo(container, {
         width: adjustedWidth,
         height: containerHeight,
-        flow: "scrolled", // Enable continuous scrolling mode
-        spread: "none", // Force single-page spread to prevent layout issues
+        flow: readingSettings.scrollMode, // Use global settings
+        spread: readingSettings.columnCount === 2 ? 'auto' : 'none',
         allowScriptedContent: true,  // Required for proper content rendering
         manager: "continuous", // Use continuous manager for scrolled flow
         resizeOnOrientationChange: false, // Prevent auto-resize issues
@@ -272,7 +279,7 @@ export default function ReaderPage() {
 
       // Initialize theme manager only once per book
       if (!themeManagerRef.current) {
-        themeManagerRef.current = new EpubThemeManager(rendition, theme, true);
+        themeManagerRef.current = new EpubThemeManager(rendition, theme, readingSettings.fontSize, true); // Use global font size
       } else {
         // Just update the theme if manager already exists
         themeManagerRef.current.setTheme(theme);
@@ -428,10 +435,9 @@ export default function ReaderPage() {
       console.error('❌ EPUB loading failed:', err);
       setError(errorMessage);
     } finally {
-      isLoadingRef.current = false;
-      setIsLoading(false);
+      resetLoadingState(); // Always reset in finally block
     }
-  }, [theme]);
+  }, [theme, readingSettings]); // Add readingSettings as dependency to re-apply on changes
 
   // Monitor auth state
   useEffect(() => {
@@ -474,13 +480,13 @@ export default function ReaderPage() {
   useEffect(() => {
     const loadBookFromDatabase = async () => {
       if (!bookId) {
-        setIsLoading(false);
+        resetLoadingState();
         return;
       }
 
       // Don't reload if book is already loaded or same book ID
       if (loaded && loadedBookIdRef.current === bookId) {
-        setIsLoading(false);
+        resetLoadingState();
         return;
       }
 
@@ -492,7 +498,7 @@ export default function ReaderPage() {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
-          setIsLoading(false);
+          resetLoadingState();
           router.push('/login');
           return;
         }
@@ -507,7 +513,7 @@ export default function ReaderPage() {
 
         if (bookError || !book) {
           setError("Book not found");
-          setIsLoading(false);
+          resetLoadingState();
           return;
         }
 
@@ -520,7 +526,7 @@ export default function ReaderPage() {
 
         if (storageError || !fileData) {
           setError("Failed to load book file");
-          setIsLoading(false);
+          resetLoadingState();
           return;
         }
 
@@ -532,12 +538,12 @@ export default function ReaderPage() {
       } catch (err) {
         console.error('❌ Error loading book:', err);
         setError("Failed to load book");
-        setIsLoading(false);
+        resetLoadingState();
       }
     };
 
     loadBookFromDatabase();
-  }, [bookId, authReady, containerReady]);
+  }, [bookId, authReady, containerReady, loadFromFile, router, supabase, resetLoadingState]);
 
   // Theme is now handled by ThemeProvider, no need for manual detection
 
@@ -631,7 +637,7 @@ export default function ReaderPage() {
     }
   }, [loaded]);
 
-  // Enhanced navigation with pagination fallback
+  // Enhanced navigation with pagination fallback and user feedback
   const navigateWithFallback = useCallback(async (direction: 'next' | 'prev') => {
     if (!loaded?.rendition || !loaded?.book) return false;
     
@@ -684,6 +690,10 @@ export default function ReaderPage() {
           themeManagerRef.current.forceContentRefresh();
         }
         
+        // Show user feedback on failure
+        setError("Navigation failed. Please try again or reload the book.");
+        setTimeout(() => setError(""), 3000); // Clear error after 3s
+        
         return false;
       }
       
@@ -691,6 +701,8 @@ export default function ReaderPage() {
       
     } catch (error) {
       console.error(`❌ Error in ${direction} navigation:`, error);
+      setError("Navigation error. Please try again.");
+      setTimeout(() => setError(""), 3000);
       return false;
     }
   }, [loaded, checkContentVisibility]);
@@ -765,7 +777,10 @@ export default function ReaderPage() {
     if (userTheme !== "system") {
       setUserTheme(newTheme);
     }
-  }, [theme, userTheme, setUserTheme]);
+    
+    // Update global settings
+    updateAppSettings('reading', { theme: newTheme });
+  }, [theme, userTheme, setUserTheme, updateAppSettings]);
 
   const onTocJump = useCallback(async (href: string) => {
     try {
@@ -862,6 +877,16 @@ export default function ReaderPage() {
 
   // Show loading overlay instead of replacing entire component
   const showLoadingOverlay = isLoading && bookId;
+
+  // Add resize listener for height fixes
+  useEffect(() => {
+    const handleResize = () => {
+      fixIframeHeights();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [fixIframeHeights]);
 
   return (
     <div 
@@ -1080,7 +1105,7 @@ export default function ReaderPage() {
                       />
                     </div>
                   </div>
-                  <span className="text-sm font-medium min-w-[3.5rem] text-center tabular-nums text-foreground">{currentProgress}%</span>
+                  <span className="text-xs font-medium min-w-[3.5rem] text-center tabular-nums text-foreground">{currentProgress}%</span>
                 </div>
               </div>
             </div>

@@ -164,10 +164,10 @@ export class EpubThemeManager {
         'html, body, *, a, a:link, a:visited, a:hover, a:active, a:focus': {
           'background-color': `${theme.background} !important`,
           'color': `${theme.color} !important`,
-          'text-decoration': 'none !important',
-          'border': 'none !important',
-          'outline': 'none !important',
-          'cursor': 'default !important',
+          'text-decoration': 'none !important`,
+          'border': 'none !important`,
+          'outline': 'none !important`,
+          'cursor': 'default !important`,
           'transition': 'none !important'
         },
         'body': {
