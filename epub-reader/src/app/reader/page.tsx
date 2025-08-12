@@ -188,7 +188,7 @@ export default function ReaderPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [theme]);
+  }, []);
 
   // Monitor auth state
   useEffect(() => {
