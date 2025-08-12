@@ -35,6 +35,10 @@ interface EpubRendition {
   on: (event: string, callback: (...args: any[]) => void) => void;
   themes: any;
   manager?: any;
+  annotations: {
+    highlight: (cfiRange: string, data: any, cb: () => void, className: string, styles: any) => void;
+    mark: (cfiRange: string, data: any, cb: () => void) => void;
+  };
 }
 
 type LoadedBook = {
@@ -814,7 +818,7 @@ export default function ReaderPage() {
         content = chapterTitle || "Bookmark";
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('annotations')
         .insert({
           user_id: user.id,
@@ -824,9 +828,34 @@ export default function ReaderPage() {
           location: selectionCfi || cfi,
           annotation_type: type,
           color
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Render the annotation in the book
+      if (type === 'highlight' || type === 'note') {
+        loaded.rendition.annotations.highlight(
+          selectionCfi || cfi,
+          { id: data.id },
+          (e: MouseEvent) => {
+            e.stopPropagation();
+            console.log('Annotation clicked:', data.id);
+          },
+          'highlight',
+          { fill: color }
+        );
+      } else if (type === 'bookmark') {
+        loaded.rendition.annotations.mark(
+          cfi,
+          { id: data.id },
+          (e: MouseEvent) => {
+            e.stopPropagation();
+            console.log('Bookmark clicked:', data.id);
+          }
+        );
+      }
       
       // Clear selection
       setSelectedText("");
