@@ -1,4 +1,4 @@
-/**
+ /**
  * EPUB Theme Manager
  * Handles all theme-related operations for epub.js with robust error handling
  * and chapter transition management
@@ -173,11 +173,11 @@ export class EpubThemeManager {
         'body': {
           'font-family': 'var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important',
           'font-size': `${isMobile ? Math.max(this.fontSize - 1, 14) : this.fontSize}px !important`,
-          'line-height': '1.7 !important',
-          'letter-spacing': '-0.003em !important',
-          'margin': '0 !important',
+          'line-height': '1.7 !important`,
+          'letter-spacing': '-0.003em !important`,
+          'margin': '0 !important`,
           'padding': `${isMobile ? '16px' : '20px'} !important`,
-          'visibility': 'visible !important',
+          'visibility': 'visible !important`,
           '-webkit-font-smoothing': 'antialiased !important',
           'overflow-x': 'hidden !important'
         }
@@ -446,22 +446,26 @@ export class EpubThemeManager {
         padding: "40px 60px !important",
         boxSizing: "border-box !important",
         maxWidth: "100% !important",
-        overflow: "hidden !important"
+        overflow: "hidden !important",
+        transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "*": {
         backgroundColor: "transparent !important",
-        color: "inherit !important"
+        color: "inherit !important",
+        transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "p, div, span, li, td, th": {
         backgroundColor: "transparent !important",
-        color: "inherit !important"
+        color: "inherit !important",
+        transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "::selection": { 
         background: `${THEME_CONFIG.light.selectionBg} !important` 
       },
       a: { 
         color: `${THEME_CONFIG.light.linkColor} !important`, 
-        textDecoration: "none" 
+        textDecoration: "none",
+        transition: "color 0.3s ease !important"
       },
       "a:hover": { 
         textDecoration: "underline" 
@@ -481,22 +485,26 @@ export class EpubThemeManager {
         padding: "40px 60px !important",
         boxSizing: "border-box !important",
         maxWidth: "100% !important",
-        overflow: "hidden !important"
+        overflow: "hidden !important",
+        transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "*": {
         backgroundColor: "transparent !important",
-        color: "inherit !important"
+        color: "inherit !important",
+        transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "p, div, span, li, td, th": {
         backgroundColor: "transparent !important",
-        color: "inherit !important"
+        color: "inherit !important",
+        transition: "background-color 0.3s ease, color 0.3s ease !important"
       },
       "::selection": { 
         background: `${THEME_CONFIG.dark.selectionBg} !important` 
       },
       a: { 
         color: `${THEME_CONFIG.dark.linkColor} !important`, 
-        textDecoration: "none" 
+        textDecoration: "none",
+        transition: "color 0.3s ease !important"
       },
       "a:hover": { 
         textDecoration: "underline" 
@@ -722,16 +730,18 @@ export class EpubThemeManager {
         visibility: visible !important;
         background-color: ${theme.background} !important;
         color: ${theme.color} !important;
+        transition: background-color 0.3s ease, color 0.3s ease !important;
       }
       
       /* Base styling and theme colors */
       * {
-        transition: none !important;
+        transition: background-color 0.3s ease, color 0.3s ease !important;
       }
       
       html {
         background-color: ${theme.background} !important;
         color: ${theme.color} !important;
+        transition: background-color 0.3s ease, color 0.3s ease !important;
       }
       
       body {
@@ -763,6 +773,7 @@ export class EpubThemeManager {
         /* Mobile scrolling optimization */
         -webkit-overflow-scrolling: touch !important;
         scroll-behavior: smooth !important;
+        transition: background-color 0.3s ease, color 0.3s ease !important;
       }
 
       /* Typography hierarchy - Apple/Kindle inspired */
@@ -774,6 +785,7 @@ export class EpubThemeManager {
         letter-spacing: -0.025em !important;
         margin: 1.5em 0 0.75em 0 !important;
         text-rendering: optimizeLegibility !important;
+        transition: color 0.3s ease !important;
       }
 
       h1 {
@@ -807,6 +819,7 @@ export class EpubThemeManager {
         text-justify: inter-word !important;
         orphans: 2 !important;
         widows: 2 !important;
+        transition: color 0.3s ease !important;
       }
 
       p:last-child {
@@ -817,6 +830,7 @@ export class EpubThemeManager {
       div, span, li, td, th {
         background-color: transparent !important;
         color: ${theme.color} !important;
+        transition: color 0.3s ease !important;
       }
 
       /* Lists */
@@ -838,6 +852,7 @@ export class EpubThemeManager {
         margin: 1.5em 0 !important;
         padding: 0 1.5em !important;
         border-left: 3px solid ${this.currentTheme === "dark" ? "#374151" : "#d1d5db"} !important;
+        transition: color 0.3s ease, border-color 0.3s ease !important;
       }
 
       /* Code and preformatted text */
@@ -845,6 +860,7 @@ export class EpubThemeManager {
         font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace !important;
         background-color: ${this.currentTheme === "dark" ? "#1f2937" : "#f3f4f6"} !important;
         color: ${this.currentTheme === "dark" ? "#e5e7eb" : "#374151"} !important;
+        transition: background-color 0.3s ease, color 0.3s ease !important;
       }
 
       code {
@@ -868,6 +884,7 @@ export class EpubThemeManager {
         font-weight: inherit !important;
         font-style: inherit !important;
         background-color: transparent !important;
+        transition: color 0.3s ease !important;
       }
 
       a:hover, a:visited, a:active, a:focus {
@@ -875,6 +892,7 @@ export class EpubThemeManager {
         text-decoration: none !important;
         cursor: default !important;
         background-color: transparent !important;
+        transition: color 0.3s ease !important;
       }
 
       /* Make footnotes appear as plain text */
@@ -890,6 +908,7 @@ export class EpubThemeManager {
         cursor: default !important;
         font-weight: inherit !important;
         font-style: inherit !important;
+        transition: color 0.3s ease !important;
       }
 
       /* Remove superscript styling from footnotes to make them truly plain */
@@ -906,6 +925,7 @@ export class EpubThemeManager {
         margin-top: 2em !important;
         padding-top: 1em !important;
         font-size: 0.9em !important;
+        transition: border-color 0.3s ease !important;
       }
 
       /* Superscript and subscript */
@@ -913,17 +933,20 @@ export class EpubThemeManager {
         font-size: 0.8em !important;
         line-height: 1 !important;
         color: ${theme.color} !important;
+        transition: color 0.3s ease !important;
       }
 
       /* Emphasis and strong */
       em, i {
         font-style: italic !important;
         color: ${theme.color} !important;
+        transition: color 0.3s ease !important;
       }
 
       strong, b {
         font-weight: 600 !important;
         color: ${theme.color} !important;
+        transition: color 0.3s ease !important;
       }
 
       /* Tables */
@@ -937,11 +960,13 @@ export class EpubThemeManager {
         border: 1px solid ${this.currentTheme === "dark" ? "#374151" : "#e5e7eb"} !important;
         padding: 0.75em !important;
         text-align: left !important;
+        transition: border-color 0.3s ease !important;
       }
 
       th {
         background-color: ${this.currentTheme === "dark" ? "#1f2937" : "#f9fafb"} !important;
         font-weight: 600 !important;
+        transition: background-color 0.3s ease !important;
       }
 
       /* Images */
@@ -951,6 +976,7 @@ export class EpubThemeManager {
         opacity: ${this.currentTheme === "dark" ? "0.9" : "1"} !important;
         border-radius: 4px !important;
         margin: 1em 0 !important;
+        transition: opacity 0.3s ease !important;
       }
 
       /* Selection styling */
@@ -967,6 +993,7 @@ export class EpubThemeManager {
       /* Fix for any remaining blue text - nuclear option */
       * {
         color: ${theme.color} !important;
+        transition: color 0.3s ease !important;
       }
 
       /* Remove all hover text decorations for static text */
@@ -989,6 +1016,7 @@ export class EpubThemeManager {
         border: none !important;
         border-top: 1px solid ${this.currentTheme === "dark" ? "#374151" : "#e5e7eb"} !important;
         margin: 2em 0 !important;
+        transition: border-color 0.3s ease !important;
       }
 
       /* Drop caps for elegant typography */
@@ -999,6 +1027,7 @@ export class EpubThemeManager {
         margin: 0.1em 0.1em 0 0 !important;
         font-weight: 400 !important;
         color: ${theme.color} !important;
+        transition: color 0.3s ease !important;
       }
     `;
   }
