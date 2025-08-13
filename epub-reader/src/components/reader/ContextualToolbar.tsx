@@ -74,11 +74,11 @@ interface ContextualToolbarProps {
 }
 
 const themeConfigs = {
-  light: { icon: SunIcon, label: 'Light', bg: 'rgb(252, 252, 253)', fg: 'rgb(28, 32, 36)' },
+  light: { icon: SunIcon, label: 'Light', bg: 'rgb(255, 255, 255)', fg: 'rgb(28, 32, 36)' },
   dark: { icon: MoonIcon, label: 'Dark', bg: 'rgb(16, 18, 21)', fg: 'rgb(245, 245, 247)' },
-  sepia: { icon: SparklesIcon, label: 'Sepia', bg: 'rgb(244, 236, 216)', fg: 'rgb(92, 75, 55)' },
-  night: { icon: BookOpenIcon, label: 'Night', bg: 'rgb(0, 0, 0)', fg: 'rgb(136, 136, 136)' }
-};
+  sepia: { icon: SparklesIcon, label: 'Sepia', bg: 'rgb(246, 240, 225)', fg: 'rgb(74, 54, 40)' },
+  night: { icon: BookOpenIcon, label: 'Night', bg: 'rgb(0, 0, 0)', fg: 'rgb(220, 220, 220)' }
+} as const;
 
 export default function ContextualToolbar({
   onNavigateHome,

@@ -34,8 +34,7 @@ export default function ReaderPage() {
   const [error, setError] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { theme: userTheme, resolvedTheme, setTheme: setUserTheme } = useTheme();
-  const [localThemeOverride, setLocalThemeOverride] = useState<"light" | "dark" | null>(null);
-  const theme = localThemeOverride || resolvedTheme;
+  const theme = resolvedTheme; // Use global theme preference
   const [isLoading, setIsLoading] = useState(true);
   
   // UI state
@@ -526,12 +525,8 @@ export default function ReaderPage() {
 
   const onThemeToggle = useCallback(() => {
     const newTheme = theme === "light" ? "dark" : "light";
-    setLocalThemeOverride(newTheme);
-    
-    if (userTheme !== "system") {
-      setUserTheme(newTheme);
-    }
-  }, [theme, userTheme, setUserTheme]);
+    setUserTheme(newTheme);
+  }, [theme, setUserTheme]);
 
   const onTocJump = useCallback(async (href: string) => {
     if (epubRendererRef.current) {
@@ -637,11 +632,9 @@ export default function ReaderPage() {
   }, [router]);
 
   const handleThemeChange = useCallback((newTheme: 'light' | 'dark' | 'sepia' | 'night') => {
-    // For now, we only support light and dark themes
-    // Map sepia to light and night to dark
-    const mappedTheme = (newTheme === 'sepia' || newTheme === 'light') ? 'light' : 'dark';
-    setLocalThemeOverride(mappedTheme);
-  }, []);
+    // Set the theme directly - no mapping needed
+    setUserTheme(newTheme);
+  }, [setUserTheme]);
 
   const handleFontSizeChange = useCallback((size: number) => {
     setFontSize(size);
@@ -814,10 +807,7 @@ export default function ReaderPage() {
     <div 
       className="min-h-dvh relative bg-[rgb(var(--bg))] transition-colors duration-300"
     >
-      {/* Premium gradient background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgb(var(--accent))]/5 via-transparent to-[rgb(var(--accent))]/3 opacity-20" />
-      </div>
+      {/* Background overlay removed for uniform dark theme */}
       
       {/* Hidden file input */}
       <input ref={inputRef} type="file" accept=".epub" className="hidden" onChange={onInputChange} />
@@ -843,7 +833,7 @@ export default function ReaderPage() {
           canGoPrev={navigationState.canGoPrev}
           
           // Theme & Display
-          currentTheme={theme === 'dark' ? 'dark' : 'light'}
+          currentTheme={userTheme as any}
           onThemeChange={handleThemeChange}
           fontSize={fontSize}
           onFontSizeChange={handleFontSizeChange}
@@ -919,7 +909,7 @@ export default function ReaderPage() {
           <div className="relative">
             <div
               ref={containerRef}
-              className="card rounded-[var(--radius-2xl)] transition-all duration-300 relative"
+              className="epub-container rounded-[var(--radius-2xl)] transition-all duration-300 relative bg-[rgb(var(--bg))] text-[rgb(var(--fg))]"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               style={{
@@ -930,7 +920,6 @@ export default function ReaderPage() {
                 boxShadow: theme === "dark" 
                   ? "0 30px 90px -20px rgba(0, 0, 0, 0.6), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))" 
                   : "0 30px 90px -20px rgba(0, 0, 0, 0.15), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))",
-                backgroundColor: theme === "dark" ? "#101215" : "#fcfcfd",
                 overflowY: "auto",
                 overflowX: "hidden",
                 scrollBehavior: "smooth",

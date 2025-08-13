@@ -8,7 +8,7 @@
 @layer base {
   :root {
     /* Pure academic colors - scholarly white and warm grays */
-    --bg: 252 252 253; /* Slightly warm white - paper-like */
+    --bg: 255 255 255; /* Pure white for page/background */
     --fg: 28 32 36; /* Deep charcoal for text */
     --muted: 110 118 126; /* Sophisticated gray */
     --border: 0 0 0; /* Black for hairlines */
@@ -51,12 +51,38 @@
     --fg: 245 245 247; /* Soft white */
     --muted: 155 160 170; /* Muted text */
     --border: 255 255 255;
-    --border-opacity: 0.05;
+    --border-opacity: 0.08;
     --accent: 64 156 255; /* Bright academic blue */
-    --surface: 26 28 32;
-    --surface-hover: 36 38 43;
+    --surface: 24 27 31; /* Elevated card surface */
+    --surface-hover: 32 36 41; /* Card hover state */
     --shadow: 0 0 0;
     --ring: 64 156 255;
+  }
+  .sepia {
+    /* Elegant modern sepia */
+    --bg: 246 240 225; /* Softer warm cream */
+    --fg: 74 54 40; /* Rich coffee brown */
+    --muted: 122 102 82; /* Warm mid-brown */
+    --border: 196 173 146;
+    --border-opacity: 0.25;
+    --accent: 180 130 70; /* Warm gold accent */
+    --surface: 250 244 230;
+    --surface-hover: 242 235 220;
+    --shadow: 139 69 19;
+    --ring: 180 130 70;
+  }
+  .night {
+    /* True night mode for OLED/AMOLED */
+    --bg: 0 0 0; /* Pure black */
+    --fg: 220 220 220; /* Softer white to reduce eye strain */
+    --muted: 160 160 160; /* Brighter muted text for better readability */
+    --border: 80 80 80; /* Lighter border for better visibility */
+    --border-opacity: 0.4; /* Increased border opacity */
+    --accent: 100 160 255; /* Softer blue accent */
+    --surface: 25 25 25; /* More elevated surface for better card contrast */
+    --surface-hover: 35 35 35; /* Hover state for cards */
+    --shadow: 0 0 0;
+    --ring: 100 160 255;
   }
   html, body, #__next { height: 100%; }
   body { 
@@ -69,16 +95,16 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   
-  /* Smooth theme transitions */
-  * {
-    transition-property: background-color, border-color, color, fill, stroke;
-    transition-duration: 0.3s;
+  /* Smooth theme transitions (scope to transition phase to reduce glitches) */
+  .theme-transitioning, .theme-transitioning * {
+    transition-property: background-color, border-color, color;
+    transition-duration: 0.18s;
     transition-timing-function: ease;
   }
   
   /* Prevent FOUC - default to light theme */
   html:not(.dark):not(.light) {
-    --bg: 252 252 253;
+    --bg: 255 255 255;
     --fg: 28 32 36;
   }
   
@@ -139,7 +165,9 @@
   
   /* Prevent white flash on page turns in dark mode */
   html.dark .epub-container iframe,
-  html[data-theme="dark"] .epub-container iframe {
+  html[data-theme="dark"] .epub-container iframe,
+  html.night .epub-container iframe,
+  html[data-theme="night"] .epub-container iframe {
     background-color: #101215 !important;
   }
   
@@ -147,15 +175,23 @@
   html[data-theme="light"] .epub-container iframe {
     background-color: #fcfcfd !important;
   }
+  html.sepia .epub-container iframe,
+  html[data-theme="sepia"] .epub-container iframe {
+    background-color: #f4ecd8 !important;
+  }
   
   /* Force dark mode background */
   html.dark,
-  html[data-theme="dark"] {
+  html[data-theme="dark"],
+  html.night,
+  html[data-theme="night"] {
     background-color: #101215 !important;
   }
   
   html.dark body,
-  html[data-theme="dark"] body {
+  html[data-theme="dark"] body,
+  html.night body,
+  html[data-theme="night"] body {
     background-color: #101215 !important;
   }
   
@@ -168,6 +204,15 @@
   html.light body,
   html[data-theme="light"] body {
     background-color: #fcfcfd !important;
+  }
+  /* Force sepia background */
+  html.sepia,
+  html[data-theme="sepia"] {
+    background-color: #f4ecd8 !important;
+  }
+  html.sepia body,
+  html[data-theme="sepia"] body {
+    background-color: #f4ecd8 !important;
   }
   
   /* Smooth opacity transitions for theme changes */
@@ -446,6 +491,82 @@
   .card-hover:hover {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
+  }
+  
+  /* Night mode specific enhancements for better readability */
+  .night .card {
+    background: rgb(var(--surface));
+    border: 1px solid rgba(var(--border), 0.5);
+  }
+  
+  .night .segmented-control {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  
+  .night .segmented-control button {
+    color: rgb(180, 180, 180);
+  }
+  
+  .night .segmented-control button[aria-pressed="true"] {
+    background: rgb(40, 40, 40);
+    color: rgb(220, 220, 220);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+  
+  .night .glass {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .night .text-muted {
+    color: rgb(180, 180, 180);
+  }
+  
+  .night .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgb(220, 220, 220);
+  }
+  
+  .night .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  
+  .night .input-search {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgb(220, 220, 220);
+  }
+  
+  .night .input-search::placeholder {
+    color: rgb(160, 160, 160);
+  }
+  
+  /* Fix feature cards text on homepage in Night mode */
+  .night .bg-\\[rgb\\(var\\(--surface\\)\\)\\] {
+    background: rgb(30, 30, 30);
+  }
+  
+  .night .hover\\:bg-\\[rgb\\(var\\(--surface-hover\\)\\)\\]:hover {
+    background: rgb(40, 40, 40);
+  }
+  
+  /* Ensure all text is readable in Night mode */
+  .night p,
+  .night h1,
+  .night h2,
+  .night h3,
+  .night h4,
+  .night h5,
+  .night h6 {
+    color: rgb(var(--fg));
+  }
+  
+  .night .text-\\[rgb\\(var\\(--muted\\)\\)\\] {
+    color: rgb(180, 180, 180) !important;
+  }
+  
+  .night .text-\\[rgb\\(var\\(--fg\\)\\)\\] {
+    color: rgb(220, 220, 220) !important;
   }
 }
 

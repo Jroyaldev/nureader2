@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 
-type Theme = "light" | "dark" | "system";
-type ResolvedTheme = "light" | "dark";
+type Theme = "light" | "dark" | "sepia" | "night";
+type ResolvedTheme = "light" | "dark" | "sepia" | "night";
 type ReadingTheme = "default" | "sepia" | "high-contrast";
 
 interface ThemePreferences {
@@ -41,13 +41,13 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>("system");
+  const [theme, setThemeState] = useState<Theme>("light");
   const [readingTheme, setReadingThemeState] = useState<ReadingTheme>("default");
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>("light");
   const [mounted, setMounted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [preferences, setPreferences] = useState<ThemePreferences>({
-    theme: "system",
+    theme: "light",
     readingTheme: "default",
     reducedMotion: false,
     highContrast: false,
@@ -136,8 +136,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     loadUserPreferences();
   }, [supabase]);
 
-  // Calculate resolved theme
-  const resolvedTheme: ResolvedTheme = theme === "system" ? systemTheme : theme as ResolvedTheme;
+  // Resolved theme is just the theme itself now (no system option)
+  const resolvedTheme: ResolvedTheme = theme;
 
   // Apply theme and preferences to document
   useEffect(() => {
@@ -150,7 +150,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.classList.add("theme-transitioning");
     
     // Remove existing theme classes
-    root.classList.remove("light", "dark", "theme-sepia", "theme-high-contrast");
+    root.classList.remove("light", "dark", "sepia", "night", "theme-sepia", "theme-high-contrast");
     
     // Add new theme class
     root.classList.add(resolvedTheme);
@@ -171,19 +171,23 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Update theme-color meta tag
     const metaThemeColor = document.querySelector("meta[name=theme-color]");
     if (metaThemeColor) {
-      const themeColors = {
+      const themeColors: Record<ResolvedTheme, string> = {
         light: "#ffffff",
-        dark: "#0a0a0a",
+        dark: "#101215",
+        sepia: "#f4ecd8",
+        night: "#000000",
       };
-      metaThemeColor.setAttribute("content", themeColors[resolvedTheme]);
+      metaThemeColor.setAttribute("content", themeColors[resolvedTheme] || "#ffffff");
     }
 
     // Update body background immediately to prevent flashes
-    const backgroundColors = {
+    const backgroundColors: Record<ResolvedTheme, string> = {
       light: "#ffffff",
-      dark: "#0a0a0a",
+      dark: "#101215",
+      sepia: "#f4ecd8",
+      night: "#000000",
     };
-    document.body.style.backgroundColor = backgroundColors[resolvedTheme];
+    document.body.style.backgroundColor = backgroundColors[resolvedTheme] || "#ffffff";
 
     // Store in localStorage for immediate access on page load
     localStorage.setItem("theme", theme);
@@ -203,13 +207,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Update theme
   const setTheme = useCallback(async (newTheme: Theme) => {
     setThemeState(newTheme);
-    setPreferences(prev => ({ ...prev, theme: newTheme }));
+    const updatedPreferences = { ...preferences, theme: newTheme };
+    setPreferences(updatedPreferences);
     
     // Update user profile if logged in
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const updatedPreferences = { ...preferences, theme: newTheme };
         await supabase
           .from("profiles")
           .update({
@@ -225,13 +229,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Update reading theme
   const setReadingTheme = useCallback(async (newReadingTheme: ReadingTheme) => {
     setReadingThemeState(newReadingTheme);
-    setPreferences(prev => ({ ...prev, readingTheme: newReadingTheme }));
+    const updatedPreferences = { ...preferences, readingTheme: newReadingTheme };
+    setPreferences(updatedPreferences);
     
     // Update user profile if logged in
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const updatedPreferences = { ...preferences, readingTheme: newReadingTheme };
         await supabase
           .from("profiles")
           .update({

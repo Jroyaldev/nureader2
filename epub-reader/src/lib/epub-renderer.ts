@@ -31,7 +31,7 @@ export class EpubRenderer {
   private container: HTMLElement;
   private chapters: ChapterData[] = [];
   private toc: TocItem[] = [];
-  private currentTheme: 'light' | 'dark' = 'light';
+  private currentTheme: 'light' | 'dark' | 'sepia' | 'night' = 'light';
   private onProgressCallback?: (progress: number) => void;
   private onChapterCallback?: (title: string) => void;
   private currentChapterIndex: number = 0;
@@ -43,16 +43,23 @@ export class EpubRenderer {
   private _onScroll?: (e: Event) => void;
   private stylesApplied: boolean = false;
 
-  constructor(container: HTMLElement, initialTheme?: 'light' | 'dark') {
+  constructor(container: HTMLElement, initialTheme?: 'light' | 'dark' | 'sepia' | 'night') {
     this.container = container;
     // Set initial theme immediately to prevent flash
     if (initialTheme) {
       this.currentTheme = initialTheme;
     } else {
-      // Try to detect from document
-      const isDark = document.documentElement.classList.contains('dark') || 
-                    document.documentElement.getAttribute('data-theme') === 'dark';
-      this.currentTheme = isDark ? 'dark' : 'light';
+      // Try to detect from document classes and data attributes
+      const docEl = document.documentElement;
+      if (docEl.classList.contains('night') || docEl.getAttribute('data-theme') === 'night') {
+        this.currentTheme = 'night';
+      } else if (docEl.classList.contains('sepia') || docEl.getAttribute('data-theme') === 'sepia') {
+        this.currentTheme = 'sepia';
+      } else if (docEl.classList.contains('dark') || docEl.getAttribute('data-theme') === 'dark') {
+        this.currentTheme = 'dark';
+      } else {
+        this.currentTheme = 'light';
+      }
     }
     this.setupScrollListener();
     this.setupTextSelectionListener();
@@ -260,6 +267,11 @@ export class EpubRenderer {
     // Clear container and add continuous content early
     this.container.innerHTML = '';
     this.container.appendChild(contentWrapper);
+
+    // Re-apply current theme now that content exists to ensure consistent background/text
+    try {
+      this.applyTheme(this.currentTheme);
+    } catch {}
     
     // Render remaining chapters progressively
     if (totalChapters > batchSize) {
@@ -703,46 +715,60 @@ export class EpubRenderer {
     this.onChapterCallback(currentChapter);
   }
 
-  setTheme(theme: 'light' | 'dark'): void {
+  setTheme(theme: 'light' | 'dark' | 'sepia' | 'night'): void {
     if (this.currentTheme === theme) return; // Skip if same theme
     this.currentTheme = theme;
     this.applyTheme(theme);
   }
 
-  private applyTheme(theme: 'light' | 'dark'): void {
-    const colors = {
+  private applyTheme(theme: 'light' | 'dark' | 'sepia' | 'night'): void {
+    const colors: Record<'light' | 'dark' | 'sepia' | 'night', { bg: string; color: string; muted: string; border: string; highlight: string }> = {
       light: { 
-        bg: '#fcfcfd', 
+        bg: '#ffffff', 
         color: '#1c2024',
-        muted: '#6b7280',
-        border: '#e5e7eb'
+        muted: '#6e7681',
+        border: '#e5e7eb',
+        highlight: 'rgba(0, 113, 227, 0.15)'
       },
       dark: { 
         bg: '#101215', 
         color: '#f5f5f7',
-        muted: '#a1a1aa',
-        border: '#374151'
+        muted: '#9ba0aa',
+        border: '#2a2e35',
+        highlight: 'rgba(64, 156, 255, 0.3)'
+      },
+      sepia: {
+        bg: '#f6f0e1',  // Softer warm cream
+        color: '#4a3628', // Rich coffee brown
+        muted: '#7a6652',
+        border: '#c4ad92',
+        highlight: 'rgba(180, 130, 70, 0.25)'
+      },
+      night: {
+        bg: '#000000',
+        color: '#dcdcdc', // Softer white for less eye strain
+        muted: '#8c8c8c',
+        border: '#323232',
+        highlight: 'rgba(100, 160, 255, 0.25)'
       }
     };
 
     const themeColors = colors[theme];
 
-    // For quick theme changes, just update CSS variables if styles already applied
-    if (this.stylesApplied) {
-      const root = document.documentElement;
-      root.style.setProperty('--epub-bg', themeColors.bg);
-      root.style.setProperty('--epub-color', themeColors.color);
-      root.style.setProperty('--epub-muted', themeColors.muted);
-      root.style.setProperty('--epub-border', themeColors.border);
-      
-      // Update content data attribute
-      const content = this.container.querySelector('.epub-continuous-content');
-      if (content) {
-        content.setAttribute('data-theme', theme);
-        (content as HTMLElement).style.backgroundColor = themeColors.bg;
-        (content as HTMLElement).style.color = themeColors.color;
-      }
-      return;
+    // Always update CSS variables for fast background/text changes
+    const root = document.documentElement;
+    root.style.setProperty('--epub-bg', themeColors.bg);
+    root.style.setProperty('--epub-color', themeColors.color);
+    root.style.setProperty('--epub-muted', themeColors.muted);
+    root.style.setProperty('--epub-border', themeColors.border);
+    root.style.setProperty('--epub-highlight', themeColors.highlight);
+    
+    // Update content data attribute immediately
+    const existingContent = this.container.querySelector('.epub-continuous-content');
+    if (existingContent) {
+      (existingContent as HTMLElement).setAttribute('data-theme', theme);
+      (existingContent as HTMLElement).style.backgroundColor = themeColors.bg;
+      (existingContent as HTMLElement).style.color = themeColors.color;
     }
 
     const styles = `
@@ -768,6 +794,26 @@ export class EpubRenderer {
         -moz-osx-font-smoothing: grayscale;
         hyphens: auto;
         word-spacing: 0.05em;
+      }
+
+      /* Normalize text color across common inline elements to prevent dark text in dark mode */
+      .epub-continuous-content p,
+      .epub-continuous-content li,
+      .epub-continuous-content span,
+      .epub-continuous-content em,
+      .epub-continuous-content strong,
+      .epub-continuous-content small,
+      .epub-continuous-content sub,
+      .epub-continuous-content sup,
+      .epub-continuous-content i,
+      .epub-continuous-content b,
+      .epub-continuous-content u,
+      .epub-continuous-content mark,
+      .epub-continuous-content dfn,
+      .epub-continuous-content cite,
+      .epub-continuous-content q,
+      .epub-continuous-content figcaption {
+        color: var(--epub-color) !important;
       }
 
       .epub-chapter {
@@ -804,7 +850,7 @@ export class EpubRenderer {
         font-size: 1.75em;
         font-weight: 400;
         margin: 0 0 2em 0;
-        color: ${themeColors.color};
+        color: ${themeColors.color} !important;
         text-align: center;
         position: relative;
         padding-bottom: 1em;
@@ -830,7 +876,7 @@ export class EpubRenderer {
       .epub-continuous-content h4,
       .epub-continuous-content h5,
       .epub-continuous-content h6 {
-        color: ${themeColors.color};
+        color: ${themeColors.color} !important;
         font-family: "Crimson Text", "Georgia", serif;
         font-weight: 600;
         letter-spacing: -0.01em;
@@ -1067,7 +1113,7 @@ export class EpubRenderer {
 
       /* Selection */
       .epub-continuous-content ::selection {
-        background: ${theme === 'dark' ? 'rgba(64, 156, 255, 0.3)' : 'rgba(0, 113, 227, 0.15)'};
+        background: ${themeColors.highlight};
         color: ${themeColors.color};
       }
 
@@ -1085,9 +1131,18 @@ export class EpubRenderer {
         line-height: 0.75;
         margin: 0.05em 0.15em 0 0;
         font-weight: 400;
-        color: ${theme === 'dark' ? '#d4af37' : '#8b4513'};
+        color: ${
+          theme === 'dark' ? '#d4af37' : 
+          theme === 'night' ? '#6495ed' :
+          theme === 'sepia' ? '#8b6f47' :
+          '#8b4513'
+        };
         font-family: "Crimson Text", "Georgia", serif;
-        text-shadow: ${theme === 'dark' ? '0 0 8px rgba(212, 175, 55, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.1)'};
+        text-shadow: ${
+          theme === 'dark' || theme === 'night' 
+            ? '0 0 8px rgba(212, 175, 55, 0.3)' 
+            : '0 2px 4px rgba(0, 0, 0, 0.1)'
+        };
       }
 
       /* Highlight styles */

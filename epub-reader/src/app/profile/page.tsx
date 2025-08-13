@@ -12,7 +12,7 @@ interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   preferences: {
-    theme?: 'light' | 'dark' | 'system';
+    theme?: 'light' | 'dark' | 'sepia' | 'night';
     font_size?: number;
     reading_goal?: number;
   };
@@ -30,7 +30,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     username: '',
     full_name: '',
-    theme: 'system' as 'light' | 'dark' | 'system',
+    theme: 'light' as 'light' | 'dark' | 'sepia' | 'night',
     font_size: 16,
     reading_goal: 20
   });
@@ -61,7 +61,7 @@ export default function ProfilePage() {
 
       if (profileData) {
         setProfile(profileData);
-        const savedTheme = profileData.preferences?.theme || 'system';
+        const savedTheme = profileData.preferences?.theme || 'light';
         setFormData({
           username: profileData.username || '',
           full_name: profileData.full_name || '',
@@ -81,7 +81,7 @@ export default function ProfilePage() {
           full_name: null,
           avatar_url: null,
           preferences: {
-            theme: 'system' as const,
+            theme: 'light' as const,
             font_size: 16,
             reading_goal: 20
           }
@@ -266,11 +266,12 @@ export default function ProfilePage() {
                     {/* Theme Selection */}
                     <div>
                       <label className="block text-sm font-medium mb-3 text-foreground">Theme</label>
-                      <div className="segmented-control">
+                      <div className="segmented-control flex-wrap">
                         {[
-                          { value: 'system', label: 'System' },
                           { value: 'light', label: 'Light' },
-                          { value: 'dark', label: 'Dark' }
+                          { value: 'dark', label: 'Dark' },
+                          { value: 'sepia', label: 'Sepia' },
+                          { value: 'night', label: 'Night' },
                         ].map((option) => (
                           <button
                             key={option.value}
