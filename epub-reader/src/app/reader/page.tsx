@@ -243,10 +243,10 @@ export default function ReaderPage() {
     };
   }, []);
 
-  // Load annotations for the book
-  const loadAnnotations = useCallback(async () => {
-    if (!bookId || !epubRendererRef.current) return;
-    
+  // Load annotations for the book (race-proof)
+  const loadAnnotations = useCallback(async (renderer?: EpubRenderer) => {
+    const r = renderer ?? epubRendererRef.current;
+    if (!bookId || !r) return;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -259,7 +259,9 @@ export default function ReaderPage() {
         .order('created_at', { ascending: false });
 
       if (!error && annotations) {
-        // Convert to renderer format
+        // Bail if renderer changed/destroyed while awaiting
+        if (!r || r !== epubRendererRef.current) return;
+
         const formattedAnnotations = annotations.map(a => ({
           id: a.id,
           location: a.location,
@@ -268,8 +270,8 @@ export default function ReaderPage() {
           annotation_type: a.annotation_type,
           note: a.note
         }));
-        
-        epubRendererRef.current.loadAnnotations(formattedAnnotations);
+
+        r.loadAnnotations(formattedAnnotations);
         console.log(`✅ Loaded ${annotations.length} annotations`);
       }
     } catch (error) {
@@ -324,11 +326,12 @@ export default function ReaderPage() {
 
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
-        
+
         // Load saved reading progress and annotations after book is loaded
         if (bookId) {
           await loadReadingProgress();
-          await loadAnnotations();
+          const r = epubRendererRef.current;
+          await loadAnnotations(r);
         }
         
       } catch (err) {

@@ -59,6 +59,11 @@
   pointer-events: none;
 }
 
+/* Variant: disable top glint when not desired */
+.no-top-glint.reader-floating::before {
+  display: none;
+}
+
 .dark .reader-floating {
   background: linear-gradient(
     135deg,

@@ -19,6 +19,9 @@ This document tracks the cleanup and improvements applied to the EPUB reader, an
   - Neutralized drop caps (no oversized first letters) via CSS overrides and DOM cleanup
   - Refined blockquote styling to a subtle, book-like left rule with italics
   - Improved charts/tables: wrap `svg/canvas/table` in scrollable containers, responsive sizing, basic SVG a11y labels
+- UI polish
+  - TOC uses `reader-floating` glass style with softer hairline dividers instead of solid borders
+  - Annotation panel cards switched to `glass-card`, softer textarea styling; header uses hairline divider to match TOC
 - Event binding
   - Fixed `annotationClick` listener effect to bind/unbind predictably (dependent on container readiness)
 - Tooling

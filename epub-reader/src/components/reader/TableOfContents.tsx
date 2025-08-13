@@ -61,7 +61,7 @@ const TocItemComponent: React.FC<{
   };
 
   return (
-    <div className="select-none">
+    <div className="select-none" style={{ scrollMarginTop: '12px' }}>
       <button
         onClick={() => {
           if (hasChildren && isMobile) {
@@ -234,16 +234,20 @@ export default function TableOfContents({
     }
   }, [isOpen, isMobile]);
 
-  // Scroll to active item
+  // Scroll to active item (align near top, not under header)
   useEffect(() => {
     if (isOpen && activeItemRef.current && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
       const active = activeItemRef.current;
       const containerRect = container.getBoundingClientRect();
       const activeRect = active.getBoundingClientRect();
-      
-      if (activeRect.top < containerRect.top || activeRect.bottom > containerRect.bottom) {
-        active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // delta relative to container viewport
+      const deltaTop = activeRect.top - containerRect.top;
+      const deltaBottom = activeRect.bottom - containerRect.bottom;
+
+      if (deltaTop < 0 || deltaBottom > 0) {
+        const target = container.scrollTop + deltaTop - 8; // small top offset
+        container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
       }
     }
   }, [isOpen, currentChapter]);
@@ -276,7 +280,7 @@ export default function TableOfContents({
         
         {/* Bottom Sheet */}
         <div className={`
-          absolute bottom-0 left-0 right-0 bg-[rgb(var(--bg))] rounded-t-3xl
+          absolute bottom-0 left-0 right-0 reader-floating no-top-glint rounded-t-3xl
           transition-transform duration-300 ease-out max-h-[85vh] flex flex-col
           ${isOpen ? 'translate-y-0' : 'translate-y-full'}
         `}>
@@ -286,7 +290,7 @@ export default function TableOfContents({
           </div>
           
           {/* Header */}
-          <div className="px-6 pb-4 border-b border-[rgba(var(--border),var(--border-opacity))]">
+          <div className="px-6 pb-4 reader-divider-h rounded-t-3xl">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <BookOpenSolidIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
@@ -348,14 +352,14 @@ export default function TableOfContents({
   }
 
   // Desktop: Floating sidebar
-  return (
-    <div className={`
-      fixed left-6 top-1/2 -translate-y-1/2 z-[75] w-[380px] max-h-[700px]
+    return (
+      <div className={`
+      fixed left-6 top-1/2 -translate-y-1/2 z-[75] w-[380px] h-[min(700px,90vh)]
       transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0 pointer-events-none'}
     `}>
-      <div className="bg-[rgb(var(--bg))]/95 backdrop-blur-xl rounded-2xl border border-[rgba(var(--border),var(--border-opacity))] shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-[rgba(var(--border),var(--border-opacity))]">
+      <div className="reader-floating no-top-glint rounded-2xl flex flex-col h-full">
+        {/* Header (static; content below scrolls) */}
+        <div className="px-6 py-5 shrink-0 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent))]/20 to-[rgb(var(--accent))]/10 flex items-center justify-center">
@@ -459,7 +463,6 @@ export default function TableOfContents({
         <div 
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-4 py-4"
-          style={{ maxHeight: 'calc(700px - 240px)' }}
         >
           {filteredItems.length === 0 ? (
             <div className="text-center py-8">
@@ -493,7 +496,7 @@ export default function TableOfContents({
         
         {/* Footer with stats */}
         {totalPages && (
-          <div className="px-6 py-3 border-t border-[rgba(var(--border),var(--border-opacity))] bg-[rgba(var(--muted),0.02)]">
+          <div className="px-6 py-3 border-t border-black/5 dark:border-white/5 bg-[rgba(var(--muted),0.02)]">
             <div className="flex items-center justify-between text-xs text-muted">
               <span>{filteredItems.length} {filteredItems.length === 1 ? 'chapter' : 'chapters'}</span>
               {totalPages && <span>{totalPages} pages total</span>}
