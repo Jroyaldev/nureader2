@@ -126,8 +126,8 @@ export default function ReaderPage() {
         }
       }
 
-      // Create new epub renderer
-      const renderer = new EpubRenderer(containerRef.current);
+      // Create new epub renderer with initial theme to prevent flash
+      const renderer = new EpubRenderer(containerRef.current, theme);
       epubRendererRef.current = renderer;
 
       // Set up progress tracking
@@ -812,7 +812,7 @@ export default function ReaderPage() {
 
   return (
     <div 
-      className="min-h-dvh relative overflow-hidden bg-[rgb(var(--bg))] transition-colors duration-300"
+      className="min-h-dvh relative bg-[rgb(var(--bg))] transition-colors duration-300"
     >
       {/* Premium gradient background */}
       <div className="fixed inset-0 pointer-events-none">
@@ -934,7 +934,9 @@ export default function ReaderPage() {
                 overflowY: "auto",
                 overflowX: "hidden",
                 scrollBehavior: "smooth",
-                WebkitOverflowScrolling: "touch"
+                WebkitOverflowScrolling: "touch",
+                // Prevent white flash by setting initial color
+                color: theme === "dark" ? "#f5f5f7" : "#1c2024"
               }}
             />
           </div>
@@ -1019,16 +1021,15 @@ export default function ReaderPage() {
       />
 
       {/* Note Modal */}
-      {showNoteModal && (
-        <NoteModal
-          selectedText={selectedText}
-          onSave={(note) => {
-            createAnnotation('note', '#fde047', note);
-            setShowNoteModal(false);
-          }}
-          onClose={() => setShowNoteModal(false)}
-        />
-      )}
+      <NoteModal
+        isOpen={showNoteModal}
+        selectedText={selectedText}
+        onSave={(note) => {
+          createAnnotation('note', '#fde047', note);
+          setShowNoteModal(false);
+        }}
+        onCancel={() => setShowNoteModal(false)}
+      />
 
       {/* Toast Notifications */}
       {toast && (

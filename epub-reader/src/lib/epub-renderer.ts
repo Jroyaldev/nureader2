@@ -41,9 +41,19 @@ export class EpubRenderer {
   private highlightedRanges: Map<string, Range> = new Map();
   private fontSize: number = 18;
   private _onScroll?: (e: Event) => void;
+  private stylesApplied: boolean = false;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, initialTheme?: 'light' | 'dark') {
     this.container = container;
+    // Set initial theme immediately to prevent flash
+    if (initialTheme) {
+      this.currentTheme = initialTheme;
+    } else {
+      // Try to detect from document
+      const isDark = document.documentElement.classList.contains('dark') || 
+                    document.documentElement.getAttribute('data-theme') === 'dark';
+      this.currentTheme = isDark ? 'dark' : 'light';
+    }
     this.setupScrollListener();
     this.setupTextSelectionListener();
   }
@@ -105,11 +115,11 @@ export class EpubRenderer {
       // Extract all chapters as HTML
       await this.extractChapters();
       
+      // Apply initial theme BEFORE rendering to prevent flash
+      this.applyTheme(this.currentTheme);
+      
       // Render as single continuous document
       await this.renderContinuousContent();
-      
-      // Apply initial theme
-      this.applyTheme(this.currentTheme);
 
       console.log("✅ EpubRenderer: Book loaded successfully", { title, author, chapters: this.chapters.length });
       
@@ -235,72 +245,102 @@ export class EpubRenderer {
     contentWrapper.className = 'epub-continuous-content';
     contentWrapper.setAttribute('data-theme', this.currentTheme);
     
-    for (const [index, chapter] of this.chapters.entries()) {
-      const section = document.createElement('section');
-      section.className = 'epub-chapter';
-      section.setAttribute('data-chapter-id', chapter.id);
-      section.setAttribute('data-chapter-index', chapter.index.toString());
-      section.setAttribute('data-chapter-href', chapter.href);
-      
-      // Extract body content only to avoid head elements
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = chapter.content;
-      
-      let bodyContent = '';
-      const bodyElement = tempDiv.querySelector('body');
-      if (bodyElement) {
-        bodyContent = bodyElement.innerHTML;
-      } else {
-        // If no body tag, use the content as-is but clean it
-        bodyContent = this.cleanHtmlContent(chapter.content);
-      }
-      
-      // Process images to fix relative URLs  
-      console.log(`🔧 About to process images for chapter ${chapter.index}: ${chapter.href}`);
-      console.log(`📋 Body content preview: ${bodyContent.substring(0, 300)}...`);
-      bodyContent = await this.processImages(bodyContent, chapter.href);
-      console.log(`✅ Finished processing images for chapter ${chapter.index}`);
-      
-      // Check if content already has a chapter heading
-      const hasH1 = /<h1[^>]*>/i.test(bodyContent);
-      const hasH2 = /<h2[^>]*>/i.test(bodyContent);
-      const firstHeadingMatch = bodyContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i);
-      const firstHeadingText = firstHeadingMatch && firstHeadingMatch[1] ? firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
-      
-      // Only add chapter title if:
-      // 1. There's no h1 or h2, OR
-      // 2. The existing heading doesn't match the chapter title
-      if (chapter.title && !hasH1 && !hasH2) {
-        bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
-      } else if (chapter.title && firstHeadingText && 
-                 firstHeadingText.toLowerCase() !== chapter.title.toLowerCase() &&
-                 !chapter.title.toLowerCase().includes(firstHeadingText.toLowerCase()) &&
-                 !firstHeadingText.toLowerCase().includes(chapter.title.toLowerCase())) {
-        // If the heading exists but doesn't match the TOC title, prepend the TOC title
-        bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
-      }
-      
-      section.innerHTML = bodyContent;
-      // Enhance charts/tables/dropcaps within this section
-      this.enhanceRenderedContent(section);
-      contentWrapper.appendChild(section);
-      
-      // Add separator between chapters (except last)
-      if (index < this.chapters.length - 1) {
-        const separator = document.createElement('div');
-        separator.className = 'chapter-separator';
-        contentWrapper.appendChild(separator);
+    // Process chapters in batches for better performance
+    const batchSize = 3;
+    const totalChapters = this.chapters.length;
+    
+    // Render first batch immediately for faster initial display
+    for (let i = 0; i < Math.min(batchSize, totalChapters); i++) {
+      const chapter = this.chapters[i];
+      if (chapter) {
+        await this.renderChapter(contentWrapper, chapter, i);
       }
     }
-
-    // Clear container and add continuous content
+    
+    // Clear container and add continuous content early
     this.container.innerHTML = '';
     this.container.appendChild(contentWrapper);
     
-    // Post-process images in DOM as a fallback
-    await this.postProcessImagesInDOM();
+    // Render remaining chapters progressively
+    if (totalChapters > batchSize) {
+      // Use requestIdleCallback for remaining chapters if available
+      const renderRemaining = async () => {
+        for (let i = batchSize; i < totalChapters; i++) {
+          const chapter = this.chapters[i];
+          if (chapter) {
+            await this.renderChapter(contentWrapper, chapter, i);
+          }
+        }
+        // Post-process images in DOM as a fallback
+        await this.postProcessImagesInDOM();
+      };
+      
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(renderRemaining);
+      } else {
+        setTimeout(renderRemaining, 100);
+      }
+    } else {
+      // Post-process images immediately for small books
+      await this.postProcessImagesInDOM();
+    }
     
-    console.log("✅ EpubRenderer: Continuous content rendered");
+    console.log("✅ EpubRenderer: Initial content rendered");
+  }
+  
+  private async renderChapter(contentWrapper: HTMLElement, chapter: ChapterData, index: number): Promise<void> {
+    const section = document.createElement('section');
+    section.className = 'epub-chapter';
+    section.setAttribute('data-chapter-id', chapter.id);
+    section.setAttribute('data-chapter-index', chapter.index.toString());
+    section.setAttribute('data-chapter-href', chapter.href);
+    
+    // Extract body content only to avoid head elements
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = chapter.content;
+    
+    let bodyContent = '';
+    const bodyElement = tempDiv.querySelector('body');
+    if (bodyElement) {
+      bodyContent = bodyElement.innerHTML;
+    } else {
+      // If no body tag, use the content as-is but clean it
+      bodyContent = this.cleanHtmlContent(chapter.content);
+    }
+    
+    // Process images to fix relative URLs
+    bodyContent = await this.processImages(bodyContent, chapter.href);
+    
+    // Check if content already has a chapter heading
+    const hasH1 = /<h1[^>]*>/i.test(bodyContent);
+    const hasH2 = /<h2[^>]*>/i.test(bodyContent);
+    const firstHeadingMatch = bodyContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i);
+    const firstHeadingText = firstHeadingMatch && firstHeadingMatch[1] ? firstHeadingMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+    
+    // Only add chapter title if:
+    // 1. There's no h1 or h2, OR
+    // 2. The existing heading doesn't match the chapter title
+    if (chapter.title && !hasH1 && !hasH2) {
+      bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
+    } else if (chapter.title && firstHeadingText && 
+               firstHeadingText.toLowerCase() !== chapter.title.toLowerCase() &&
+               !chapter.title.toLowerCase().includes(firstHeadingText.toLowerCase()) &&
+               !firstHeadingText.toLowerCase().includes(chapter.title.toLowerCase())) {
+      // If the heading exists but doesn't match the TOC title, prepend the TOC title
+      bodyContent = `<h2 class="chapter-title">${chapter.title}</h2>${bodyContent}`;
+    }
+    
+    section.innerHTML = bodyContent;
+    // Enhance charts/tables/dropcaps within this section
+    this.enhanceRenderedContent(section);
+    contentWrapper.appendChild(section);
+    
+    // Add separator between chapters (except last)
+    if (index < this.chapters.length - 1) {
+      const separator = document.createElement('div');
+      separator.className = 'chapter-separator';
+      contentWrapper.appendChild(separator);
+    }
   }
 
   private async postProcessImagesInDOM(): Promise<void> {
@@ -364,8 +404,6 @@ export class EpubRenderer {
 
   private async processImages(html: string, chapterHref: string): Promise<string> {
     // Process images using epub.js Resources API
-    console.log(`🖼️ Processing images for chapter: ${chapterHref}`);
-    
     // More flexible regex to catch all image variations
     const imgPatterns = [
       /<img([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
@@ -384,15 +422,11 @@ export class EpubRenderer {
         if (src && !src.startsWith('data:') && !src.startsWith('http://') && 
             !src.startsWith('https://') && !src.startsWith('blob:')) {
           imageSrcs.add(src);
-          console.log(`🔍 Found image to process: ${src}`);
         }
       }
     }
     
-    console.log(`📊 Total unique images found: ${imageSrcs.size}`);
-    
     if (imageSrcs.size === 0) {
-      console.log(`⚠️ No images found in chapter HTML`);
       return html;
     }
     
@@ -455,7 +489,6 @@ export class EpubRenderer {
   }
   
   private async createImageUrl(src: string, chapterHref: string): Promise<string | null> {
-    console.log(`🔄 createImageUrl called with src: ${src}, chapterHref: ${chapterHref}`);
     try {
       // First try to get the image from resources
       if (this.book?.resources) {
@@ -616,11 +649,17 @@ export class EpubRenderer {
 
   private setupScrollListener(): void {
     let ticking = false;
+    let lastScrollTop = 0;
     this._onScroll = () => {
       if (!ticking) {
         requestAnimationFrame(() => {
-          this.updateProgress();
-          this.updateCurrentChapter();
+          // Only update if scroll position actually changed significantly
+          const currentScrollTop = this.container.scrollTop;
+          if (Math.abs(currentScrollTop - lastScrollTop) > 5) {
+            this.updateProgress();
+            this.updateCurrentChapter();
+            lastScrollTop = currentScrollTop;
+          }
           ticking = false;
         });
         ticking = true;
@@ -665,6 +704,7 @@ export class EpubRenderer {
   }
 
   setTheme(theme: 'light' | 'dark'): void {
+    if (this.currentTheme === theme) return; // Skip if same theme
     this.currentTheme = theme;
     this.applyTheme(theme);
   }
@@ -687,10 +727,35 @@ export class EpubRenderer {
 
     const themeColors = colors[theme];
 
+    // For quick theme changes, just update CSS variables if styles already applied
+    if (this.stylesApplied) {
+      const root = document.documentElement;
+      root.style.setProperty('--epub-bg', themeColors.bg);
+      root.style.setProperty('--epub-color', themeColors.color);
+      root.style.setProperty('--epub-muted', themeColors.muted);
+      root.style.setProperty('--epub-border', themeColors.border);
+      
+      // Update content data attribute
+      const content = this.container.querySelector('.epub-continuous-content');
+      if (content) {
+        content.setAttribute('data-theme', theme);
+        (content as HTMLElement).style.backgroundColor = themeColors.bg;
+        (content as HTMLElement).style.color = themeColors.color;
+      }
+      return;
+    }
+
     const styles = `
+      :root {
+        --epub-bg: ${themeColors.bg};
+        --epub-color: ${themeColors.color};
+        --epub-muted: ${themeColors.muted};
+        --epub-border: ${themeColors.border};
+      }
+      
       .epub-continuous-content {
-        background-color: ${themeColors.bg};
-        color: ${themeColors.color};
+        background-color: var(--epub-bg, ${themeColors.bg});
+        color: var(--epub-color, ${themeColors.color});
         font-family: "Crimson Text", "Georgia", "Times New Roman", serif;
         font-size: ${this.fontSize}px;
         line-height: 1.8;
@@ -1068,11 +1133,14 @@ export class EpubRenderer {
       document.head.appendChild(styleEl);
     }
     styleEl.textContent = styles;
+    this.stylesApplied = true;
 
-    // Update theme attribute
-    const content = this.container.querySelector('.epub-continuous-content');
+    // Update theme attribute and colors immediately
+    const content = this.container.querySelector('.epub-continuous-content') as HTMLElement;
     if (content) {
       content.setAttribute('data-theme', theme);
+      content.style.backgroundColor = themeColors.bg;
+      content.style.color = themeColors.color;
     }
   }
 
@@ -1235,10 +1303,17 @@ export class EpubRenderer {
     }
   }
 
-  // Adjust base font size and re-apply theme styles
+  // Adjust base font size without re-applying entire theme
   setFontSize(size: number): void {
-    this.fontSize = Math.max(12, Math.min(32, Math.round(size)));
-    this.applyTheme(this.currentTheme);
+    const newSize = Math.max(12, Math.min(32, Math.round(size)));
+    if (this.fontSize === newSize) return; // Skip if same size
+    this.fontSize = newSize;
+    
+    // Just update font-size CSS variable for instant change
+    const content = this.container.querySelector('.epub-continuous-content') as HTMLElement;
+    if (content) {
+      content.style.fontSize = `${this.fontSize}px`;
+    }
   }
 
   // Get current position info

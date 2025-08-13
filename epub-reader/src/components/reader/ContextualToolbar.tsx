@@ -349,6 +349,41 @@ export default function ContextualToolbar({
   // Desktop floating toolbar
   return (
     <>
+      {/* Theme Menu Dropdown - Rendered outside toolbar for proper visibility */}
+      {showThemeMenu && (
+        <div 
+          className="fixed reader-glass rounded-2xl p-3 shadow-2xl animate-scale-in"
+          style={{
+            minWidth: '260px',
+            zIndex: 90,
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h4 className="text-xs font-semibold uppercase tracking-wider opacity-50 mb-3">Theme</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(themeConfigs).map(([key, config]) => (
+              <button
+                key={key}
+                onClick={() => handleThemeSelect(key as any)}
+                className={`relative px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                  currentTheme === key 
+                    ? 'reader-btn-active shadow-sm' 
+                    : 'reader-btn-hover'
+                }`}
+              >
+                {React.createElement(config.icon, { className: "w-4 h-4" })}
+                <span className="text-sm font-medium">{config.label}</span>
+                {currentTheme === key && (
+                  <CheckIcon className="w-3.5 h-3.5 ml-auto" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Top Floating Toolbar */}
       <div 
         className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-all duration-500 ${
@@ -466,30 +501,6 @@ export default function ContextualToolbar({
                   })}
                 </button>
                 
-                {showThemeMenu && (
-                  <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 reader-glass rounded-2xl p-3 min-w-[260px] shadow-2xl animate-scale-in">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider opacity-50 mb-3">Theme</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(themeConfigs).map(([key, config]) => (
-                        <button
-                          key={key}
-                          onClick={() => handleThemeSelect(key as any)}
-                          className={`relative px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
-                            currentTheme === key 
-                              ? 'reader-btn-active shadow-sm' 
-                              : 'reader-btn-hover'
-                          }`}
-                        >
-                          {React.createElement(config.icon, { className: "w-4 h-4" })}
-                          <span className="text-sm font-medium">{config.label}</span>
-                          {currentTheme === key && (
-                            <CheckIcon className="w-3.5 h-3.5 ml-auto" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
               
               {/* Fullscreen */}
