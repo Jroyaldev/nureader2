@@ -1709,11 +1709,35 @@ export class EpubRenderer {
       const range = this.findTextInDocument(searchText, annotation.location);
       if (!range) return;
       
-      // Create highlight span
+      // Create highlight span with different styling for notes
       const highlightSpan = document.createElement('span');
-      highlightSpan.className = 'epub-highlight';
+      
+      if (annotation.annotation_type === 'note') {
+        // Special styling for notes - more subtle and digital
+        highlightSpan.className = 'epub-note';
+        highlightSpan.style.backgroundColor = 'transparent';
+        highlightSpan.style.borderBottom = '2px dotted rgba(99, 102, 241, 0.4)';
+        highlightSpan.style.position = 'relative';
+        highlightSpan.style.paddingBottom = '1px';
+        
+        // Add a small note indicator after the text
+        const noteIndicator = document.createElement('sup');
+        noteIndicator.style.cssText = `
+          color: rgb(99, 102, 241);
+          font-size: 0.7em;
+          margin-left: 2px;
+          font-weight: 600;
+          opacity: 0.7;
+        `;
+        noteIndicator.textContent = '✎';
+        highlightSpan.dataset.hasIndicator = 'true';
+      } else {
+        // Regular highlight styling
+        highlightSpan.className = 'epub-highlight';
+        highlightSpan.style.backgroundColor = annotation.color || 'rgba(251, 191, 36, 0.3)';
+      }
+      
       highlightSpan.dataset.annotationId = annotation.id;
-      highlightSpan.style.backgroundColor = annotation.color || 'rgba(251, 191, 36, 0.3)';
       highlightSpan.style.cursor = 'pointer';
       highlightSpan.title = annotation.note || 'Click to view annotation';
       
@@ -1726,12 +1750,44 @@ export class EpubRenderer {
       // Wrap the range content in highlight span
       try {
         range.surroundContents(highlightSpan);
+        
+        // Add note indicator for notes
+        if (annotation.annotation_type === 'note' && highlightSpan.dataset.hasIndicator === 'true') {
+          const noteIndicator = document.createElement('sup');
+          noteIndicator.style.cssText = `
+            color: rgb(99, 102, 241);
+            font-size: 0.7em;
+            margin-left: 2px;
+            font-weight: 600;
+            opacity: 0.7;
+            user-select: none;
+          `;
+          noteIndicator.textContent = '✎';
+          highlightSpan.appendChild(noteIndicator);
+        }
+        
         this.highlightedRanges.set(annotation.id, range);
       } catch (e) {
         // If surroundContents fails (e.g., range spans multiple elements),
         // extract and wrap the contents manually
         const contents = range.extractContents();
         highlightSpan.appendChild(contents);
+        
+        // Add note indicator for notes
+        if (annotation.annotation_type === 'note' && highlightSpan.dataset.hasIndicator === 'true') {
+          const noteIndicator = document.createElement('sup');
+          noteIndicator.style.cssText = `
+            color: rgb(99, 102, 241);
+            font-size: 0.7em;
+            margin-left: 2px;
+            font-weight: 600;
+            opacity: 0.7;
+            user-select: none;
+          `;
+          noteIndicator.textContent = '✎';
+          highlightSpan.appendChild(noteIndicator);
+        }
+        
         range.insertNode(highlightSpan);
         this.highlightedRanges.set(annotation.id, range);
       }

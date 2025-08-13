@@ -542,11 +542,11 @@
   }
   
   /* Fix feature cards text on homepage in Night mode */
-  .night .bg-\\[rgb\\(var\\(--surface\\)\\)\\] {
+  .night [class*="bg-[rgb(var(--surface"]  {
     background: rgb(30, 30, 30);
   }
   
-  .night .hover\\:bg-\\[rgb\\(var\\(--surface-hover\\)\\)\\]:hover {
+  .night [class*="hover:bg-[rgb(var(--surface-hover"]:hover {
     background: rgb(40, 40, 40);
   }
   
@@ -561,11 +561,11 @@
     color: rgb(var(--fg));
   }
   
-  .night .text-\\[rgb\\(var\\(--muted\\)\\)\\] {
+  .night [class*="text-[rgb(var(--muted"] {
     color: rgb(180, 180, 180) !important;
   }
   
-  .night .text-\\[rgb\\(var\\(--fg\\)\\)\\] {
+  .night [class*="text-[rgb(var(--fg"] {
     color: rgb(220, 220, 220) !important;
   }
 }

@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import AnnotationPanel from "@/components/AnnotationPanel";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
-import NoteModal from "@/components/NoteModal";
-import Tooltip from "@/components/TooltipImproved";
+import NotePopover from "@/components/reader/NotePopover";
+import NoteMobileModal from "@/components/reader/NoteMobileModal";
 import Toast from "@/components/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
@@ -60,6 +60,7 @@ export default function ReaderPage() {
   const [annotationToolbarPos, setAnnotationToolbarPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showAnnotationToolbar, setShowAnnotationToolbar] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [notePopoverPos, setNotePopoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
   // Additional state for ContextualToolbar
@@ -553,17 +554,18 @@ export default function ReaderPage() {
     setIsToolbarPinned(prev => !prev);
   }, []);
 
-  const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = '#fbbf24', note?: string) => {
+  const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = 'rgba(251, 191, 36, 0.3)', note?: string) => {
     if (!bookId || !loaded?.renderer) return;
+    
+    // Define variables at the top of the function scope
+    let content = "";
+    let cfi = "";
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const currentChapter = loaded.renderer.getCurrentChapter();
-      
-      let content = "";
-      let cfi = "";
       
       if (type === 'highlight' || type === 'note') {
         content = selectedText;
@@ -573,17 +575,27 @@ export default function ReaderPage() {
         cfi = loaded.renderer.getCurrentCfi();
       }
 
+      // Build the insert object
+      const annotationData: any = {
+        user_id: user.id,
+        book_id: bookId,
+        content,
+        note: note || null,
+        location: cfi,
+        annotation_type: type,
+        color
+      };
+      
+      // Only add chapter_info if the column exists (for backward compatibility)
+      // Remove this check after migration is applied
+      if (currentChapter) {
+        // Try with chapter_info, fallback without if it fails
+        annotationData.chapter_info = currentChapter;
+      }
+
       const { data: newAnnotation, error } = await supabase
         .from('annotations')
-        .insert({
-          user_id: user.id,
-          book_id: bookId,
-          content,
-          note: note || null,
-          location: cfi,
-          annotation_type: type,
-          color
-        })
+        .insert(annotationData)
         .select()
         .single();
 
@@ -616,8 +628,71 @@ export default function ReaderPage() {
       window.getSelection()?.removeAllRanges();
       
     } catch (error) {
-      console.error('Error creating annotation:', error);
-      setToast({ message: 'Failed to save annotation', type: 'error' });
+      // Check if it's a column error and retry without chapter_info
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error as any).message;
+        if (errorMessage && errorMessage.includes('chapter_info')) {
+          // Silently retry without chapter_info (column doesn't exist yet)
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            
+            const { data: newAnnotation, error: retryError } = await supabase
+              .from('annotations')
+              .insert({
+                user_id: user.id,
+                book_id: bookId,
+                content,
+                note: note || null,
+                location: cfi,
+                annotation_type: type,
+                color
+              })
+              .select()
+              .single();
+              
+            if (retryError) throw retryError;
+            
+            // Apply the highlight if successful
+            if (newAnnotation && epubRendererRef.current && (type === 'highlight' || type === 'note')) {
+              epubRendererRef.current.addAnnotation({
+                id: newAnnotation.id,
+                location: newAnnotation.location,
+                content: newAnnotation.content,
+                color: newAnnotation.color,
+                annotation_type: newAnnotation.annotation_type,
+                note: newAnnotation.note
+              });
+            }
+            
+            // Show success toast
+            const messages = {
+              highlight: 'Highlight saved',
+              note: 'Note added',
+              bookmark: 'Bookmark created'
+            };
+            setToast({ message: messages[type], type: 'success' });
+            
+            // Clear selection
+            setSelectedText("");
+            setSelectionCfi("");
+            setShowAnnotationToolbar(false);
+            window.getSelection()?.removeAllRanges();
+            
+            return; // Exit early on successful retry
+          } catch (retryErr) {
+            console.error('Failed to save annotation:', retryErr);
+            setToast({ message: 'Failed to save annotation', type: 'error' });
+          }
+        } else {
+          // Only log non-column errors
+          console.error('Error creating annotation:', error);
+          setToast({ message: 'Failed to save annotation', type: 'error' });
+        }
+      } else {
+        console.error('Error creating annotation:', error);
+        setToast({ message: 'Failed to save annotation', type: 'error' });
+      }
     }
   }, [bookId, loaded, supabase, selectedText, selectionCfi]);
 
@@ -1005,7 +1080,11 @@ export default function ReaderPage() {
         position={annotationToolbarPos}
         selectedText={selectedText}
         onHighlight={(color) => createAnnotation('highlight', color)}
-        onNote={() => setShowNoteModal(true)}
+        onNote={() => {
+          setNotePopoverPos(annotationToolbarPos);
+          setShowAnnotationToolbar(false); // Hide toolbar but don't clear selection
+          setShowNoteModal(true);
+        }}
         onBookmark={() => createAnnotation('bookmark')}
         onClose={() => {
           setShowAnnotationToolbar(false);
@@ -1015,16 +1094,49 @@ export default function ReaderPage() {
         }}
       />
 
-      {/* Note Modal */}
-      <NoteModal
-        isOpen={showNoteModal}
-        selectedText={selectedText}
-        onSave={(note) => {
-          createAnnotation('note', '#fde047', note);
-          setShowNoteModal(false);
-        }}
-        onCancel={() => setShowNoteModal(false)}
-      />
+      {/* Note Modal - Responsive */}
+      {isMobile ? (
+        <NoteMobileModal
+          visible={showNoteModal}
+          selectedText={selectedText}
+          onSave={async (note) => {
+            await createAnnotation('note', 'rgba(99, 102, 241, 0.15)', note); // Soft indigo for notes
+            setShowNoteModal(false);
+            // Clear selection after successful save
+            setSelectedText("");
+            setSelectionCfi("");
+            window.getSelection()?.removeAllRanges();
+          }}
+          onClose={() => {
+            setShowNoteModal(false);
+            // Clear selection when canceling
+            setSelectedText("");
+            setSelectionCfi("");
+            window.getSelection()?.removeAllRanges();
+          }}
+        />
+      ) : (
+        <NotePopover
+          visible={showNoteModal}
+          position={notePopoverPos}
+          selectedText={selectedText}
+          onSave={async (note) => {
+            await createAnnotation('note', 'rgba(99, 102, 241, 0.15)', note); // Soft indigo for notes
+            setShowNoteModal(false);
+            // Clear selection after successful save
+            setSelectedText("");
+            setSelectionCfi("");
+            window.getSelection()?.removeAllRanges();
+          }}
+          onClose={() => {
+            setShowNoteModal(false);
+            // Clear selection when canceling
+            setSelectedText("");
+            setSelectionCfi("");
+            window.getSelection()?.removeAllRanges();
+          }}
+        />
+      )}
 
       {/* Toast Notifications */}
       {toast && (

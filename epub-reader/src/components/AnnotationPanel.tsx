@@ -8,7 +8,8 @@ import {
   PaintBrushIcon,
   XMarkIcon,
   TrashIcon,
-  PencilIcon
+  PencilIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
 
 interface Annotation {
@@ -20,6 +21,7 @@ interface Annotation {
   location: string;
   annotation_type: 'highlight' | 'note' | 'bookmark';
   color: string;
+  chapter_info?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +48,8 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   const [filter, setFilter] = useState<'all' | 'highlight' | 'note' | 'bookmark'>('all');
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
   const supabase = createClient();
 
@@ -125,8 +129,23 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   };
 
   const filteredAnnotations = annotations.filter(annotation => {
-    if (filter === 'all') return true;
-    return annotation.annotation_type === filter;
+    // Type filter
+    if (filter !== 'all' && annotation.annotation_type !== filter) return false;
+    
+    // Color filter (for highlights)
+    if (selectedColor && annotation.annotation_type === 'highlight' && annotation.color !== selectedColor) {
+      return false;
+    }
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesContent = annotation.content?.toLowerCase().includes(query);
+      const matchesNote = annotation.note?.toLowerCase().includes(query);
+      return matchesContent || matchesNote;
+    }
+    
+    return true;
   });
 
   const getColorInfo = (color: string) => {
@@ -170,8 +189,30 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
             </button>
           </div>
 
+          {/* Search bar */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search annotations..."
+                className="w-full pl-9 pr-3 py-2 text-xs bg-[rgba(var(--muted),0.05)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[rgb(var(--accent))]/30 placeholder:text-muted-foreground/50"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[rgba(var(--muted),0.1)] rounded transition-colors"
+                >
+                  <XMarkIcon className="w-3 h-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Filter buttons */}
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-3">
             <div className="flex gap-2">
               {[
                 { key: 'all', label: 'All' },
@@ -196,6 +237,38 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
               })}
             </div>
           </div>
+          
+          {/* Color filters for highlights */}
+          {filter === 'highlight' && (
+            <div className="px-4 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Color:</span>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setSelectedColor(null)}
+                    className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+                      !selectedColor ? 'bg-[rgba(var(--muted),0.15)] text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {HIGHLIGHT_COLORS.map(color => (
+                    <button
+                      key={color.value}
+                      onClick={() => setSelectedColor(color.value)}
+                      className={`w-5 h-5 rounded-full border-2 transition-all ${
+                        selectedColor === color.value 
+                          ? 'border-foreground scale-110' 
+                          : 'border-transparent hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -217,33 +290,62 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
               {filteredAnnotations.map((annotation) => (
                 <div
                   key={annotation.id}
-                  className="bg-[rgba(var(--muted),0.03)] rounded-lg p-4 hover:bg-[rgba(var(--muted),0.05)] transition-all cursor-pointer group"
+                  className="bg-[rgba(var(--muted),0.03)] rounded-lg p-4 hover:bg-[rgba(var(--muted),0.05)] transition-all cursor-pointer group relative overflow-hidden"
                   onClick={() => onJumpToAnnotation(annotation.location, annotation.id)}
                 >
+                  {/* Color stripe for highlights */}
+                  {annotation.annotation_type === 'highlight' && (
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1"
+                      style={{ backgroundColor: annotation.color || 'rgba(251, 191, 36, 0.8)' }}
+                      aria-hidden
+                    />
+                  )}
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       {annotation.annotation_type === 'highlight' && (
                         <div
-                          className="w-4 h-4 rounded-full"
+                          className="w-5 h-5 rounded-full border-2 border-white dark:border-black/20 shadow-sm"
                           style={{ 
-                            backgroundColor: getColorInfo(annotation.color).value,
-                            boxShadow: `0 0 0 1px rgba(0,0,0,0.08), 0 2px 4px ${getColorInfo(annotation.color).value}40`
+                            backgroundColor: annotation.color || 'rgba(251, 191, 36, 0.5)',
+                            boxShadow: `0 0 0 2px ${annotation.color || 'rgba(251, 191, 36, 0.5)'}40, 0 2px 4px rgba(0,0,0,0.1)`
                           }}
-                          aria-hidden
+                          title={getColorInfo(annotation.color).name + ' highlight'}
+                          aria-label={getColorInfo(annotation.color).name + ' highlight'}
                         />
                       )}
                       {annotation.annotation_type === 'note' && (
-                        <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[rgba(var(--accent),0.1)] flex items-center justify-center">
-                          <ChatBubbleLeftIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
+                        <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 flex items-center justify-center">
+                          <ChatBubbleLeftIcon className="w-4 h-4 text-indigo-500" />
                         </div>
                       )}
                       {annotation.annotation_type === 'bookmark' && (
-                        <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[rgba(var(--accent),0.1)] flex items-center justify-center">
-                          <BookmarkIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                            <BookmarkIcon className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-foreground">Bookmark</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {annotation.chapter_info || 'Chapter location'}
+                            </span>
+                          </div>
                         </div>
                       )}
-                      <span className="text-xs text-muted font-medium tabular-nums">{formatDate(annotation.created_at)}</span>
+                      {annotation.annotation_type !== 'bookmark' && (
+                        <div className="flex items-center gap-2 text-xs text-muted">
+                          {annotation.chapter_info && (
+                            <>
+                              <span className="font-medium truncate max-w-[120px]" title={annotation.chapter_info}>
+                                {annotation.chapter_info}
+                              </span>
+                              <span className="text-muted-foreground/50">•</span>
+                            </>
+                          )}
+                          <span className="font-medium tabular-nums">{formatDate(annotation.created_at)}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -272,13 +374,25 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
 
                   {/* Content */}
                   <div className="space-y-3">
-                    {annotation.content && (
+                    {annotation.annotation_type === 'bookmark' ? (
+                      <div className="flex items-center gap-2">
+                        <BookmarkIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 shrink-0" />
+                        <p className="text-sm font-medium text-foreground">
+                          {annotation.content || 'Page bookmarked'}
+                        </p>
+                        {annotation.annotation_type === 'bookmark' && (
+                          <span className="text-xs text-muted font-medium ml-auto tabular-nums">
+                            {formatDate(annotation.created_at)}
+                          </span>
+                        )}
+                      </div>
+                    ) : annotation.content ? (
                       <div className="bg-[rgba(var(--muted),0.04)] rounded-lg p-3">
                         <p className="text-sm leading-relaxed italic text-foreground/85">
                           "{annotation.content}"
                         </p>
                       </div>
-                    )}
+                    ) : null}
 
                     {editingNote === annotation.id ? (
                       <div className="space-y-2">

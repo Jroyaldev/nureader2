@@ -86,14 +86,22 @@ export const annotationCreateSchema = z.object({
   type: annotationTypeSchema,
   chapterId: z.string().max(255).nullable(),
   cfiRange: z.string().nullable(),
-  selectedText: z.string().when('type', {
-    is: (type: string) => type !== 'bookmark',
-    then: z.string().min(1),
-    otherwise: z.string().nullable(),
-  }),
+  selectedText: z.string().nullable(),
   noteContent: z.string().max(5000).nullable(),
   color: annotationColorSchema.nullable(),
-});
+}).refine(
+  (data) => {
+    // selectedText is required for highlights and notes, but not bookmarks
+    if (data.type !== 'bookmark' && !data.selectedText) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "selectedText is required for highlights and notes",
+    path: ["selectedText"],
+  }
+);
 
 export const annotationUpdateSchema = annotationCreateSchema.partial().extend({
   id: uuidSchema,
