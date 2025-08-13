@@ -301,10 +301,25 @@
 
 @keyframes float {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0px) translateX(0px);
   }
-  50% {
-    transform: translateY(-10px);
+  33% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  66% {
+    transform: translateY(-10px) translateX(-10px);
+  }
+}
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(-15px) translateX(-15px);
+  }
+  66% {
+    transform: translateY(-25px) translateX(15px);
   }
 }
 
@@ -532,7 +547,11 @@
 }
 
 .animate-float {
-  animation: float 3s var(--ease-in-out) infinite;
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite;
 }
 
 .animate-glow {
@@ -808,4 +827,27 @@
 .button-press:active {
   transform: scale(0.98);
   box-shadow: var(--shadow-sm);
+}
+
+/* Bookmark animation */
+@keyframes bookmark-add {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.3) rotate(-5deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.animate-bookmark-add {
+  animation: bookmark-add 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }

@@ -10,6 +10,8 @@ import Tooltip from "@/components/TooltipImproved";
 import Toast from "@/components/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
+import TableOfContents from "@/components/reader/TableOfContents";
+import ContextualToolbar from "@/components/reader/ContextualToolbar";
 
 interface TocItem {
   label: string;
@@ -42,7 +44,7 @@ export default function ReaderPage() {
   const [isHovering, setIsHovering] = useState<boolean>(false);
   const [showToc, setShowToc] = useState<boolean>(false);
   const [showAnnotations, setShowAnnotations] = useState<boolean>(false);
-  const [isToolbarSticky, setIsToolbarSticky] = useState<boolean>(false);
+  const [isToolbarPinned, setIsToolbarPinned] = useState<boolean>(true); // Pinned by default
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -60,6 +62,14 @@ export default function ReaderPage() {
   const [showAnnotationToolbar, setShowAnnotationToolbar] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Additional state for ContextualToolbar
+  const [fontSize, setFontSize] = useState<number>(16);
+  const [showSearch, setShowSearch] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [timeLeft, setTimeLeft] = useState<string>("");
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,7 +95,6 @@ export default function ReaderPage() {
     const handleAnnotationClick = (e: CustomEvent) => {
       const annotation = e.detail;
       if (annotation) {
-        // Show annotations panel and highlight the clicked annotation
         setShowAnnotations(true);
       }
     };
@@ -95,7 +104,7 @@ export default function ReaderPage() {
     return () => {
       container.removeEventListener('annotationClick', handleAnnotationClick as EventListener);
     };
-  }, [containerRef.current]);
+  }, [containerReady]);
 
   const loadFromFile = useCallback(async (file: File) => {
     setError("");
@@ -536,8 +545,8 @@ export default function ReaderPage() {
     setShowAnnotations(prev => !prev);
   }, []);
 
-  const toggleStickyToolbar = useCallback(() => {
-    setIsToolbarSticky(prev => !prev);
+  const togglePinnedToolbar = useCallback(() => {
+    setIsToolbarPinned(prev => !prev);
   }, []);
 
   const createAnnotation = useCallback(async (type: 'highlight' | 'note' | 'bookmark', color: string = '#fbbf24', note?: string) => {
@@ -616,6 +625,47 @@ export default function ReaderPage() {
       setShowAnnotations(false);
     } else {
       console.warn('Failed to jump to annotation:', location);
+    }
+  }, []);
+
+  // Handlers for ContextualToolbar
+  const handleNavigateHome = useCallback(() => {
+    router.push('/library');
+  }, [router]);
+
+  const handleThemeChange = useCallback((newTheme: 'light' | 'dark' | 'sepia' | 'night') => {
+    // For now, we only support light and dark themes
+    // Map sepia to light and night to dark
+    const mappedTheme = (newTheme === 'sepia' || newTheme === 'light') ? 'light' : 'dark';
+    setLocalThemeOverride(mappedTheme);
+  }, []);
+
+  const handleFontSizeChange = useCallback((size: number) => {
+    setFontSize(size);
+    if (epubRendererRef.current) {
+      epubRendererRef.current.setFontSize(size);
+    }
+  }, []);
+
+  const toggleSearch = useCallback(() => {
+    setShowSearch(prev => !prev);
+  }, []);
+
+  const toggleSettings = useCallback(() => {
+    setShowSettings(prev => !prev);
+  }, []);
+
+  const toggleBookmark = useCallback(() => {
+    createAnnotation('bookmark');
+  }, [createAnnotation]);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
     }
   }, []);
 
@@ -769,340 +819,99 @@ export default function ReaderPage() {
       {/* Hidden file input */}
       <input ref={inputRef} type="file" accept=".epub" className="hidden" onChange={onInputChange} />
 
-      {/* Desktop Toolbar hover zone */}
-      {!isMobile && !isToolbarSticky && (
+      {/* Desktop Toolbar hover zone - only when unpinned */}
+      {!isMobile && !isToolbarPinned && (
         <div 
-          className="fixed top-0 left-0 right-0 h-32 z-[60]"
+          className="fixed top-0 left-0 right-0 h-48 z-[60]"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           style={{ pointerEvents: 'auto', background: 'transparent' }}
         />
       )}
 
-      {/* Desktop Floating Header */}
-      {!isMobile && (
-        <div 
-          className={`fixed top-6 left-1/2 -translate-x-1/2 z-[70] transition-elegant ${(isHovering || !loaded || isToolbarSticky) ? 'contextual show' : 'contextual'}`}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          style={{ pointerEvents: 'auto' }}
-        >
-        <div className="floating rounded-[var(--radius-xl)] px-6 py-3.5" style={{
-          boxShadow: "0 25px 80px -12px rgba(0, 0, 0, 0.25), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
-        }}>
-          <div className="flex items-center gap-4">
-            {!bookId && (
-              <button 
-                onClick={onPick} 
-                className="btn-secondary px-4 py-2 text-sm font-medium"
-              >
-                Open EPUB
-              </button>
-            )}
-            <button 
-              onClick={() => router.push('/library')} 
-              className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3L3 8l5 5" />
-              </svg>
-              Library
-            </button>
-            {loaded && (
-              <>
-                <div className="hidden sm:flex items-center gap-3">
-                  <div className="h-5 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
-                  <div className="text-sm font-medium text-foreground max-w-xs truncate tracking-tight" title={headerTitle}>
-                    {headerTitle}
-                  </div>
-                  <div className="h-5 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Tooltip content="Pin toolbar">
-                    <button 
-                      onClick={toggleStickyToolbar} 
-                      className={`btn-icon w-9 h-9 ${isToolbarSticky ? 'bg-[rgba(var(--accent),0.1)] text-[rgb(var(--accent))]' : ''}`}
-                      aria-label="Pin toolbar"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 3v5l2-2 2 2V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" />
-                        <path d="M8 11v3" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content={theme === "dark" ? "Light mode" : "Dark mode"}>
-                    <button 
-                      onClick={onThemeToggle} 
-                      className="btn-icon w-9 h-9"
-                      aria-label="Toggle theme"
-                    >
-                      {theme === "dark" ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
-                        </svg>
-                      )}
-                    </button>
-                  </Tooltip>
-                  {toc.length > 0 && (
-                    <Tooltip content="Table of contents">
-                      <button 
-                        onClick={toggleToc} 
-                        className="btn-icon w-9 h-9"
-                        aria-label="Table of contents"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M2 4h12M2 8h12M2 12h12" />
-                          <circle cx="2" cy="4" r="0.5" fill="currentColor" />
-                          <circle cx="2" cy="8" r="0.5" fill="currentColor" />
-                          <circle cx="2" cy="12" r="0.5" fill="currentColor" />
-                        </svg>
-                      </button>
-                    </Tooltip>
-                  )}
-                  <Tooltip content="Annotations">
-                    <button 
-                      onClick={toggleAnnotations} 
-                      className="btn-icon w-9 h-9"
-                      aria-label="Annotations"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m13.498 1 .002.002.002.002a2.5 2.5 0 0 1-.003 3.536L4.5 13.5l-4 1 1-4L10.5 1.5a2.5 2.5 0 0 1 3 0z" />
-                        <path d="m10.5 4.5 2 2" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Add bookmark">
-                    <button 
-                      onClick={() => createAnnotation('bookmark')} 
-                      className="btn-icon w-9 h-9"
-                      aria-label="Add bookmark"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M2 2v13.5a.5.5 0 0 0 .74.439L8 13.069l5.26 2.87A.5.5 0 0 0 14 15.5V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/>
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <div className="h-5 w-[var(--space-hairline)] bg-[rgba(var(--border),var(--border-opacity))]" />
-                  <Tooltip content="Previous page (←)">
-                    <button 
-                      onClick={handlePreviousPage}
-                      className="btn-icon w-9 h-9"
-                      aria-label="Previous page"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9.5 3.5L6 8l3.5 4.5" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Next page (→)">
-                    <button 
-                      onClick={handleNextPage}
-                      className="btn-icon w-9 h-9"
-                      aria-label="Next page"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6.5 3.5L10 8l-3.5 4.5" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* ContextualToolbar - handles both desktop and mobile */}
+      {loaded && (
+        <ContextualToolbar
+          // Navigation
+          onNavigateHome={handleNavigateHome}
+          onNavigatePrev={handlePreviousPage}
+          onNavigateNext={handleNextPage}
+          canGoNext={navigationState.canGoNext}
+          canGoPrev={navigationState.canGoPrev}
+          
+          // Theme & Display
+          currentTheme={theme === 'dark' ? 'dark' : 'light'}
+          onThemeChange={handleThemeChange}
+          fontSize={fontSize}
+          onFontSizeChange={handleFontSizeChange}
+          
+          // Panels
+          showToc={showToc}
+          showAnnotations={showAnnotations}
+          showSettings={showSettings}
+          showSearch={showSearch}
+          onToggleToc={toggleToc}
+          onToggleAnnotations={toggleAnnotations}
+          onToggleSettings={toggleSettings}
+          onToggleSearch={toggleSearch}
+          
+          // Progress
+          progress={currentProgress}
+          chapterTitle={chapterTitle}
+          timeLeft={timeLeft}
+          
+          // Bookmarks
+          isBookmarked={isBookmarked}
+          onToggleBookmark={toggleBookmark}
+          
+          // Fullscreen
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          
+          // Visibility
+          isVisible={isToolbarPinned || isHovering || !loaded}
+          autoHide={!isToolbarPinned}
+          isMobile={isMobile}
+          
+          // Pin state
+          isPinned={isToolbarPinned}
+          onTogglePin={togglePinnedToolbar}
+        />
       )}
-
-      {/* Floating TOC Sidebar */}
-      {toc.length > 0 && (
-        <div 
-          className={`fixed left-6 top-1/2 -translate-y-1/2 z-[75] w-[340px] max-h-[600px] transition-elegant ${showToc ? 'contextual show' : 'contextual'}`}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <div className="floating rounded-[var(--radius-xl)] overflow-hidden flex flex-col" style={{
+      
+      {/* Open EPUB button when no book is loaded */}
+      {!loaded && !bookId && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[70]">
+          <div className="floating rounded-[var(--radius-xl)] px-6 py-3.5" style={{
             boxShadow: "0 25px 80px -12px rgba(0, 0, 0, 0.25), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
           }}>
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[rgba(var(--border),var(--border-opacity))]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[var(--radius)] bg-[rgba(var(--accent),0.1)] flex items-center justify-center">
-                  <svg className="w-5 h-5 text-[rgb(var(--accent))]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold tracking-tight">Contents</h3>
-                  <p className="text-xs text-muted font-medium">{toc.length} chapters</p>
-                </div>
-              </div>
-              <button 
-                onClick={toggleToc}
-                className="btn-icon -mr-2"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="3" y1="3" x2="11" y2="11" />
-                  <line x1="11" y1="3" x2="3" y2="11" />
-                </svg>
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4" style={{ maxHeight: "calc(600px - 80px)" }}>
-              <div className="space-y-1">
-                {toc.map((item, idx) => {
-                  const isActive = chapterTitle && item.label.includes(chapterTitle);
-                  return (
-                    <button
-                      key={`${item.href}-${idx}`}
-                      onClick={() => onTocJump(item.href)}
-                      className={`text-left w-full px-4 py-3 rounded-[var(--radius)] transition-all text-sm leading-relaxed group ${
-                        isActive 
-                          ? 'bg-[rgba(var(--accent),0.1)] text-[rgb(var(--accent))]' 
-                          : 'hover:bg-[rgba(var(--muted),0.06)] text-foreground'
-                      }`}
-                      title={item.label}
-                    >
-                      <span className="line-clamp-2 font-medium group-hover:text-[rgb(var(--accent))]">
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <button 
+              onClick={onPick} 
+              className="btn-secondary px-4 py-2 text-sm font-medium"
+            >
+              Open EPUB
+            </button>
           </div>
         </div>
       )}
 
-      {/* Mobile Bottom Toolbar */}
-      {isMobile && loaded && (
-        <div className="fixed bottom-0 left-0 right-0 z-[70] p-4 bg-gradient-to-t from-[rgb(var(--bg))] via-[rgb(var(--bg))]/95 to-transparent">
-          <div className="floating rounded-[var(--radius-xl)] px-4 py-3" style={{
-            boxShadow: "0 20px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
-          }}>
-            <div className="flex items-center justify-between">
-              {/* Left side - Navigation */}
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => router.push('/library')} 
-                  className="btn-icon w-11 h-11"
-                  aria-label="Library"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 16 16" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3L3 8l5 5" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={handlePreviousPage}
-                  className="btn-icon w-11 h-11"
-                  aria-label="Previous page"
-                >
-                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9.5 3.5L6 8l3.5 4.5" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={handleNextPage}
-                  className="btn-icon w-11 h-11"
-                  aria-label="Next page"
-                >
-                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6.5 3.5L10 8l-3.5 4.5" />
-                  </svg>
-                </button>
-              </div>
+      {/* Improved Table of Contents */}
+      <TableOfContents
+        items={toc}
+        currentChapter={chapterTitle}
+        onNavigate={onTocJump}
+        isOpen={showToc}
+        onClose={toggleToc}
+        isMobile={isMobile}
+        progress={currentProgress}
+        bookTitle={loaded?.title}
+      />
 
-              {/* Center - Progress */}
-              <div className="flex-1 mx-4">
-                <div className="relative">
-                  <div className="h-2 bg-[rgba(var(--muted),0.1)] rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-[rgb(var(--accent))] rounded-full transition-all duration-300"
-                      style={{ width: `${currentProgress}%` }}
-                    />
-                  </div>
-                  <span className="absolute -top-6 right-0 text-xs font-medium tabular-nums text-muted">{currentProgress}%</span>
-                </div>
-              </div>
-
-              {/* Right side - Tools */}
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={onThemeToggle} 
-                  className="btn-icon w-11 h-11"
-                  aria-label="Toggle theme"
-                >
-                  {theme === "dark" ? (
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
-                    </svg>
-                  )}
-                </button>
-                {toc.length > 0 && (
-                  <button 
-                    onClick={toggleToc} 
-                    className="btn-icon w-11 h-11"
-                    aria-label="Table of contents"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M2 4h12M2 8h12M2 12h12" />
-                      <circle cx="2" cy="4" r="0.5" fill="currentColor" />
-                      <circle cx="2" cy="8" r="0.5" fill="currentColor" />
-                      <circle cx="2" cy="12" r="0.5" fill="currentColor" />
-                    </svg>
-                  </button>
-                )}
-                <button 
-                  onClick={toggleAnnotations} 
-                  className="btn-icon w-11 h-11"
-                  aria-label="Annotations"
-                >
-                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m13.498 1 .002.002.002.002a2.5 2.5 0 0 1-.003 3.536L4.5 13.5l-4 1 1-4L10.5 1.5a2.5 2.5 0 0 1 3 0z" />
-                    <path d="m10.5 4.5 2 2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Mobile toolbar is now handled by ContextualToolbar component above */}
 
       {/* Main Reading Area */}
       <main className={`min-h-dvh flex items-start justify-center ${isMobile ? 'p-4 pb-24' : 'p-8'}`}>
         <div className="w-full max-w-5xl relative">
-          {/* Chapter Title & Progress Overlay */}
-          {chapterTitle && loaded && (
-            <div 
-              className={`fixed top-24 left-1/2 -translate-x-1/2 z-[65] transition-elegant ${isHovering ? 'contextual show' : 'contextual'}`}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <div className="floating rounded-[var(--radius-xl)] px-8 py-5" style={{
-                boxShadow: "0 20px 60px -12px rgba(0, 0, 0, 0.2), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
-              }}>
-                <h4 className="text-sm font-semibold text-center mb-4 tracking-tight text-foreground">{chapterTitle}</h4>
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1 min-w-[200px]">
-                    <div className="h-1.5 bg-[rgba(var(--muted),0.1)] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[rgb(var(--accent))] rounded-full transition-all duration-300"
-                        style={{ width: `${currentProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium min-w-[3.5rem] text-center tabular-nums text-foreground">{currentProgress}%</span>
-                </div>
-              </div>
-            </div>
-          )}
-          
           {/* EPUB Container - Clean scrollable container */}
           <div className="relative">
             <div

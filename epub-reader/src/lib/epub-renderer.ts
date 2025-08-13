@@ -39,6 +39,8 @@ export class EpubRenderer {
   private _imageObjectUrls: Set<string> = new Set();
   private savedAnnotations: SavedAnnotation[] = [];
   private highlightedRanges: Map<string, Range> = new Map();
+  private fontSize: number = 18;
+  private _onScroll?: (e: Event) => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -279,6 +281,8 @@ export class EpubRenderer {
       }
       
       section.innerHTML = bodyContent;
+      // Enhance charts/tables/dropcaps within this section
+      this.enhanceRenderedContent(section);
       contentWrapper.appendChild(section);
       
       // Add separator between chapters (except last)
@@ -612,8 +616,7 @@ export class EpubRenderer {
 
   private setupScrollListener(): void {
     let ticking = false;
-    
-    const handleScroll = () => {
+    this._onScroll = () => {
       if (!ticking) {
         requestAnimationFrame(() => {
           this.updateProgress();
@@ -623,8 +626,7 @@ export class EpubRenderer {
         ticking = true;
       }
     };
-
-    this.container.addEventListener('scroll', handleScroll, { passive: true });
+    this.container.addEventListener('scroll', this._onScroll, { passive: true });
   }
 
   private updateProgress(): void {
@@ -690,7 +692,7 @@ export class EpubRenderer {
         background-color: ${themeColors.bg};
         color: ${themeColors.color};
         font-family: "Crimson Text", "Georgia", "Times New Roman", serif;
-        font-size: 18px;
+        font-size: ${this.fontSize}px;
         line-height: 1.8;
         letter-spacing: 0.01em;
         max-width: 70ch;
@@ -839,29 +841,67 @@ export class EpubRenderer {
         line-height: 1.6;
       }
 
-      /* Blockquotes */
+      /* Blockquotes (refined, Apple/Kindle-like) */
       .epub-continuous-content blockquote {
         color: ${themeColors.muted};
         font-style: italic;
-        margin: 2em 0;
-        padding: 1.5em 2em;
-        border-left: 4px solid ${theme === 'dark' ? '#d4af37' : '#8b4513'};
-        background-color: ${theme === 'dark' ? 'rgba(212, 175, 55, 0.05)' : 'rgba(139, 69, 19, 0.03)'};
-        border-radius: 0 8px 8px 0;
-        position: relative;
-        font-size: 0.95em;
-        line-height: 1.7;
+        margin: 1.5em 0;
+        padding: 0.25em 1em;
+        border-left: 3px solid ${themeColors.border};
+        background: transparent;
       }
-      
-      .epub-continuous-content blockquote::before {
-        content: '"';
-        font-size: 3em;
-        position: absolute;
-        left: 0.3em;
-        top: 0.1em;
-        color: ${theme === 'dark' ? '#d4af37' : '#8b4513'};
-        opacity: 0.3;
-        font-family: "Crimson Text", "Georgia", serif;
+
+      /* Drop caps neutralization (disable oversized first letters) */
+      .epub-continuous-content p::first-letter {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        float: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .epub-continuous-content .dropcap,
+      .epub-continuous-content .drop-cap,
+      .epub-continuous-content .drop_cap,
+      .epub-continuous-content [data-dropcap] {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        float: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      /* Figures, charts and media */
+      .epub-continuous-content figure { 
+        margin: 1.5em auto; 
+        text-align: center; 
+      }
+      .epub-continuous-content img,
+      .epub-continuous-content svg,
+      .epub-continuous-content canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0.5em auto;
+      }
+      .epub-continuous-content .epub-graphic-wrapper,
+      .epub-continuous-content .epub-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0.5em 0;
+      }
+      .epub-continuous-content .epub-graphic-wrapper > svg,
+      .epub-continuous-content .epub-graphic-wrapper > canvas {
+        display: block;
+      }
+      .epub-continuous-content table {
+        width: max-content; /* allow horizontal scroll when too wide */
+        max-width: 100%;
+        border-collapse: collapse;
+      }
+      .epub-continuous-content th,
+      .epub-continuous-content td {
+        padding: 0.35em 0.5em;
+        vertical-align: top;
       }
 
       /* Code */
@@ -1036,6 +1076,59 @@ export class EpubRenderer {
     }
   }
 
+  // Enhance non-textual content (tables, SVGs) for better UX
+  private enhanceRenderedContent(root?: HTMLElement): void {
+    const scope: HTMLElement | Document = root ?? this.container;
+
+    // Wrap wide tables with horizontal scroll container
+    const tables = scope.querySelectorAll('table');
+    tables.forEach((table) => {
+      const parent = table.parentElement as HTMLElement | null;
+      if (!parent) return;
+      if (parent.classList.contains('epub-table-wrapper')) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'epub-table-wrapper';
+      parent.replaceChild(wrapper, table);
+      wrapper.appendChild(table);
+    });
+
+    // Wrap SVG/canvas charts to allow scrolling if overflow
+    const graphics = scope.querySelectorAll('svg, canvas');
+    graphics.forEach((node) => {
+      const parent = node.parentElement as HTMLElement | null;
+      if (!parent) return;
+      if (parent.classList.contains('epub-graphic-wrapper')) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'epub-graphic-wrapper';
+      parent.replaceChild(wrapper, node);
+      wrapper.appendChild(node);
+
+      // Accessibility for SVG charts
+      if (node.tagName.toLowerCase() === 'svg') {
+        const svg = node as SVGElement;
+        if (!svg.getAttribute('role')) svg.setAttribute('role', 'img');
+        if (!svg.getAttribute('aria-label')) {
+          const title = svg.querySelector('title')?.textContent?.trim();
+          const desc = svg.querySelector('desc')?.textContent?.trim();
+          const label = title || desc;
+          if (label) svg.setAttribute('aria-label', label);
+        }
+      }
+    });
+
+    // Neutralize dropcap classes embedded in content
+    const dropcaps = scope.querySelectorAll('.dropcap, .drop-cap, .drop_cap, [data-dropcap]');
+    dropcaps.forEach((el) => {
+      el.classList.remove('dropcap', 'drop-cap', 'drop_cap');
+      (el as HTMLElement).removeAttribute('data-dropcap');
+      (el as HTMLElement).style.removeProperty('float');
+      (el as HTMLElement).style.removeProperty('font-size');
+      (el as HTMLElement).style.removeProperty('line-height');
+      (el as HTMLElement).style.removeProperty('margin');
+      (el as HTMLElement).style.removeProperty('padding');
+    });
+  }
+
   // Navigation methods
   jumpToChapter(href: string): void {
     const chapter = this.container.querySelector(`[data-chapter-href="${href}"]`);
@@ -1125,6 +1218,12 @@ export class EpubRenderer {
       styleEl.remove();
     }
 
+    // Remove scroll listener
+    if (this._onScroll) {
+      this.container.removeEventListener('scroll', this._onScroll as EventListener);
+      this._onScroll = undefined;
+    }
+
     // Revoke any object URLs we created for images
     if (this._imageObjectUrls.size > 0) {
       for (const url of this._imageObjectUrls) {
@@ -1134,6 +1233,12 @@ export class EpubRenderer {
       }
       this._imageObjectUrls.clear();
     }
+  }
+
+  // Adjust base font size and re-apply theme styles
+  setFontSize(size: number): void {
+    this.fontSize = Math.max(12, Math.min(32, Math.round(size)));
+    this.applyTheme(this.currentTheme);
   }
 
   // Get current position info

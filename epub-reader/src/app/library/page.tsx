@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import UploadModal from "@/components/UploadModal";
 import BookDetailsEditor from "@/components/BookDetailsEditor";
@@ -18,7 +18,10 @@ import {
   ListBulletIcon,
   FunnelIcon,
   ArrowsUpDownIcon,
-  XMarkIcon
+  CheckIcon,
+  ClockIcon,
+  XMarkIcon,
+  ArrowLeftIcon
 } from "@heroicons/react/24/outline";
 
 interface Book {
@@ -55,7 +58,89 @@ export default function LibraryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortBy, setSortBy] = useState<SortBy>('recent');
   const [showFilters, setShowFilters] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
+
+  // Persisted preferences: initialize from localStorage
+  useEffect(() => {
+    try {
+      const persistedView = window.localStorage.getItem('library:view');
+      const persistedSort = window.localStorage.getItem('library:sort');
+      const persistedLang = window.localStorage.getItem('library:lang');
+      const persistedSearch = window.localStorage.getItem('library:search');
+      if (persistedView === 'grid' || persistedView === 'list') setViewMode(persistedView);
+      if (persistedSort === 'recent' || persistedSort === 'oldest' || persistedSort === 'title' || persistedSort === 'author') setSortBy(persistedSort as SortBy);
+      if (persistedLang) setSelectedLanguage(persistedLang);
+      if (persistedSearch) setSearchQuery(persistedSearch);
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  // Persist preferences on change
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('library:view', viewMode);
+    } catch {}
+  }, [viewMode]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('library:sort', sortBy);
+    } catch {}
+  }, [sortBy]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('library:lang', selectedLanguage);
+    } catch {}
+  }, [selectedLanguage]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('library:search', searchQuery);
+    } catch {}
+  }, [searchQuery]);
+
+  // Keyboard shortcuts: '/' focus search, 'v' toggle view, 'u' open upload
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true');
+      if (isTyping) return;
+      if (e.key === '/') {
+        const el = document.getElementById('library-search-input') as HTMLInputElement | null;
+        if (el) {
+          e.preventDefault();
+          el.focus();
+        }
+      } else if (e.key.toLowerCase() === 'v') {
+        setViewMode(prev => (prev === 'grid' ? 'list' : 'grid'));
+      } else if (e.key.toLowerCase() === 'u') {
+        setIsUploadModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Close sort menu on outside click or Escape
+  useEffect(() => {
+    if (!showSortMenu) return;
+    const onClick = (e: MouseEvent) => {
+      if (!sortMenuRef.current) return;
+      if (!sortMenuRef.current.contains(e.target as Node)) {
+        setShowSortMenu(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSortMenu(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [showSortMenu]);
   
   const supabase = createClient();
 
@@ -75,7 +160,14 @@ export default function LibraryPage() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBooks(data || []);
+      
+      // Process cover URLs for each book
+      const booksWithCovers = (data || []).map(book => ({
+        ...book,
+        cover_url: book.cover_path ? getCoverUrl(book.cover_path) : null
+      }));
+      
+      setBooks(booksWithCovers);
     } catch (error) {
       console.error('Error fetching books:', error);
     } finally {
@@ -134,13 +226,13 @@ export default function LibraryPage() {
     fetchBooks();
   }, [fetchBooks]);
 
-  const getCoverUrl = (coverPath: string | null) => {
+  const getCoverUrl = useCallback((coverPath: string | null) => {
     if (!coverPath) {
       return null;
     }
     const { data } = supabase.storage.from('book-covers').getPublicUrl(coverPath);
     return data.publicUrl;
-  };
+  }, [supabase]);
 
   const handleDeleteBook = async () => {
     if (!deletingBook) return;
@@ -194,175 +286,219 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className="min-h-dvh bg-[rgb(var(--bg))] relative">
-      {/* Premium gradient background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgb(var(--accent))]/5 via-transparent to-[rgb(var(--accent))]/3 opacity-30" />
+    <main className="min-h-dvh bg-[rgb(var(--bg))]">
+      {/* Clean geometric background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-100/15 to-purple-100/10 dark:from-blue-950/20 dark:to-purple-950/15 rounded-full -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-gradient-to-tr from-emerald-100/15 to-cyan-100/10 dark:from-emerald-950/20 dark:to-cyan-950/15 rounded-full translate-x-1/3 translate-y-1/3" />
       </div>
       
-      <div className="relative z-10 py-8">
-        {/* Top navigation */}
-        <nav className="px-8 mb-8">
-          <div className="max-w-7xl mx-auto">
-            <Link 
-              href="/" 
-              className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Home
-            </Link>
+      <div className="relative z-10">
+        {/* Navigation Bar */}
+        <nav className="w-full px-8 lg:px-12 py-6 border-b border-[rgb(var(--border))]/[var(--border-opacity)]">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-8">
+              <Link 
+                href="/" 
+                className="flex items-center gap-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors"
+              >
+                <ArrowLeftIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">Home</span>
+              </Link>
+              <div className="flex items-center gap-3">
+                <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+                <h1 className="text-xl font-bold text-[rgb(var(--fg))]">Library</h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Link
+                href="/collections"
+                className="p-2.5 rounded-lg hover:bg-[rgb(var(--surface))] transition-colors"
+                title="Collections"
+              >
+                <FolderIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
+              </Link>
+              <Link
+                href="/profile"
+                className="p-2.5 rounded-lg hover:bg-[rgb(var(--surface))] transition-colors"
+                title="Profile"
+              >
+                <UserIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
+              </Link>
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="btn-primary inline-flex items-center gap-2"
+                aria-label="Add book"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Book
+              </button>
+            </div>
           </div>
         </nav>
 
-        {/* Enhanced Header with Search and Controls */}
-        <header className="px-8 mb-8">
+        {/* Header Section */}
+        <header className="px-8 lg:px-12 py-8">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Title Row */}
-            <div className="flex items-center justify-between">
-              <div className="animate-fade-in">
-                <h1 className="text-[32px] font-semibold tracking-[-0.02em] text-foreground">
-                  Library
-                </h1>
-                <p className="text-base text-muted mt-1">
-                  {processedBooks.length} {processedBooks.length === 1 ? 'book' : 'books'}
-                  {searchQuery && ` matching "${searchQuery}"`}
-                </p>
+            {/* Stats and Search */}
+            <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-[rgb(var(--fg))]">
+                  {!isLoading && books.length} {!isLoading && (books.length === 1 ? 'Book' : 'Books')}
+                  {isLoading && 'Loading...'}
+                </h2>
+                {!isLoading && (
+                  <p className="text-[rgb(var(--muted))] mt-1">
+                    {searchQuery && `Showing ${processedBooks.length} result${processedBooks.length !== 1 ? 's' : ''} for "${searchQuery}"`}
+                    {selectedLanguage !== 'all' && ` in ${selectedLanguage}`}
+                    {!searchQuery && selectedLanguage === 'all' && 'Your digital library'}
+                  </p>
+                )}
               </div>
-              
-              {/* Action buttons */}
-              <div className="flex items-center gap-3 animate-fade-in">
-                <Link
-                  href="/collections"
-                  className="btn-icon w-10 h-10"
-                  title="Collections"
-                >
-                  <FolderIcon className="w-5 h-5" />
-                </Link>
-                <Link
-                  href="/profile"
-                  className="btn-icon w-10 h-10"
-                  title="Profile"
-                >
-                  <UserIcon className="w-5 h-5" />
-                </Link>
-                <button
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="btn-primary inline-flex items-center gap-2 px-4 py-2"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Add Book
-                </button>
-              </div>
-            </div>
 
-            {/* Search and Controls Row */}
-            <div className="flex flex-col sm:flex-row gap-4">
               {/* Search Bar */}
-              <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted pointer-events-none" />
+              <div className="w-full lg:w-96 relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[rgb(var(--muted))] pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search books by title or author..."
+                  placeholder="Search by title or author… (Press /)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:border-[rgb(var(--accent))]/50 focus:bg-white/10 transition-all"
+                  id="library-search-input"
+                  aria-label="Search library by title or author"
+                  className="input-search w-full pl-10 pr-12"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                    aria-label="Clear search"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
                   >
                     <XMarkIcon className="w-5 h-5" />
                   </button>
                 )}
               </div>
+            </div>
 
-              {/* View Controls */}
-              <div className="flex items-center gap-2">
-                {/* View Mode Toggle */}
-                <div className="flex items-center bg-white/5 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded transition-all ${
-                      viewMode === 'grid' 
-                        ? 'bg-[rgb(var(--accent))] text-white' 
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                    title="Grid view"
-                  >
-                    <Squares2X2Icon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded transition-all ${
-                      viewMode === 'list' 
-                        ? 'bg-[rgb(var(--accent))] text-white' 
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                    title="List view"
-                  >
-                    <ListBulletIcon className="w-4 h-4" />
-                  </button>
-                </div>
+            {/* Controls Bar */}
+            <div className="glass rounded-2xl border px-4 py-3 md:px-5 md:py-4 flex flex-wrap items-center gap-3 md:gap-4">
+              {/* View Mode Toggle (segmented control) */}
+              <div className="segmented-control" role="group" aria-label="View mode">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  aria-pressed={viewMode === 'grid'}
+                  className="inline-flex items-center gap-1.5"
+                  title="Grid view"
+                  aria-label="Grid view"
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  aria-pressed={viewMode === 'list'}
+                  className="inline-flex items-center gap-1.5"
+                  title="List view"
+                  aria-label="List view"
+                >
+                  <ListBulletIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+              </div>
 
-                {/* Sort Dropdown */}
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortBy)}
-                    className="appearance-none pl-10 pr-8 py-2.5 bg-white/5 border border-white/10 rounded-lg text-foreground focus:outline-none focus:border-[rgb(var(--accent))]/50 cursor-pointer"
-                  >
-                    <option value="recent">Recently Added</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="title">Title A-Z</option>
-                    <option value="author">Author A-Z</option>
-                  </select>
-                  <ArrowsUpDownIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                </div>
-
-                {/* Filter Button */}
-                {availableLanguages.length > 1 && (
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`p-2.5 rounded-lg border transition-all ${
-                      showFilters 
-                        ? 'bg-[rgb(var(--accent))] border-[rgb(var(--accent))] text-white' 
-                        : 'bg-white/5 border-white/10 text-muted hover:text-foreground'
-                    }`}
-                    title="Filters"
-                  >
-                    <FunnelIcon className="w-4 h-4" />
-                  </button>
+              {/* Sort Menu - styled to match segmented aesthetic */}
+              <div className="relative" ref={sortMenuRef}>
+                <button
+                  onClick={() => setShowSortMenu(!showSortMenu)}
+                  className="px-4 py-2.5 rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 transition-all inline-flex items-center gap-2"
+                  aria-haspopup="menu"
+                  aria-expanded={showSortMenu}
+                  aria-label="Sort books"
+                >
+                  <ArrowsUpDownIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {sortBy === 'recent' ? 'Recently Added' :
+                     sortBy === 'oldest' ? 'Oldest First' :
+                     sortBy === 'title' ? 'Title A-Z' : 'Author A-Z'}
+                  </span>
+                </button>
+                {showSortMenu && (
+                  <div className="absolute right-0 mt-2 w-56 glass rounded-xl shadow-2xl py-2 z-20 animate-scale-in" role="menu">
+                    {[
+                      { value: 'recent', label: 'Recently Added', icon: ClockIcon },
+                      { value: 'oldest', label: 'Oldest First', icon: ClockIcon },
+                      { value: 'title', label: 'Title A-Z', icon: ListBulletIcon },
+                      { value: 'author', label: 'Author A-Z', icon: UserIcon },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSortBy(option.value as SortBy);
+                          setShowSortMenu(false);
+                        }}
+                        className={`w-full px-4 py-2.5 text-left hover:bg-[rgb(var(--muted))]/10 transition-colors flex items-center gap-3 ${
+                          sortBy === option.value ? 'text-[rgb(var(--accent))]' : ''
+                        }`}
+                        role="menuitemradio"
+                        aria-checked={sortBy === option.value}
+                      >
+                        <option.icon className="w-4 h-4" />
+                        <span className="text-sm">{option.label}</span>
+                        {sortBy === option.value && (
+                          <CheckIcon className="w-4 h-4 ml-auto" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
+
+              {/* Filter Button - only show if we have multiple languages */}
+              {availableLanguages.length > 1 && (
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`px-4 py-2.5 rounded-xl border transition-all inline-flex items-center gap-2 ${
+                    showFilters
+                      ? 'bg-[rgb(var(--muted))]/12 border-[rgb(var(--accent))]/40 text-[rgb(var(--fg))]'
+                      : 'bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]'
+                  }`}
+                  aria-pressed={showFilters}
+                  aria-label="Toggle filters"
+                >
+                  <FunnelIcon className="w-4 h-4" />
+                  Filters
+                  {selectedLanguage !== 'all' && (
+                    <span className="px-2 py-0.5 bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))] rounded text-xs font-medium">1</span>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Filter Panel */}
             {showFilters && availableLanguages.length > 1 && (
-              <div className="p-4 bg-white/5 border border-white/10 rounded-lg animate-slide-up">
+              <div className="p-4 glass rounded-xl">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted">Language:</span>
+                  <span className="text-sm text-[rgb(var(--muted))] font-medium">Language:</span>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => setSelectedLanguage('all')}
-                      className={`px-3 py-1 rounded-md text-sm transition-all ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                         selectedLanguage === 'all'
-                          ? 'bg-[rgb(var(--accent))] text-white'
-                          : 'bg-white/10 text-muted hover:text-foreground'
+                          ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]'
+                          : 'bg-[rgb(var(--bg))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] border border-[rgb(var(--border))]/[var(--border-opacity)]'
                       }`}
                     >
-                      All
+                      All Languages
                     </button>
                     {availableLanguages.map(lang => (
                       <button
                         key={lang}
                         onClick={() => setSelectedLanguage(lang)}
-                        className={`px-3 py-1 rounded-md text-sm transition-all ${
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                           selectedLanguage === lang
-                            ? 'bg-[rgb(var(--accent))] text-white'
-                            : 'bg-white/10 text-muted hover:text-foreground'
+                            ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]'
+                            : 'bg-[rgb(var(--bg))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] border border-[rgb(var(--border))]/[var(--border-opacity)]'
                         }`}
                       >
                         {lang}
@@ -376,31 +512,31 @@ export default function LibraryPage() {
         </header>
 
         {/* Book Display Section */}
-        <section className="px-8">
+        <section className="px-8 lg:px-12 pb-12">
           <div className="max-w-7xl mx-auto">
             {isLoading ? (
-              // Enhanced Loading State
+              // Loading State
               <div className={viewMode === 'grid' 
-                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6"
-                : "space-y-3"
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 pb-8"
+                : "space-y-4 pb-8"
               }>
-                {[...Array(viewMode === 'grid' ? 14 : 6)].map((_, i) => (
+                {[...Array(viewMode === 'grid' ? 12 : 5)].map((_, i) => (
                   <div key={i} className="animate-pulse">
                     {viewMode === 'grid' ? (
                       <>
-                        <div className="aspect-[3/4] rounded-lg bg-white/5 mb-3" />
+                        <div className="aspect-[3/4] rounded-xl bg-[rgb(var(--border))]/[var(--border-opacity)] mb-3" />
                         <div className="space-y-2">
-                          <div className="h-4 bg-white/5 rounded" />
-                          <div className="h-3 bg-white/5 rounded w-3/4" />
+                          <div className="h-4 bg-[rgb(var(--border))]/[var(--border-opacity)] rounded" />
+                          <div className="h-3 bg-[rgb(var(--border))]/[var(--border-opacity)] rounded w-3/4" />
                         </div>
                       </>
                     ) : (
-                      <div className="flex gap-4 p-4 bg-white/5 rounded-lg">
-                        <div className="w-20 h-28 bg-white/10 rounded" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-5 bg-white/10 rounded w-1/3" />
-                          <div className="h-4 bg-white/10 rounded w-1/4" />
-                          <div className="h-3 bg-white/10 rounded w-1/2" />
+                      <div className="flex gap-4 p-4 bg-[rgb(var(--surface))] rounded-xl">
+                        <div className="w-24 h-32 bg-[rgb(var(--border))]/[var(--border-opacity)] rounded-lg" />
+                        <div className="flex-1 space-y-3">
+                          <div className="h-5 bg-[rgb(var(--border))]/[var(--border-opacity)] rounded w-1/3" />
+                          <div className="h-4 bg-[rgb(var(--border))]/[var(--border-opacity)] rounded w-1/4" />
+                          <div className="h-3 bg-[rgb(var(--border))]/[var(--border-opacity)] rounded w-1/2" />
                         </div>
                       </div>
                     )}
@@ -409,34 +545,33 @@ export default function LibraryPage() {
               </div>
             ) : processedBooks.length === 0 ? (
               // Empty State
-              <div className="flex flex-col items-center justify-center py-32">
-                <div className="w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-[rgb(var(--accent))]/20 to-[rgb(var(--accent))]/5 flex items-center justify-center">
-                  <BookOpenIcon className="w-10 h-10 text-[rgb(var(--accent))]" />
+              <div className="flex flex-col items-center justify-center py-24">
+                <div className="w-24 h-24 mb-6 rounded-2xl bg-gradient-to-br from-[rgb(var(--accent))]/20 to-[rgb(var(--accent))]/5 flex items-center justify-center">
+                  <BookOpenIcon className="w-12 h-12 text-[rgb(var(--accent))]" />
                 </div>
-                <h3 className="text-2xl font-semibold mb-2 tracking-tight">
-                  {searchQuery ? 'No books found' : 'Your library is empty'}
+                <h3 className="text-2xl font-bold mb-2 text-[rgb(var(--fg))]">
+                  {searchQuery ? 'No books found' : 'Your library awaits'}
                 </h3>
-                <p className="text-base text-muted mb-6">
-                  {searchQuery ? 'Try adjusting your search terms' : 'Add your first book to get started'}
+                <p className="text-[rgb(var(--muted))] mb-8 text-center max-w-md">
+                  {searchQuery ? 'Try adjusting your search terms' : 'Upload your first EPUB to start building your digital library'}
                 </p>
                 {!searchQuery && (
                   <button
                     onClick={() => setIsUploadModalOpen(true)}
-                    className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-base"
+                    className="btn-primary inline-flex items-center gap-2"
                   >
                     <PlusIcon className="w-5 h-5" />
-                    Add Your First Book
+                    Upload Your First Book
                   </button>
                 )}
               </div>
             ) : viewMode === 'grid' ? (
               // Grid View
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6">
-                {processedBooks.map((book, index) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 pb-8">
+                {processedBooks.map((book) => (
                   <div
                     key={book.id}
-                    className="group relative animate-fade-in"
-                    style={{ animationDelay: `${Math.min(index * 0.03, 0.3)}s` }}
+                    className="group relative"
                   >
                     <Link 
                       href={`/reader?id=${book.id}`} 
@@ -444,35 +579,36 @@ export default function LibraryPage() {
                     >
                       <div className="space-y-3">
                         {/* Book Cover */}
-                        <div className="aspect-[3/4] rounded-lg overflow-hidden bg-gradient-to-br from-white/5 to-white/10 shadow-sm group-hover:shadow-xl transition-all duration-300 relative">
-                          {book.cover_path && getCoverUrl(book.cover_path) ? (
+                        <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[rgb(var(--surface))] border border-[rgb(var(--border))]/10 group-hover:border-[rgb(var(--accent))] backdrop-blur-sm transition-all duration-300 relative shadow-sm group-hover:shadow-lg">
+                          {book.cover_url ? (
                             <img 
-                              src={getCoverUrl(book.cover_path)!} 
+                              src={book.cover_url} 
                               alt={`${book.title} cover`}
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center p-4">
+                            <div className="w-full h-full flex items-center justify-center p-6 bg-gradient-to-br from-[rgb(var(--accent))]/5 to-[rgb(var(--accent))]/10">
                               <div className="text-center">
-                                <BookOpenIcon className="w-10 h-10 text-muted opacity-30 mx-auto mb-3" />
-                                <p className="text-xs text-muted font-medium line-clamp-2">{book.title}</p>
+                                <BookOpenIcon className="w-12 h-12 text-[rgb(var(--accent))]/30 mx-auto mb-3" />
+                                <p className="text-xs text-[rgb(var(--muted))] font-medium line-clamp-2">{book.title}</p>
                               </div>
                             </div>
                           )}
                           
-                          {/* Action buttons overlay */}
-                          <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Action buttons overlay (always visible on mobile) */}
+                          <div className="absolute top-2 right-2 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setEditingBook(book);
                               }}
-                              className="w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/90 transition-colors"
+                              className="w-8 h-8 rounded-lg bg-[rgb(var(--bg))]/90 backdrop-blur-sm flex items-center justify-center hover:bg-[rgb(var(--bg))] transition-colors shadow-lg"
                               title="Edit book details"
+                              aria-label={`Edit ${book.title}`}
                             >
-                              <PencilIcon className="w-4 h-4" />
+                              <PencilIcon className="w-4 h-4 text-[rgb(var(--fg))]" />
                             </button>
                             <button
                               onClick={(e) => {
@@ -480,20 +616,23 @@ export default function LibraryPage() {
                                 e.stopPropagation();
                                 setDeletingBook(book);
                               }}
-                              className="w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                              className="w-8 h-8 rounded-lg bg-[rgb(var(--bg))]/90 backdrop-blur-sm flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors shadow-lg"
                               title="Delete book"
+                              aria-label={`Delete ${book.title}`}
                             >
-                              <TrashIcon className="w-4 h-4" />
+                              <TrashIcon className="w-4 h-4 text-[rgb(var(--fg))]" />
                             </button>
                           </div>
                         </div>
                         
                         {/* Book Info */}
-                        <div className="space-y-1">
-                          <h3 className="font-medium text-sm leading-snug text-foreground group-hover:text-[rgb(var(--accent))] transition-colors line-clamp-2">
+                        <div className="space-y-1 px-1">
+                          <h3 className="font-semibold text-sm text-[rgb(var(--fg))] group-hover:text-[rgb(var(--accent))] transition-colors line-clamp-2 leading-tight">
                             {book.title}
                           </h3>
-                          <p className="text-muted text-xs line-clamp-1">{book.author || 'Unknown author'}</p>
+                          <p className="text-[rgb(var(--muted))] text-xs line-clamp-1">
+                            {book.author || 'Unknown author'}
+                          </p>
                         </div>
                       </div>
                     </Link>
@@ -503,61 +642,75 @@ export default function LibraryPage() {
             ) : (
               // List View
               <div className="space-y-3">
-                {processedBooks.map((book, index) => (
+                {processedBooks.map((book) => (
                   <Link
                     key={book.id}
                     href={`/reader?id=${book.id}`}
-                    className="group flex gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-lg transition-all animate-fade-in"
-                    style={{ animationDelay: `${Math.min(index * 0.03, 0.3)}s` }}
+                    className="group flex gap-4 p-4 bg-[rgb(var(--surface))] hover:bg-[rgb(var(--surface-hover))] border border-[rgb(var(--border))]/10 dark:border-white/5 hover:border-[rgb(var(--accent))]/40 dark:hover:border-[rgb(var(--accent))]/25 backdrop-blur-sm rounded-xl transition-all"
                   >
                     {/* Cover Thumbnail */}
-                    <div className="w-20 h-28 rounded overflow-hidden bg-gradient-to-br from-white/5 to-white/10 flex-shrink-0">
-                      {book.cover_path && getCoverUrl(book.cover_path) ? (
+                    <div className="w-24 h-32 rounded-lg overflow-hidden bg-gradient-to-br from-[rgb(var(--accent))]/5 to-[rgb(var(--accent))]/10 flex-shrink-0 border border-[rgb(var(--border))]/10">
+                      {book.cover_url ? (
                         <img 
-                          src={getCoverUrl(book.cover_path)!} 
+                          src={book.cover_url} 
                           alt={`${book.title} cover`}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <BookOpenIcon className="w-8 h-8 text-muted opacity-30" />
+                          <BookOpenIcon className="w-8 h-8 text-[rgb(var(--accent))]/30" />
                         </div>
                       )}
                     </div>
 
                     {/* Book Details */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base text-foreground group-hover:text-[rgb(var(--accent))] transition-colors mb-1">
+                      <h3 className="font-bold text-base text-[rgb(var(--fg))] group-hover:text-[rgb(var(--accent))] transition-colors mb-1">
                         {book.title}
                       </h3>
-                      <p className="text-sm text-muted mb-2">{book.author || 'Unknown author'}</p>
-                      <div className="flex flex-wrap gap-4 text-xs text-muted">
+                      <p className="text-sm text-[rgb(var(--muted))] mb-3">
+                        {book.author || 'Unknown author'}
+                      </p>
+                      <div className="flex flex-wrap gap-4 text-xs text-[rgb(var(--muted))]">
                         {book.page_count && (
-                          <span>{book.page_count} pages</span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1 h-1 bg-[rgb(var(--muted))]/40 rounded-full" />
+                            {book.page_count} pages
+                          </span>
                         )}
                         {book.file_size && (
-                          <span>{formatFileSize(book.file_size)}</span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1 h-1 bg-[rgb(var(--muted))]/40 rounded-full" />
+                            {formatFileSize(book.file_size)}
+                          </span>
                         )}
                         {book.language && (
-                          <span>{book.language}</span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1 h-1 bg-[rgb(var(--muted))]/40 rounded-full" />
+                            {book.language}
+                          </span>
                         )}
                         {book.publisher && (
-                          <span>{book.publisher}</span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1 h-1 bg-[rgb(var(--muted))]/40 rounded-full" />
+                            {book.publisher}
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Actions (always visible on mobile) */}
+                    <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           setEditingBook(book);
                         }}
-                        className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-muted hover:text-foreground hover:bg-white/20 transition-all"
+                        className="w-9 h-9 rounded-lg bg-[rgb(var(--bg))] border border-[rgb(var(--border))]/[var(--border-opacity)] dark:border-white/10 flex items-center justify-center text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] hover:border-[rgb(var(--accent))]/50 transition-all"
                         title="Edit"
+                        aria-label={`Edit ${book.title}`}
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
@@ -567,8 +720,9 @@ export default function LibraryPage() {
                           e.stopPropagation();
                           setDeletingBook(book);
                         }}
-                        className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-muted hover:text-red-500 hover:bg-red-500/20 transition-all"
+                        className="w-9 h-9 rounded-lg bg-[rgb(var(--bg))] border border-[rgb(var(--border))]/[var(--border-opacity)] dark:border-white/10 flex items-center justify-center text-[rgb(var(--muted))] hover:text-red-500 hover:border-red-500/50 transition-all"
                         title="Delete"
+                        aria-label={`Delete ${book.title}`}
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -602,28 +756,28 @@ export default function LibraryPage() {
       {deletingBook && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setDeletingBook(null)}
           />
           
-          <div className="relative w-full max-w-md glass rounded-2xl shadow-2xl animate-scale-in p-6">
-            <h3 className="text-xl font-semibold mb-4">Delete Book</h3>
-            <p className="text-muted mb-6">
-              Are you sure you want to delete "<span className="text-foreground font-medium">{deletingBook.title}</span>"? 
+          <div className="relative w-full max-w-md bg-[rgb(var(--surface))] border border-[rgb(var(--border))]/[var(--border-opacity)] dark:border-white/10 rounded-2xl shadow-2xl dark:shadow-black/50 p-6 backdrop-blur-sm">
+            <h3 className="text-xl font-bold mb-4 text-[rgb(var(--fg))]">Delete Book</h3>
+            <p className="text-[rgb(var(--muted))] mb-6">
+              Are you sure you want to delete "<span className="text-[rgb(var(--fg))] font-medium">{deletingBook.title}</span>"? 
               This will permanently remove the book, all reading progress, annotations, and bookmarks.
             </p>
             
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeletingBook(null)}
-                className="px-6 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="px-5 py-2.5 rounded-lg bg-[rgb(var(--bg))] border border-[rgb(var(--border))]/[var(--border-opacity)] dark:border-white/10 text-[rgb(var(--fg))] hover:bg-[rgb(var(--surface-hover))] transition-colors"
                 disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteBook}
-                className="px-6 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                className="px-5 py-2.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                 disabled={isDeleting}
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}

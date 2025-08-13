@@ -3,6 +3,7 @@
 /* @import "../styles/utilities.css"; */
 @import "../styles/animations.css";
 @import "../styles/reader-theme.css";
+@import "../styles/toc.css";
 
 @layer base {
   :root {
@@ -50,7 +51,7 @@
     --fg: 245 245 247; /* Soft white */
     --muted: 155 160 170; /* Muted text */
     --border: 255 255 255;
-    --border-opacity: 0.1;
+    --border-opacity: 0.05;
     --accent: 64 156 255; /* Bright academic blue */
     --surface: 26 28 32;
     --surface-hover: 36 38 43;
@@ -184,13 +185,13 @@
   
   /* Essential custom utilities */
   .glass {
-    backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(200%);
     background-color: rgba(var(--bg), 0.75);
     border: 1px solid rgba(var(--border), 0.15);
   }
   
   .glass-strong {
-    backdrop-filter: blur(24px) saturate(200%);
+    backdrop-filter: blur(40px) saturate(220%);
     background-color: rgba(var(--bg), 0.85);
     border: 1px solid rgba(var(--border), 0.2);
   }
