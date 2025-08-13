@@ -183,6 +183,12 @@ export default function ReaderPage() {
       // Get table of contents
       const tocItems = renderer.getTableOfContents();
       setToc(tocItems);
+      
+      // Set initial chapter
+      const initialChapter = renderer.getCurrentChapter();
+      if (initialChapter) {
+        setChapterTitle(initialChapter);
+      }
 
       // Apply current theme
       renderer.setTheme(theme);

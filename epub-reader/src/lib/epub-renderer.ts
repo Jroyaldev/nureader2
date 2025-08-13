@@ -699,6 +699,7 @@ export class EpubRenderer {
 
     const chapters = this.container.querySelectorAll('.epub-chapter');
     let currentChapter = '';
+    let currentHref = '';
 
     for (const chapter of chapters) {
       const rect = (chapter as HTMLElement).getBoundingClientRect();
@@ -707,7 +708,21 @@ export class EpubRenderer {
 
       if (midPoint >= chapterTop && midPoint <= chapterBottom) {
         const index = parseInt((chapter as HTMLElement).getAttribute('data-chapter-index') || '0');
+        currentHref = (chapter as HTMLElement).getAttribute('data-chapter-href') || '';
         currentChapter = this.chapters[index]?.title || '';
+        this.currentChapterIndex = index;
+        
+        // Try to find matching TOC item for more accurate title
+        const tocItem = this.toc.find(item => {
+          const itemHref = item.href.split('#')[0];
+          const chapterHref = currentHref.split('#')[0];
+          return itemHref === chapterHref;
+        });
+        
+        if (tocItem) {
+          currentChapter = tocItem.label;
+        }
+        
         break;
       }
     }
@@ -1254,9 +1269,40 @@ export class EpubRenderer {
 
   // Navigation methods
   jumpToChapter(href: string): void {
-    const chapter = this.container.querySelector(`[data-chapter-href="${href}"]`);
+    // First try exact match
+    let chapter = this.container.querySelector(`[data-chapter-href="${href}"]`);
+    
+    // If not found, try without fragment identifier
+    if (!chapter && href.includes('#')) {
+      const baseHref = href.split('#')[0];
+      chapter = this.container.querySelector(`[data-chapter-href="${baseHref}"]`);
+    }
+    
+    // If still not found, try finding by matching the href part
+    if (!chapter) {
+      const chapters = this.container.querySelectorAll('[data-chapter-href]');
+      for (const ch of chapters) {
+        const chapterHref = ch.getAttribute('data-chapter-href') || '';
+        // Check if the hrefs match (ignoring fragments)
+        if (chapterHref.split('#')[0] === href.split('#')[0]) {
+          chapter = ch;
+          break;
+        }
+      }
+    }
+    
     if (chapter) {
       chapter.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Update current chapter tracking
+      const index = parseInt((chapter as HTMLElement).getAttribute('data-chapter-index') || '0');
+      this.currentChapterIndex = index;
+      const title = this.chapters[index]?.title || '';
+      if (this.onChapterCallback) {
+        this.onChapterCallback(title);
+      }
+    } else {
+      console.warn(`Chapter not found for href: ${href}`);
     }
   }
 
@@ -1289,7 +1335,20 @@ export class EpubRenderer {
 
       if (midPoint >= chapterTop && midPoint <= chapterBottom) {
         const index = parseInt((chapter as HTMLElement).getAttribute('data-chapter-index') || '0');
+        const currentHref = (chapter as HTMLElement).getAttribute('data-chapter-href') || '';
         this.currentChapterIndex = index;
+        
+        // Try to find matching TOC item for more accurate title
+        const tocItem = this.toc.find(item => {
+          const itemHref = item.href.split('#')[0];
+          const chapterHref = currentHref.split('#')[0];
+          return itemHref === chapterHref;
+        });
+        
+        if (tocItem) {
+          return tocItem.label;
+        }
+        
         return this.chapters[index]?.title || '';
       }
     }
