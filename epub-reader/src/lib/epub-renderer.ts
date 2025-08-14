@@ -381,7 +381,7 @@ export class EpubRenderer {
       console.log(`🔍 Found unprocessed image in DOM: ${src}`);
       
       // Find the chapter this image belongs to
-      let chapterElement = img.closest('.epub-chapter');
+      const chapterElement = img.closest('.epub-chapter');
       let chapterHref = '';
       if (chapterElement) {
         chapterHref = chapterElement.getAttribute('data-chapter-href') || '';
@@ -722,7 +722,6 @@ export class EpubRenderer {
     if (!this.onChapterCallback) return;
 
     const scrollTop = this.container.scrollTop;
-    const viewportHeight = this.container.clientHeight;
     // Use a reference point near the top of the viewport. This is more stable
     // for determining the "current" chapter than the viewport middle. A small,
     // fixed offset is used to prevent issues with chapters that are only
@@ -765,15 +764,18 @@ export class EpubRenderer {
     // If no chapter was found (e.g. scrolled before the first chapter),
     // default to the first chapter's title if we are at the top.
     if (!activeChapterFound && scrollTop < 100 && this.chapters.length > 0) {
-        currentChapter = this.chapters[0].title;
-        // Also try to find a better title from TOC
-        const tocItem = this.toc.find(item => {
-          const itemHref = item.href.split('#')[0];
-          const chapterHref = this.chapters[0].href.split('#')[0];
-          return itemHref === chapterHref;
-        });
-        if (tocItem) {
-            currentChapter = tocItem.label;
+        const firstChapter = this.chapters[0];
+        if (firstChapter) {
+          currentChapter = firstChapter.title;
+          // Also try to find a better title from TOC
+          const tocItem = this.toc.find(item => {
+            const itemHref = item.href.split('#')[0];
+            const chapterHref = firstChapter.href.split('#')[0];
+            return itemHref === chapterHref;
+          });
+          if (tocItem) {
+              currentChapter = tocItem.label;
+          }
         }
     }
 
