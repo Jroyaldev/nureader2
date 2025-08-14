@@ -1010,8 +1010,8 @@ export default function ReaderPage() {
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               style={{
-                minHeight: "calc(100vh - 128px)",
                 height: "calc(100vh - 128px)",
+                maxHeight: "calc(100vh - 128px)",
                 maxWidth: "960px",
                 margin: "0 auto",
                 boxShadow: theme === "dark" 
