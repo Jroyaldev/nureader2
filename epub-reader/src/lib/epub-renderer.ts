@@ -695,36 +695,58 @@ export class EpubRenderer {
 
     const scrollTop = this.container.scrollTop;
     const viewportHeight = this.container.clientHeight;
-    const midPoint = scrollTop + viewportHeight / 2;
+    // Use a reference point near the top of the viewport. This is more stable
+    // for determining the "current" chapter than the viewport middle. A small,
+    // fixed offset is used to prevent issues with chapters that are only
+    // barely visible at the bottom of the screen.
+    const referencePoint = scrollTop + 50;
 
     const chapters = this.container.querySelectorAll('.epub-chapter');
+    let activeChapterFound = false;
     let currentChapter = '';
     let currentHref = '';
 
-    for (const chapter of chapters) {
-      const rect = (chapter as HTMLElement).getBoundingClientRect();
+    // Iterate backwards to find the first chapter that starts before the reference point
+    for (let i = chapters.length - 1; i >= 0; i--) {
+      const chapter = chapters[i] as HTMLElement;
+      const rect = chapter.getBoundingClientRect();
       const chapterTop = scrollTop + rect.top;
-      const chapterBottom = chapterTop + rect.height;
 
-      if (midPoint >= chapterTop && midPoint <= chapterBottom) {
-        const index = parseInt((chapter as HTMLElement).getAttribute('data-chapter-index') || '0');
-        currentHref = (chapter as HTMLElement).getAttribute('data-chapter-href') || '';
+      if (chapterTop <= referencePoint) {
+        const index = parseInt(chapter.getAttribute('data-chapter-index') || '0');
+        currentHref = chapter.getAttribute('data-chapter-href') || '';
         currentChapter = this.chapters[index]?.title || '';
         this.currentChapterIndex = index;
-        
+
         // Try to find matching TOC item for more accurate title
         const tocItem = this.toc.find(item => {
           const itemHref = item.href.split('#')[0];
           const chapterHref = currentHref.split('#')[0];
           return itemHref === chapterHref;
         });
-        
+
         if (tocItem) {
           currentChapter = tocItem.label;
         }
         
-        break;
+        activeChapterFound = true;
+        break; // Found the current chapter, stop searching
       }
+    }
+
+    // If no chapter was found (e.g. scrolled before the first chapter),
+    // default to the first chapter's title if we are at the top.
+    if (!activeChapterFound && scrollTop < 100 && this.chapters.length > 0) {
+        currentChapter = this.chapters[0].title;
+        // Also try to find a better title from TOC
+        const tocItem = this.toc.find(item => {
+          const itemHref = item.href.split('#')[0];
+          const chapterHref = this.chapters[0].href.split('#')[0];
+          return itemHref === chapterHref;
+        });
+        if (tocItem) {
+            currentChapter = tocItem.label;
+        }
     }
 
     this.onChapterCallback(currentChapter);
