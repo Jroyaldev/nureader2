@@ -10,8 +10,10 @@ import NoteMobileModal from "@/components/reader/NoteMobileModal";
 import Toast from "@/components/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
+import { throttle } from "@/lib/utils";
 import TableOfContents from "@/components/reader/TableOfContents";
 import ContextualToolbar from "@/components/reader/ContextualToolbar";
+import { useReaderState } from '@/hooks/useReaderState';
 
 interface TocItem {
   label: string;
@@ -28,53 +30,151 @@ type LoadedBook = {
 const defaultBookUrl = "/sample.epub";
 
 export default function ReaderPage() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const epubRendererRef = useRef<EpubRenderer | null>(null);
-  const [loaded, setLoaded] = useState<LoadedBook | null>(null);
-  const [error, setError] = useState<string>("");
+  const {
+    containerRef,
+    epubRendererRef,
+    loaded,
+    error,
+    isLoading,
+    toc,
+    chapterTitle,
+    isHovering,
+    showToc,
+    showAnnotations,
+    isToolbarPinned,
+    isMobile,
+    currentProgress,
+    navigationState,
+    selectedText,
+    selectionCfi,
+    annotationToolbarPos,
+    showAnnotationToolbar,
+    showNoteModal,
+    notePopoverPos,
+    fontSize,
+    showSearch,
+    showSettings,
+    isBookmarked,
+    isFullscreen,
+    timeLeft,
+    toast,
+    userTheme,
+    resolvedTheme,
+    setLoaded,
+    setError,
+    setIsLoading,
+    setToc,
+    setChapterTitle,
+    setIsHovering,
+    setShowToc,
+    setShowAnnotations,
+    setIsToolbarPinned,
+    setIsMobile,
+    setCurrentProgress,
+    setNavigationState,
+    setSelectedText,
+    setSelectionCfi,
+    setAnnotationToolbarPos,
+    setShowAnnotationToolbar,
+    setShowNoteModal,
+    setNotePopoverPos,
+    setFontSize,
+    setShowSearch,
+    setShowSettings,
+    setIsBookmarked,
+    setIsFullscreen,
+    setTimeLeft,
+    setToast,
+    setUserTheme,
+  } = useReaderState();
+
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const { theme: userTheme, resolvedTheme, setTheme: setUserTheme } = useTheme();
   const theme = resolvedTheme; // Use global theme preference
-  const [isLoading, setIsLoading] = useState(true);
   
   // UI state
-  const [toc, setToc] = useState<TocItem[]>([]);
-  const [chapterTitle, setChapterTitle] = useState<string>("");
-  const [isHovering, setIsHovering] = useState<boolean>(false);
-  const [showToc, setShowToc] = useState<boolean>(false);
-  const [showAnnotations, setShowAnnotations] = useState<boolean>(false);
-  const [isToolbarPinned, setIsToolbarPinned] = useState<boolean>(true); // Pinned by default
-  const [isMobile, setIsMobile] = useState<boolean>(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [bookData, setBookData] = useState<any>(null);
-  const [currentProgress, setCurrentProgress] = useState<number>(0);
   const [savedProgress, setSavedProgress] = useState<{location: string, percentage: number} | null>(null);
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [containerReady, setContainerReady] = useState<boolean>(false);
-  const [navigationState, setNavigationState] = useState({ canGoNext: false, canGoPrev: false });
   const saveProgressQueueRef = useRef<{ progress: number; timestamp: number } | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [selectedText, setSelectedText] = useState<string>("");
-  const [selectionCfi, setSelectionCfi] = useState<string>("");
-  const [annotationToolbarPos, setAnnotationToolbarPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [showAnnotationToolbar, setShowAnnotationToolbar] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [notePopoverPos, setNotePopoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  
-  // Additional state for ContextualToolbar
-  const [fontSize, setFontSize] = useState<number>(16);
-  const [showSearch, setShowSearch] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<string>("");
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
   const bookId = searchParams.get('id');
+
+  // Progress tracking effect
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !loaded) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const totalScrollableHeight = scrollHeight - clientHeight;
+      if (totalScrollableHeight <= 0) return;
+
+      const progress = Math.min(100, Math.round((scrollTop / totalScrollableHeight) * 100));
+      if (progress !== currentProgress) {
+        setCurrentProgress(progress);
+      }
+    };
+
+    const throttledScrollHandler = throttle(handleScroll, 250);
+    container.addEventListener('scroll', throttledScrollHandler);
+
+    return () => {
+      container.removeEventListener('scroll', throttledScrollHandler);
+    };
+  }, [loaded, containerRef, currentProgress, setCurrentProgress]);
+
+  // Chapter identification effect
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !loaded || !toc.length) return;
+
+    const chapterElements = container.querySelectorAll('.epub-chapter');
+    if (chapterElements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const intersectingChapters = entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => ({
+            index: parseInt(entry.target.getAttribute('data-chapter-index') || '0', 10),
+            element: entry.target,
+          }));
+
+        if (intersectingChapters.length > 0) {
+          // The first one in the DOM order that is intersecting at the top is the current one.
+          intersectingChapters.sort((a, b) => a.index - b.index);
+          const currentChapterInfo = intersectingChapters[0];
+          const chapter = toc[currentChapterInfo.index];
+          if (chapter && chapter.label !== chapterTitle) {
+            setChapterTitle(chapter.label);
+            const newIndex = currentChapterInfo.index;
+            setNavigationState({
+              canGoNext: newIndex < toc.length - 1,
+              canGoPrev: newIndex > 0,
+            });
+          }
+        }
+      },
+      {
+        root: container,
+        rootMargin: '0px 0px -100% 0px', // Trigger when chapter is at the top
+        threshold: 0,
+      }
+    );
+
+    chapterElements.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loaded, containerRef, toc, setChapterTitle]);
 
   // Clean up renderer on unmount or book change
   useEffect(() => {
@@ -130,32 +230,8 @@ export default function ReaderPage() {
       const renderer = new EpubRenderer(containerRef.current, theme);
       epubRendererRef.current = renderer;
 
-      // Set up progress tracking
-      renderer.onProgress((progress) => {
-        setCurrentProgress(progress);
-      });
-
-      // Set up chapter tracking
-      renderer.onChapterChange((title) => {
-        setChapterTitle(title);
-        // Update navigation state
-        const position = renderer.getCurrentPosition();
-        setNavigationState({
-          canGoNext: position.canGoNext,
-          canGoPrev: position.canGoPrev
-        });
-      });
-      
-      // Also listen for progress updates to update navigation state
-      renderer.onProgress((progress) => {
-        setCurrentProgress(progress);
-        // Update navigation state on progress change too
-        const position = renderer.getCurrentPosition();
-        setNavigationState({
-          canGoNext: position.canGoNext,
-          canGoPrev: position.canGoPrev
-        });
-      });
+      // Navigation state will be updated via a different mechanism.
+      // The onProgress and onChapterChange are being replaced by the IntersectionObserver logic.
 
       // Set up text selection tracking
       renderer.onTextSelect((text, cfi) => {
@@ -984,7 +1060,7 @@ export default function ReaderPage() {
       {/* Mobile toolbar is now handled by ContextualToolbar component above */}
 
       {/* Main Reading Area */}
-      <main className={`min-h-dvh flex items-start justify-center ${isMobile ? 'p-4 pb-24' : 'p-8'}`}>
+      <main className={`min-h-dvh flex items-start justify-center ${isMobile ? 'px-3 sm:px-4 pb-24 pt-4' : 'p-8'}`}>
         <div className="w-full max-w-5xl relative">
           {/* EPUB Container - Clean scrollable container */}
           <div className="relative">

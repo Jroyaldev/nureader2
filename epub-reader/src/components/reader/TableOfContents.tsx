@@ -291,7 +291,7 @@ export default function TableOfContents({
           
           {/* Header */}
           <div className="px-6 pb-4 reader-divider-h rounded-t-3xl">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <BookOpenSolidIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
                 <h2 className="text-lg font-semibold">Contents</h2>
@@ -305,14 +305,14 @@ export default function TableOfContents({
             </div>
             
             {/* Stats */}
-            <div className="flex items-center gap-4 text-xs text-muted">
+            <div className="flex items-center gap-4 text-sm text-muted">
               <span>{chaptersRead} of {totalChapters} chapters</span>
               <span>•</span>
-              <span>{progress}% complete</span>
+              <span className="font-medium">{progress}% complete</span>
             </div>
             
             {/* Search */}
-            <div className="relative mt-3">
+            <div className="relative mt-4">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
               <input
                 ref={searchInputRef}
@@ -328,7 +328,7 @@ export default function TableOfContents({
           {/* Content */}
           <div 
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto px-4 py-3"
+            className="flex-1 overflow-y-auto px-4 py-4"
           >
             <div className="space-y-1 pb-6">
               {filteredItems.map((item, idx) => (

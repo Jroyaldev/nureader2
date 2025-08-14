@@ -304,7 +304,7 @@ export class EpubRenderer {
     const section = document.createElement('section');
     section.className = 'epub-chapter';
     section.setAttribute('data-chapter-id', chapter.id);
-    section.setAttribute('data-chapter-index', chapter.index.toString());
+    section.setAttribute('data-chapter-index', String(index));
     section.setAttribute('data-chapter-href', chapter.href);
     
     // Extract body content only to avoid head elements
