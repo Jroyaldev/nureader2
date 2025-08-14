@@ -298,6 +298,16 @@ export class EpubRenderer {
     }
     
     console.log("✅ EpubRenderer: Initial content rendered");
+    
+    // Check if container is now scrollable after content is added
+    setTimeout(() => {
+      console.log('📏 After render - Container dimensions:', {
+        scrollHeight: this.container.scrollHeight,
+        clientHeight: this.container.clientHeight,
+        isScrollable: this.container.scrollHeight > this.container.clientHeight,
+        computedOverflowY: window.getComputedStyle(this.container).overflowY
+      });
+    }, 100);
   }
   
   private async renderChapter(contentWrapper: HTMLElement, chapter: ChapterData, index: number): Promise<void> {
@@ -662,12 +672,31 @@ export class EpubRenderer {
   private setupScrollListener(): void {
     let ticking = false;
     let lastScrollTop = 0;
+    console.log('🎯 Setting up scroll listener on container:', this.container);
+    console.log('📊 Container dimensions:', {
+      scrollHeight: this.container.scrollHeight,
+      clientHeight: this.container.clientHeight,
+      scrollTop: this.container.scrollTop,
+      offsetHeight: this.container.offsetHeight,
+      className: this.container.className,
+      id: this.container.id,
+      computedOverflow: window.getComputedStyle(this.container).overflow,
+      computedOverflowY: window.getComputedStyle(this.container).overflowY
+    });
+    
     this._onScroll = () => {
+      console.log('🔥 RAW SCROLL EVENT FIRED!', this.container.scrollTop);
       if (!ticking) {
         requestAnimationFrame(() => {
           // Only update if scroll position actually changed significantly
           const currentScrollTop = this.container.scrollTop;
           if (Math.abs(currentScrollTop - lastScrollTop) > 5) {
+            console.log('📜 Scroll detected:', {
+              scrollTop: currentScrollTop,
+              scrollHeight: this.container.scrollHeight,
+              clientHeight: this.container.clientHeight,
+              progress: Math.round((currentScrollTop / (this.container.scrollHeight - this.container.clientHeight)) * 100)
+            });
             this.updateProgress();
             this.updateCurrentChapter();
             lastScrollTop = currentScrollTop;
@@ -681,16 +710,19 @@ export class EpubRenderer {
   }
 
   private updateProgress(): void {
+    console.log('📊 updateProgress called, callback exists?', !!this.onProgressCallback);
     if (!this.onProgressCallback) return;
 
     const scrollTop = this.container.scrollTop;
     const scrollHeight = this.container.scrollHeight - this.container.clientHeight;
     const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
     
+    console.log('📈 Progress calculated:', Math.round(progress) + '%');
     this.onProgressCallback(Math.round(progress));
   }
 
   private updateCurrentChapter(): void {
+    console.log('📚 updateCurrentChapter called, callback exists?', !!this.onChapterCallback);
     if (!this.onChapterCallback) return;
 
     const scrollTop = this.container.scrollTop;
@@ -1330,11 +1362,17 @@ export class EpubRenderer {
 
   // Callbacks
   onProgress(callback: (progress: number) => void): void {
+    console.log('✅ onProgress callback registered');
     this.onProgressCallback = callback;
+    // Immediately call with current progress
+    this.updateProgress();
   }
 
   onChapterChange(callback: (title: string) => void): void {
+    console.log('✅ onChapterChange callback registered');
     this.onChapterCallback = callback;
+    // Immediately call with current chapter
+    this.updateCurrentChapter();
   }
 
   // Getters
