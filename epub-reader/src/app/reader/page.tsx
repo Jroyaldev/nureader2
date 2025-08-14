@@ -10,22 +10,10 @@ import NoteMobileModal from "@/components/reader/NoteMobileModal";
 import Toast from "@/components/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
-import { throttle } from "@/lib/utils";
 import TableOfContents from "@/components/reader/TableOfContents";
 import ContextualToolbar from "@/components/reader/ContextualToolbar";
 import { useReaderState } from '@/hooks/useReaderState';
 
-interface TocItem {
-  label: string;
-  href: string;
-  subitems?: TocItem[];
-}
-
-type LoadedBook = {
-  renderer: EpubRenderer;
-  title?: string;
-  author?: string;
-};
 
 const defaultBookUrl = "/sample.epub";
 
@@ -106,75 +94,21 @@ export default function ReaderPage() {
   const supabase = createClient();
   const bookId = searchParams.get('id');
 
-  // Progress tracking effect
+  // The scroll tracking is now handled by EpubRenderer internally
+  // This avoids duplicate scroll handlers and ensures consistency
+
+  // Update navigation state when chapter changes
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !loaded) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const totalScrollableHeight = scrollHeight - clientHeight;
-      if (totalScrollableHeight <= 0) return;
-
-      const progress = Math.min(100, Math.round((scrollTop / totalScrollableHeight) * 100));
-      if (progress !== currentProgress) {
-        setCurrentProgress(progress);
-      }
-    };
-
-    const throttledScrollHandler = throttle(handleScroll, 250);
-    container.addEventListener('scroll', throttledScrollHandler);
-
-    return () => {
-      container.removeEventListener('scroll', throttledScrollHandler);
-    };
-  }, [loaded, containerRef, currentProgress, setCurrentProgress]);
-
-  // Chapter identification effect
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !loaded || !toc.length) return;
-
-    const chapterElements = container.querySelectorAll('.epub-chapter');
-    if (chapterElements.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const intersectingChapters = entries
-          .filter((entry) => entry.isIntersecting)
-          .map((entry) => ({
-            index: parseInt(entry.target.getAttribute('data-chapter-index') || '0', 10),
-            element: entry.target,
-          }));
-
-        if (intersectingChapters.length > 0) {
-          // The first one in the DOM order that is intersecting at the top is the current one.
-          intersectingChapters.sort((a, b) => a.index - b.index);
-          const currentChapterInfo = intersectingChapters[0];
-          const chapter = toc[currentChapterInfo.index];
-          if (chapter && chapter.label !== chapterTitle) {
-            setChapterTitle(chapter.label);
-            const newIndex = currentChapterInfo.index;
-            setNavigationState({
-              canGoNext: newIndex < toc.length - 1,
-              canGoPrev: newIndex > 0,
-            });
-          }
-        }
-      },
-      {
-        root: container,
-        rootMargin: '0px 0px -100% 0px', // Trigger when chapter is at the top
-        threshold: 0,
-      }
-    );
-
-    chapterElements.forEach((el) => observer.observe(el));
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [loaded, containerRef, toc, setChapterTitle]);
+    if (!toc.length || !chapterTitle) return;
+    
+    const chapterIndex = toc.findIndex(item => item.label === chapterTitle);
+    if (chapterIndex !== -1) {
+      setNavigationState({
+        canGoNext: chapterIndex < toc.length - 1,
+        canGoPrev: chapterIndex > 0,
+      });
+    }
+  }, [chapterTitle, toc]);
 
   // Clean up renderer on unmount or book change
   useEffect(() => {
@@ -230,8 +164,14 @@ export default function ReaderPage() {
       const renderer = new EpubRenderer(containerRef.current, theme);
       epubRendererRef.current = renderer;
 
-      // Navigation state will be updated via a different mechanism.
-      // The onProgress and onChapterChange are being replaced by the IntersectionObserver logic.
+      // Connect progress and chapter callbacks
+      renderer.onProgress((progress) => {
+        setCurrentProgress(progress);
+      });
+
+      renderer.onChapterChange((title) => {
+        setChapterTitle(title);
+      });
 
       // Set up text selection tracking
       renderer.onTextSelect((text, cfi) => {
