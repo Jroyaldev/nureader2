@@ -336,6 +336,34 @@ export default function ReaderPage() {
 
         setBookData(book);
 
+        // Load saved reading progress BEFORE loading the book
+        let savedLocation: string | null = null;
+        let savedPercentage: number = 0;
+        
+        try {
+          console.log('📖 Loading reading progress for book:', bookId);
+          
+          const { data: progress, error: progressError } = await supabase
+            .from('reading_progress')
+            .select('current_location, progress_percentage, reading_time_minutes')
+            .eq('user_id', user.id)
+            .eq('book_id', bookId)
+            .single();
+          
+          if (!progressError && progress) {
+            console.log('✅ Found saved progress:', progress.progress_percentage + '%');
+            savedLocation = progress.current_location;
+            savedPercentage = progress.progress_percentage;
+            setSavedProgress({
+              location: progress.current_location,
+              percentage: progress.progress_percentage
+            });
+            setCurrentProgress(progress.progress_percentage);
+          }
+        } catch (err) {
+          console.warn('Could not load saved progress:', err);
+        }
+
         const { data: fileData, error: storageError } = await supabase.storage
           .from('epub-files')
           .download(book.file_path);
@@ -349,11 +377,43 @@ export default function ReaderPage() {
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
 
-        // Load saved reading progress and annotations after book is loaded
-        if (bookId) {
-          await loadReadingProgress();
-          const r = epubRendererRef.current;
-          await loadAnnotations(r);
+        // After book is loaded, jump to saved position if available
+        if (bookId && (savedLocation || savedPercentage > 0) && epubRendererRef.current) {
+          // Wait for DOM to be fully ready and measured
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              if (!epubRendererRef.current) return;
+              
+              console.log('📍 Attempting to restore reading position...');
+              console.log('  Saved location:', savedLocation);
+              console.log('  Saved percentage:', savedPercentage + '%');
+              
+              // Try CFI-based restoration first
+              let restored = false;
+              if (savedLocation && !savedLocation.includes('undefined')) {
+                console.log('  Trying CFI restoration...');
+                restored = epubRendererRef.current.displayCfi(savedLocation);
+              }
+              
+              // If CFI failed or wasn't available, use percentage
+              if (!restored && savedPercentage > 0) {
+                console.log('  Using percentage-based restoration...');
+                epubRendererRef.current.restoreToPercentage(savedPercentage);
+                restored = true;
+              }
+              
+              if (!restored) {
+                console.warn('⚠️ Could not restore reading position');
+              } else {
+                console.log('✅ Reading position restored successfully');
+              }
+            }, 1000); // Give more time for complex books to fully render
+          });
+        }
+
+        // Load annotations after book is loaded
+        if (bookId && epubRendererRef.current) {
+          await loadAnnotations(epubRendererRef.current);
         }
         
       } catch (err) {
@@ -431,61 +491,6 @@ export default function ReaderPage() {
       }, 2000);
     }
   }, [bookId, authReady, supabase, performProgressSave]);
-
-  // Load reading progress from database
-  const loadReadingProgress = useCallback(async () => {
-    if (!bookId || !authReady) return;
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      console.log('📖 Loading reading progress for book:', bookId);
-      
-      const { data: progress, error } = await supabase
-        .from('reading_progress')
-        .select('current_location, progress_percentage, reading_time_minutes')
-        .eq('user_id', user.id)
-        .eq('book_id', bookId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading reading progress:', error);
-        return;
-      }
-
-      if (progress) {
-        console.log('✅ Found saved progress:', progress.progress_percentage + '%');
-        setSavedProgress({
-          location: progress.current_location,
-          percentage: progress.progress_percentage
-        });
-        setCurrentProgress(progress.progress_percentage);
-        
-        // Restore reading position if renderer is ready
-        if (epubRendererRef.current && progress.current_location) {
-          // Try to display the saved CFI
-          const restored = epubRendererRef.current.displayCfi(progress.current_location);
-          if (!restored) {
-            // Fallback to old format if CFI display fails
-            const [savedScrollTop, savedScrollHeight] = progress.current_location.split(':').map(Number);
-            
-            if (!isNaN(savedScrollTop) && !isNaN(savedScrollHeight) && containerRef.current) {
-              const container = containerRef.current;
-              const currentScrollHeight = container.scrollHeight - container.clientHeight;
-              const scrollRatio = savedScrollTop / savedScrollHeight;
-              const newScrollTop = Math.max(0, Math.min(scrollRatio * currentScrollHeight, currentScrollHeight));
-              container.scrollTop = newScrollTop;
-            }
-          }
-        }
-      } else {
-        console.log('📝 No saved progress found for this book');
-      }
-    } catch (error) {
-      console.error('Error loading reading progress:', error);
-    }
-  }, [bookId, authReady, supabase]);
 
   // Auto-save progress when it changes
   useEffect(() => {

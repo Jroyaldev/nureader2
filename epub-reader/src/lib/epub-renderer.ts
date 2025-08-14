@@ -189,7 +189,7 @@ export class EpubRenderer {
           }
 
           return {
-            id: item.id,
+            id: item.id || item.href,
             index,
             href: item.href,
             content,
@@ -198,7 +198,7 @@ export class EpubRenderer {
         } catch (error) {
           console.warn(`⚠️ EpubRenderer: Failed to load chapter ${index}:`, error);
           return {
-            id: item.id,
+            id: item.id || item.href,
             index,
             href: item.href,
             content: '<p>Failed to load chapter content</p>',
@@ -287,11 +287,7 @@ export class EpubRenderer {
         await this.postProcessImagesInDOM();
       };
       
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(renderRemaining);
-      } else {
-        setTimeout(renderRemaining, 100);
-      }
+      await renderRemaining();
     } else {
       // Post-process images immediately for small books
       await this.postProcessImagesInDOM();
@@ -1500,6 +1496,26 @@ export class EpubRenderer {
     };
   }
 
+  // Restore to a percentage position (more reliable fallback)
+  restoreToPercentage(percentage: number): void {
+    if (percentage < 0 || percentage > 100) {
+      console.warn(`Invalid percentage: ${percentage}`);
+      return;
+    }
+    
+    // Calculate scroll position based on percentage
+    const scrollHeight = this.container.scrollHeight - this.container.clientHeight;
+    const targetScroll = scrollHeight * (percentage / 100);
+    
+    console.log(`📍 Restoring to ${percentage}% (scroll position: ${targetScroll})`);
+    this.container.scrollTo({ top: targetScroll, behavior: 'auto' });
+    
+    // Update progress callback
+    if (this.onProgressCallback) {
+      this.onProgressCallback(Math.round(percentage));
+    }
+  }
+
   // Generate CFI-like identifier for current position or selection
   generateCfi(range?: Range): string {
     try {
@@ -1562,7 +1578,10 @@ export class EpubRenderer {
   // Navigate to a CFI location with highlighting
   displayCfi(cfi: string, highlightId?: string): boolean {
     try {
-      if (!cfi) return false;
+      if (!cfi || cfi.includes('undefined')) {
+        console.warn('⚠️ Attempted to display an invalid or undefined CFI:', cfi);
+        return false;
+      }
       
       // First, try to find and highlight the annotation if ID provided
       if (highlightId) {
@@ -1583,10 +1602,11 @@ export class EpubRenderer {
       
       // Parse CFI format
       if (cfi.startsWith('@')) {
-        // Simple scroll position
+        // Simple scroll position - use immediate scrolling for restoration
         const scrollTop = parseFloat(cfi.substring(1));
         if (!isNaN(scrollTop)) {
-          this.container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+          console.log(`📍 Restoring to scroll position: ${scrollTop}`);
+          this.container.scrollTo({ top: scrollTop, behavior: 'auto' }); // Use 'auto' for immediate scroll
           return true;
         }
       } else {
@@ -1600,26 +1620,34 @@ export class EpubRenderer {
           
           // Find the chapter
           const chapter = this.container.querySelector(
-            `[data-chapter-index="${chapterIndex}"][data-chapter-id="${chapterId}"]`
+            `[data-chapter-index="${chapterIndex}"]`
           ) as HTMLElement;
           
-          if (chapter) {
-            const rect = chapter.getBoundingClientRect();
-            const chapterTop = this.container.scrollTop + rect.top;
-            
-            if (parts[1]) {
-              // Has relative position
-              const relativePosition = parseFloat(parts[1]);
-              if (!isNaN(relativePosition)) {
-                const targetScroll = chapterTop + (rect.height * relativePosition) - (this.container.clientHeight / 2);
-                this.container.scrollTo({ top: targetScroll, behavior: 'smooth' });
-                return true;
-              }
-            } else {
-              // Just scroll to chapter
-              chapter.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (!chapter) {
+            console.warn(`⚠️ Chapter not found: index=${chapterIndex}, id=${chapterId}`);
+            return false;
+          }
+          
+          // Get the actual position of the chapter in the scrollable container
+          const chapterTop = chapter.offsetTop;
+          console.log(`📍 Found chapter at offsetTop: ${chapterTop}`);
+          
+          if (parts[1]) {
+            // Has relative position within chapter
+            const relativePosition = parseFloat(parts[1]);
+            if (!isNaN(relativePosition)) {
+              // Calculate target scroll position
+              const chapterHeight = chapter.offsetHeight;
+              const targetScroll = chapterTop + (chapterHeight * relativePosition) - (this.container.clientHeight / 2);
+              console.log(`📍 Restoring to chapter ${chapterIndex} at ${(relativePosition * 100).toFixed(1)}% (scroll: ${targetScroll})`);
+              this.container.scrollTo({ top: targetScroll, behavior: 'auto' }); // Use 'auto' for immediate scroll
               return true;
             }
+          } else {
+            // Just scroll to chapter start
+            console.log(`📍 Restoring to chapter ${chapterIndex} start`);
+            this.container.scrollTo({ top: chapterTop, behavior: 'auto' });
+            return true;
           }
         }
       }
