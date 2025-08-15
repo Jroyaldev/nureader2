@@ -58,32 +58,7 @@
     --shadow: 0 0 0;
     --ring: 64 156 255;
   }
-  .sepia {
-    /* Elegant modern sepia */
-    --bg: 246 240 225; /* Softer warm cream */
-    --fg: 74 54 40; /* Rich coffee brown */
-    --muted: 122 102 82; /* Warm mid-brown */
-    --border: 196 173 146;
-    --border-opacity: 0.25;
-    --accent: 180 130 70; /* Warm gold accent */
-    --surface: 250 244 230;
-    --surface-hover: 242 235 220;
-    --shadow: 139 69 19;
-    --ring: 180 130 70;
-  }
-  .night {
-    /* True night mode for OLED/AMOLED */
-    --bg: 0 0 0; /* Pure black */
-    --fg: 220 220 220; /* Softer white to reduce eye strain */
-    --muted: 160 160 160; /* Brighter muted text for better readability */
-    --border: 80 80 80; /* Lighter border for better visibility */
-    --border-opacity: 0.4; /* Increased border opacity */
-    --accent: 100 160 255; /* Softer blue accent */
-    --surface: 25 25 25; /* More elevated surface for better card contrast */
-    --surface-hover: 35 35 35; /* Hover state for cards */
-    --shadow: 0 0 0;
-    --ring: 100 160 255;
-  }
+  /* Removed sepia and night modes - only light/dark supported */
   html, body, #__next { height: 100%; }
   body { 
     background-color: rgb(var(--bg)); 

@@ -32,8 +32,8 @@ interface ContextualToolbarProps {
   canGoPrev: boolean;
   
   // Theme & Display
-  currentTheme: 'light' | 'dark' | 'sepia' | 'night';
-  onThemeChange: (theme: 'light' | 'dark' | 'sepia' | 'night') => void;
+  currentTheme: 'light' | 'dark';
+  onThemeChange: (theme: 'light' | 'dark') => void;
   fontSize: number;
   onFontSizeChange: (size: number) => void;
   
@@ -74,9 +74,7 @@ interface ContextualToolbarProps {
 
 const themeConfigs = {
   light: { icon: SunIcon, label: 'Light', bg: 'rgb(255, 255, 255)', fg: 'rgb(28, 32, 36)' },
-  dark: { icon: MoonIcon, label: 'Dark', bg: 'rgb(16, 18, 21)', fg: 'rgb(245, 245, 247)' },
-  sepia: { icon: SparklesIcon, label: 'Sepia', bg: 'rgb(246, 240, 225)', fg: 'rgb(74, 54, 40)' },
-  night: { icon: BookOpenIcon, label: 'Night', bg: 'rgb(0, 0, 0)', fg: 'rgb(220, 220, 220)' }
+  dark: { icon: MoonIcon, label: 'Dark', bg: 'rgb(16, 18, 21)', fg: 'rgb(245, 245, 247)' }
 } as const;
 
 export default function ContextualToolbar({
@@ -177,7 +175,7 @@ export default function ContextualToolbar({
     };
   }, [autoHide, isMobile, lastScrollY, isHovering]);
   
-  const handleThemeSelect = (theme: 'light' | 'dark' | 'sepia' | 'night') => {
+  const handleThemeSelect = (theme: 'light' | 'dark') => {
     onThemeChange(theme);
     setShowThemeMenu(false);
   };
@@ -326,7 +324,7 @@ export default function ContextualToolbar({
                 {Object.entries(themeConfigs).map(([key, config]) => (
                   <button
                     key={key}
-                    onClick={() => handleThemeSelect(key as 'light' | 'dark' | 'sepia' | 'night')}
+                    onClick={() => handleThemeSelect(key as 'light' | 'dark')}
                     className={`relative p-4 rounded-2xl border-2 transition-all ${
                       currentTheme === key 
                         ? 'border-[rgb(var(--accent))] shadow-lg scale-105' 

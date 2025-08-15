@@ -53,7 +53,7 @@ interface AIChatPanelProps {
   bookId?: string;
   userId?: string;
   isMobile?: boolean;
-  theme?: 'light' | 'dark' | 'sepia' | 'night';
+  theme?: 'light' | 'dark';
 }
 
 const QUICK_ACTIONS = [

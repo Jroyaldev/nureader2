@@ -54,12 +54,7 @@ const FONT_FAMILIES = [
   { value: "'JetBrains Mono', monospace", name: 'Mono', preview: 'Aa' }
 ];
 
-const THEMES = [
-  { value: 'light', icon: SunIcon, label: 'Light', bg: 'bg-white', fg: 'text-gray-900', border: 'border-gray-200' },
-  { value: 'dark', icon: MoonIcon, label: 'Dark', bg: 'bg-gray-900', fg: 'text-gray-100', border: 'border-gray-700' },
-  { value: 'sepia', icon: SparklesIcon, label: 'Sepia', bg: 'bg-amber-50', fg: 'text-amber-900', border: 'border-amber-200' },
-  { value: 'night', icon: BookOpenIcon, label: 'Night', bg: 'bg-black', fg: 'text-gray-400', border: 'border-gray-800' }
-];
+// Theme selection removed - now handled in toolbar only
 
 const QUICK_PRESETS = [
   {
@@ -243,36 +238,6 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
           <div className="p-6 space-y-6">
             {activeTab === 'display' && (
               <>
-                {/* Theme Selection - Card Style */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-3 block">Reading Theme</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {THEMES.map((theme) => (
-                      <button
-                        key={theme.value}
-                        onClick={() => handleSelectChange('theme', theme.value)}
-                        className={`relative group p-4 rounded-xl border-2 transition-all duration-300 ${
-                          settings.theme === theme.value
-                            ? 'border-[rgb(var(--accent))] shadow-lg scale-[1.02]'
-                            : 'border-transparent hover:border-[rgba(var(--accent),0.3)]'
-                        } ${theme.bg}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <theme.icon className={`w-5 h-5 ${theme.fg}`} />
-                          <span className={`text-sm font-medium ${theme.fg}`}>
-                            {theme.label}
-                          </span>
-                        </div>
-                        {settings.theme === theme.value && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[rgb(var(--accent))] flex items-center justify-center">
-                            <CheckIcon className="w-3 h-3 text-white" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
                 {/* Font Size - Enhanced Slider */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">

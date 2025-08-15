@@ -1421,7 +1421,7 @@ export default function ReaderPage() {
         bookId={bookId || undefined}
         userId={currentUserId || undefined}
         isMobile={isMobile}
-        theme={resolvedTheme as 'light' | 'dark' | 'sepia' | 'night'}
+        theme={resolvedTheme as 'light' | 'dark'}
       />
     </div>
   );

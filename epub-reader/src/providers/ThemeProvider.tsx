@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 
-type Theme = "light" | "dark" | "sepia" | "night";
-type ResolvedTheme = "light" | "dark" | "sepia" | "night";
+type Theme = "light" | "dark";
+type ResolvedTheme = "light" | "dark";
 type ReadingTheme = "default" | "sepia" | "high-contrast";
 
 interface ThemePreferences {
@@ -150,7 +150,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.classList.add("theme-transitioning");
     
     // Remove existing theme classes
-    root.classList.remove("light", "dark", "sepia", "night", "theme-sepia", "theme-high-contrast");
+    root.classList.remove("light", "dark", "theme-sepia", "theme-high-contrast");
     
     // Add new theme class
     root.classList.add(resolvedTheme);
@@ -173,9 +173,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     if (metaThemeColor) {
       const themeColors: Record<ResolvedTheme, string> = {
         light: "#ffffff",
-        dark: "#101215",
-        sepia: "#f4ecd8",
-        night: "#000000",
+        dark: "#101215"
       };
       metaThemeColor.setAttribute("content", themeColors[resolvedTheme] || "#ffffff");
     }
@@ -183,9 +181,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Update body background immediately to prevent flashes
     const backgroundColors: Record<ResolvedTheme, string> = {
       light: "#ffffff",
-      dark: "#101215",
-      sepia: "#f4ecd8",
-      night: "#000000",
+      dark: "#101215"
     };
     document.body.style.backgroundColor = backgroundColors[resolvedTheme] || "#ffffff";
 
