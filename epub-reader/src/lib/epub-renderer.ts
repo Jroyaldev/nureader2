@@ -2103,4 +2103,226 @@ export class EpubRenderer {
     
     this.highlightedRanges.delete(annotationId);
   }
+
+  // Search functionality
+  async searchInBook(query: string): Promise<Array<{
+    id: string;
+    text: string;
+    context: string;
+    chapter: string;
+    chapterIndex: number;
+    position: number;
+  }>> {
+    if (!query || !query.trim()) return [];
+    
+    const results: Array<{
+      id: string;
+      text: string;
+      context: string;
+      chapter: string;
+      chapterIndex: number;
+      position: number;
+    }> = [];
+    
+    const searchTerm = query.toLowerCase().trim();
+    
+    // Search through all chapters
+    this.chapters.forEach((chapter, chapterIndex) => {
+      const chapterEl = this.container.querySelector(`[data-chapter-index="${chapterIndex}"]`);
+      if (!chapterEl) return;
+      
+      const textContent = chapterEl.textContent || '';
+      const lowerContent = textContent.toLowerCase();
+      
+      // Find all occurrences in this chapter
+      let position = lowerContent.indexOf(searchTerm);
+      let occurrenceCount = 0;
+      
+      while (position !== -1) {
+        // Get context (50 chars before and after)
+        const contextStart = Math.max(0, position - 50);
+        const contextEnd = Math.min(textContent.length, position + searchTerm.length + 50);
+        const context = textContent.substring(contextStart, contextEnd);
+        
+        results.push({
+          id: `${chapterIndex}-${occurrenceCount}`,
+          text: textContent.substring(position, position + searchTerm.length),
+          context: context,
+          chapter: chapter.title || `Chapter ${chapterIndex + 1}`,
+          chapterIndex: chapterIndex,
+          position: position
+        });
+        
+        occurrenceCount++;
+        // Find next occurrence
+        position = lowerContent.indexOf(searchTerm, position + 1);
+      }
+    });
+    
+    return results;
+  }
+
+  // Navigate to search result
+  navigateToSearchResult(result: {
+    chapterIndex: number;
+    position: number;
+    text: string;
+  }): boolean {
+    try {
+      const chapterEl = this.container.querySelector(`[data-chapter-index="${result.chapterIndex}"]`);
+      if (!chapterEl) return false;
+      
+      // Clear any existing search highlights
+      this.clearSearchHighlights();
+      
+      // Find and highlight the text
+      const walker = document.createTreeWalker(
+        chapterEl,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+      
+      let node;
+      let currentPos = 0;
+      
+      while (node = walker.nextNode()) {
+        const nodeText = node.textContent || '';
+        const nodeLength = nodeText.length;
+        
+        if (currentPos + nodeLength >= result.position) {
+          // Found the node containing our search result
+          const localPos = result.position - currentPos;
+          const searchLength = result.text.length;
+          
+          if (localPos >= 0 && localPos + searchLength <= nodeLength) {
+            // Create a range for the search result
+            const range = document.createRange();
+            range.setStart(node, localPos);
+            range.setEnd(node, Math.min(localPos + searchLength, nodeLength));
+            
+            // Highlight the search result
+            const highlightSpan = document.createElement('span');
+            highlightSpan.className = 'search-highlight';
+            highlightSpan.style.backgroundColor = 'rgba(255, 235, 59, 0.5)';
+            highlightSpan.style.padding = '2px 0';
+            highlightSpan.style.borderRadius = '2px';
+            highlightSpan.dataset.searchResult = 'true';
+            
+            try {
+              range.surroundContents(highlightSpan);
+            } catch {
+              // If surroundContents fails, use alternative method
+              const contents = range.extractContents();
+              highlightSpan.appendChild(contents);
+              range.insertNode(highlightSpan);
+            }
+            
+            // Scroll to the highlighted result
+            highlightSpan.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            });
+            
+            // Add a pulse animation
+            highlightSpan.style.animation = 'pulse 1s ease-in-out';
+            
+            return true;
+          }
+        }
+        
+        currentPos += nodeLength;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error navigating to search result:', error);
+      return false;
+    }
+  }
+
+  // Clear search highlights
+  clearSearchHighlights() {
+    const highlights = this.container.querySelectorAll('[data-search-result="true"]');
+    highlights.forEach(highlight => {
+      const parent = highlight.parentNode;
+      while (highlight.firstChild) {
+        parent?.insertBefore(highlight.firstChild, highlight);
+      }
+      parent?.removeChild(highlight);
+    });
+  }
+
+  // Calculate reading time estimation
+  calculateReadingTime(wordsPerMinute: number = 250): {
+    totalWords: number;
+    remainingWords: number;
+    totalTime: number; // in minutes
+    remainingTime: number; // in minutes
+    currentChapterWords: number;
+    currentChapterTime: number; // in minutes
+  } {
+    let totalWords = 0;
+    let remainingWords = 0;
+    let currentChapterWords = 0;
+    let foundCurrentChapter = false;
+    
+    // Calculate total words and remaining words
+    this.chapters.forEach((chapter, index) => {
+      const chapterEl = this.container.querySelector(`[data-chapter-index="${index}"]`);
+      if (!chapterEl) return;
+      
+      const text = chapterEl.textContent || '';
+      const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+      
+      totalWords += words;
+      
+      if (index === this.currentChapterIndex) {
+        currentChapterWords = words;
+        foundCurrentChapter = true;
+        
+        // Calculate words remaining in current chapter based on scroll position
+        const containerRect = this.container.getBoundingClientRect();
+        const chapterRect = chapterEl.getBoundingClientRect();
+        const scrollProgress = Math.max(0, Math.min(1, 
+          (containerRect.top - chapterRect.top) / (chapterRect.height - containerRect.height)
+        ));
+        
+        const wordsReadInChapter = Math.floor(words * scrollProgress);
+        remainingWords += (words - wordsReadInChapter);
+      } else if (foundCurrentChapter || index > this.currentChapterIndex) {
+        // Add all words from chapters after current
+        remainingWords += words;
+      }
+    });
+    
+    // Calculate times
+    const totalTime = Math.ceil(totalWords / wordsPerMinute);
+    const remainingTime = Math.ceil(remainingWords / wordsPerMinute);
+    const currentChapterTime = Math.ceil(currentChapterWords / wordsPerMinute);
+    
+    return {
+      totalWords,
+      remainingWords,
+      totalTime,
+      remainingTime,
+      currentChapterWords,
+      currentChapterTime
+    };
+  }
+
+  // Format time for display
+  static formatReadingTime(minutes: number): string {
+    if (minutes < 1) return 'Less than 1 min';
+    if (minutes === 1) return '1 min';
+    if (minutes < 60) return `${minutes} min`;
+    
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (mins === 0) {
+      return hours === 1 ? '1 hour' : `${hours} hours`;
+    }
+    
+    return `${hours}h ${mins}m`;
+  }
 }

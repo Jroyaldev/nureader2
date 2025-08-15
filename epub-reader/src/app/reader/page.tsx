@@ -12,6 +12,8 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
 import TableOfContents from "@/components/reader/TableOfContents";
 import ContextualToolbar from "@/components/reader/ContextualToolbar";
+import SearchPanel from "@/components/reader/SearchPanel";
+import { EnhancedSettingsPanel, SimplifiedReadingSettings } from "@/components/reader/EnhancedSettingsPanel";
 import { useReaderState } from '@/hooks/useReaderState';
 
 
@@ -89,6 +91,23 @@ export default function ReaderPage() {
   const saveProgressQueueRef = useRef<{ progress: number; timestamp: number } | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Reading settings state - initialize with current theme
+  const [readingSettings, setReadingSettings] = useState<SimplifiedReadingSettings>(() => ({
+    fontSize: 16,
+    fontFamily: 'system-ui',
+    lineHeight: 1.6,
+    letterSpacing: 0,
+    textAlign: 'left',
+    marginHorizontal: 40,
+    marginVertical: 40,
+    maxWidth: 0,
+    theme: (resolvedTheme || 'light') as any,
+    brightness: 100,
+    contrast: 100,
+    autoHideToolbar: true,
+    readingSpeed: 250
+  }));
+  
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -97,7 +116,7 @@ export default function ReaderPage() {
   // The scroll tracking is now handled by EpubRenderer internally
   // This avoids duplicate scroll handlers and ensures consistency
 
-  // Update navigation state when chapter changes
+  // Update navigation state and reading time when chapter or progress changes
   useEffect(() => {
     if (!toc.length || !chapterTitle) return;
     
@@ -108,7 +127,15 @@ export default function ReaderPage() {
         canGoPrev: chapterIndex > 0,
       });
     }
-  }, [chapterTitle, toc]);
+    
+    // Calculate reading time
+    if (epubRendererRef.current && loaded) {
+      const readingSpeed = readingSettings.readingSpeed || 250;
+      const timeData = epubRendererRef.current.calculateReadingTime(readingSpeed);
+      const formattedTime = EpubRenderer.formatReadingTime(timeData.remainingTime);
+      setTimeLeft(formattedTime);
+    }
+  }, [chapterTitle, toc, currentProgress, loaded, readingSettings.readingSpeed]);
 
   // Clean up renderer on unmount or book change
   useEffect(() => {
@@ -294,6 +321,15 @@ export default function ReaderPage() {
         }));
 
         r.loadAnnotations(formattedAnnotations);
+        
+        // Check if current location has a bookmark
+        const currentCfi = r.getCurrentCfi();
+        const hasBookmark = annotations.some(a => 
+          a.annotation_type === 'bookmark' && 
+          a.location === currentCfi
+        );
+        setIsBookmarked(hasBookmark);
+        
         console.log(`✅ Loaded ${annotations.length} annotations`);
       }
     } catch (error) {
@@ -414,6 +450,12 @@ export default function ReaderPage() {
         // Load annotations after book is loaded
         if (bookId && epubRendererRef.current) {
           await loadAnnotations(epubRendererRef.current);
+        }
+        
+        // Apply current settings to the newly loaded book
+        if (epubRendererRef.current) {
+          // Apply all current settings to ensure consistency
+          handleSettingsChange(readingSettings);
         }
         
       } catch (err) {
@@ -753,9 +795,178 @@ export default function ReaderPage() {
     setShowSettings(prev => !prev);
   }, []);
 
-  const toggleBookmark = useCallback(() => {
-    createAnnotation('bookmark');
-  }, [createAnnotation]);
+  // Settings handlers
+  const handleSettingsChange = useCallback((newSettings: Partial<SimplifiedReadingSettings>) => {
+    setReadingSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      
+      // Apply relevant settings to the renderer
+      if (epubRendererRef.current) {
+        if (newSettings.fontSize !== undefined) {
+          epubRendererRef.current.setFontSize(newSettings.fontSize);
+        }
+        if (newSettings.theme !== undefined) {
+          epubRendererRef.current.setTheme(newSettings.theme);
+          // Don't call setUserTheme here - use effect instead
+        }
+      }
+      
+      // Apply container styles and content styles
+      if (containerRef.current) {
+        const container = containerRef.current;
+        
+        // Apply to all chapter content
+        const chapters = container.querySelectorAll('[data-chapter-index]');
+        chapters.forEach((chapter: any) => {
+          // Typography
+          if (newSettings.fontFamily !== undefined) {
+            chapter.style.fontFamily = newSettings.fontFamily;
+          }
+          if (newSettings.lineHeight !== undefined) {
+            chapter.style.lineHeight = newSettings.lineHeight.toString();
+          }
+          if (newSettings.letterSpacing !== undefined) {
+            chapter.style.letterSpacing = `${newSettings.letterSpacing}px`;
+          }
+          if (newSettings.textAlign !== undefined) {
+            chapter.style.textAlign = newSettings.textAlign;
+          }
+          
+          // Margins
+          if (newSettings.marginHorizontal !== undefined) {
+            chapter.style.paddingLeft = `${newSettings.marginHorizontal}px`;
+            chapter.style.paddingRight = `${newSettings.marginHorizontal}px`;
+          }
+          if (newSettings.marginVertical !== undefined) {
+            chapter.style.paddingTop = `${newSettings.marginVertical}px`;
+            chapter.style.paddingBottom = `${newSettings.marginVertical}px`;
+          }
+          
+          // Max width constraint
+          if (newSettings.maxWidth !== undefined) {
+            if (newSettings.maxWidth > 0) {
+              chapter.style.maxWidth = `${newSettings.maxWidth}px`;
+              chapter.style.margin = '0 auto';
+            } else {
+              chapter.style.maxWidth = 'none';
+              chapter.style.margin = '0';
+            }
+          }
+        });
+        
+        // Display filters (brightness/contrast)
+        if (newSettings.brightness !== undefined || newSettings.contrast !== undefined) {
+          const brightness = newSettings.brightness ?? updated.brightness;
+          const contrast = newSettings.contrast ?? updated.contrast;
+          container.style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+        }
+      }
+      
+      // Auto-hide toolbar
+      if (newSettings.autoHideToolbar !== undefined) {
+        setIsToolbarPinned(!newSettings.autoHideToolbar);
+      }
+      
+      return updated;
+    });
+  }, []);
+
+  // Sync theme changes with global theme
+  useEffect(() => {
+    if (readingSettings.theme !== resolvedTheme) {
+      setUserTheme(readingSettings.theme);
+    }
+  }, [readingSettings.theme, setUserTheme]);
+
+  const handleResetSettings = useCallback(() => {
+    const defaultSettings: SimplifiedReadingSettings = {
+      fontSize: 16,
+      fontFamily: 'system-ui',
+      lineHeight: 1.6,
+      letterSpacing: 0,
+      textAlign: 'left',
+      marginHorizontal: 40,
+      marginVertical: 40,
+      maxWidth: 0,
+      theme: 'light',
+      brightness: 100,
+      contrast: 100,
+      autoHideToolbar: true,
+      readingSpeed: 250
+    };
+    
+    handleSettingsChange(defaultSettings);
+  }, [handleSettingsChange]);
+
+  // Search handlers
+  const handleSearch = useCallback(async (query: string) => {
+    if (!epubRendererRef.current) return [];
+    
+    try {
+      const results = await epubRendererRef.current.searchInBook(query);
+      return results;
+    } catch (error) {
+      console.error('Search error:', error);
+      return [];
+    }
+  }, []);
+
+  const handleNavigateToSearchResult = useCallback((result: any) => {
+    if (!epubRendererRef.current) return;
+    
+    const success = epubRendererRef.current.navigateToSearchResult({
+      chapterIndex: result.chapterIndex,
+      position: result.position,
+      text: result.text
+    });
+    
+    if (success) {
+      // Optionally close search panel after navigation
+      // setShowSearch(false);
+    }
+  }, []);
+
+  const toggleBookmark = useCallback(async () => {
+    if (!bookId || !epubRendererRef.current) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const currentCfi = epubRendererRef.current.getCurrentCfi();
+      
+      if (isBookmarked) {
+        // Remove bookmark
+        const { data: existingBookmark } = await supabase
+          .from('annotations')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('book_id', bookId)
+          .eq('location', currentCfi)
+          .eq('annotation_type', 'bookmark')
+          .single();
+        
+        if (existingBookmark) {
+          const { error } = await supabase
+            .from('annotations')
+            .delete()
+            .eq('id', existingBookmark.id);
+          
+          if (!error) {
+            setIsBookmarked(false);
+            setToast({ message: 'Bookmark removed', type: 'success' });
+          }
+        }
+      } else {
+        // Add bookmark
+        await createAnnotation('bookmark');
+        setIsBookmarked(true);
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      setToast({ message: 'Failed to toggle bookmark', type: 'error' });
+    }
+  }, [bookId, isBookmarked, createAnnotation, supabase]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -1000,6 +1211,24 @@ export default function ReaderPage() {
         isMobile={isMobile}
         progress={currentProgress}
         bookTitle={loaded?.title}
+      />
+
+      {/* Search Panel */}
+      <SearchPanel
+        isOpen={showSearch}
+        onClose={toggleSearch}
+        onSearch={handleSearch}
+        onNavigateToResult={handleNavigateToSearchResult}
+        currentChapter={chapterTitle}
+      />
+
+      {/* Settings Panel */}
+      <EnhancedSettingsPanel
+        visible={showSettings}
+        settings={readingSettings}
+        onSettingsChange={handleSettingsChange}
+        onClose={toggleSettings}
+        onReset={handleResetSettings}
       />
 
       {/* Mobile toolbar is now handled by ContextualToolbar component above */}

@@ -493,6 +493,37 @@
     transform: translateY(-2px);
   }
   
+  /* Custom Slider Styles */
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: rgb(var(--accent));
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+  }
+
+  .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  .slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: rgb(var(--accent));
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+  }
+
+  .slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+  }
+  
   /* Night mode specific enhancements for better readability */
   .night .card {
     background: rgb(var(--surface));
