@@ -286,54 +286,55 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className="min-h-dvh bg-[rgb(var(--bg))]">
-      {/* Clean geometric background */}
+    <main className="min-h-dvh bg-[rgb(var(--bg))] relative">
+      {/* Subtle gradient overlay instead of bubble shapes */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-100/15 to-purple-100/10 dark:from-blue-950/20 dark:to-purple-950/15 rounded-full -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-gradient-to-tr from-emerald-100/15 to-cyan-100/10 dark:from-emerald-950/20 dark:to-cyan-950/15 rounded-full translate-x-1/3 translate-y-1/3" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[rgb(var(--fg))]/[0.02]" />
       </div>
       
       <div className="relative z-10">
-        {/* Navigation Bar */}
-        <nav className="w-full px-8 lg:px-12 py-6 border-b border-[rgb(var(--border))]/[var(--border-opacity)]">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <Link 
-                href="/" 
-                className="flex items-center gap-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                <span className="text-sm font-medium">Home</span>
-              </Link>
-              <div className="flex items-center gap-3">
-                <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
-                <h1 className="text-xl font-bold text-[rgb(var(--fg))]">Library</h1>
+        {/* Navigation Bar with glassmorphism */}
+        <nav className="w-full px-8 lg:px-12 py-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="reader-glass rounded-2xl px-8 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                <Link 
+                  href="/" 
+                  className="flex items-center gap-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5"
+                >
+                  <ArrowLeftIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">Home</span>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+                  <h1 className="text-xl font-bold text-[rgb(var(--fg))]">Library</h1>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Link
-                href="/collections"
-                className="p-2.5 rounded-lg hover:bg-[rgb(var(--surface))] transition-colors"
-                title="Collections"
-              >
-                <FolderIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
-              </Link>
-              <Link
-                href="/profile"
-                className="p-2.5 rounded-lg hover:bg-[rgb(var(--surface))] transition-colors"
-                title="Profile"
-              >
-                <UserIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
-              </Link>
-              <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="btn-primary inline-flex items-center gap-2"
-                aria-label="Add book"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Add Book
-              </button>
+              
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/collections"
+                  className="p-2.5 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                  title="Collections"
+                >
+                  <FolderIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
+                </Link>
+                <Link
+                  href="/profile"
+                  className="p-2.5 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                  title="Profile"
+                >
+                  <UserIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
+                </Link>
+                <button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="px-5 py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg hover:opacity-90 transition-all shadow-lg inline-flex items-center gap-2"
+                  aria-label="Add book"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add Book
+                </button>
+              </div>
             </div>
           </div>
         </nav>
@@ -578,8 +579,8 @@ export default function LibraryPage() {
                       className="block"
                     >
                       <div className="space-y-3">
-                        {/* Book Cover */}
-                        <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[rgb(var(--surface))] border border-[rgb(var(--border))]/10 group-hover:border-[rgb(var(--accent))] backdrop-blur-sm transition-all duration-300 relative shadow-sm group-hover:shadow-lg">
+                        {/* Book Cover with glassmorphism */}
+                        <div className="aspect-[3/4] rounded-xl overflow-hidden reader-glass transition-all duration-300 relative group-hover:scale-[1.03] group-hover:shadow-2xl">
                           {book.cover_url ? (
                             <img 
                               src={book.cover_url} 
@@ -588,9 +589,9 @@ export default function LibraryPage() {
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center p-6 bg-gradient-to-br from-[rgb(var(--accent))]/5 to-[rgb(var(--accent))]/10">
+                            <div className="w-full h-full flex items-center justify-center p-6 bg-gradient-to-br from-[rgb(var(--accent))]/10 to-[rgb(var(--accent))]/20">
                               <div className="text-center">
-                                <BookOpenIcon className="w-12 h-12 text-[rgb(var(--accent))]/30 mx-auto mb-3" />
+                                <BookOpenIcon className="w-12 h-12 text-[rgb(var(--accent))]/40 mx-auto mb-3" />
                                 <p className="text-xs text-[rgb(var(--muted))] font-medium line-clamp-2">{book.title}</p>
                               </div>
                             </div>
@@ -646,7 +647,7 @@ export default function LibraryPage() {
                   <Link
                     key={book.id}
                     href={`/reader?id=${book.id}`}
-                    className="group flex gap-4 p-4 bg-[rgb(var(--surface))] hover:bg-[rgb(var(--surface-hover))] border border-[rgb(var(--border))]/10 dark:border-white/5 hover:border-[rgb(var(--accent))]/40 dark:hover:border-[rgb(var(--accent))]/25 backdrop-blur-sm rounded-xl transition-all"
+                    className="group flex gap-4 p-4 reader-floating rounded-xl transition-all hover:scale-[1.01] hover:shadow-xl"
                   >
                     {/* Cover Thumbnail */}
                     <div className="w-24 h-32 rounded-lg overflow-hidden bg-gradient-to-br from-[rgb(var(--accent))]/5 to-[rgb(var(--accent))]/10 flex-shrink-0 border border-[rgb(var(--border))]/10">
