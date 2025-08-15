@@ -42,10 +42,12 @@ interface ContextualToolbarProps {
   showAnnotations: boolean;
   showSettings: boolean;
   showSearch: boolean;
+  showAIChat?: boolean;
   onToggleToc: () => void;
   onToggleAnnotations: () => void;
   onToggleSettings: () => void;
   onToggleSearch: () => void;
+  onToggleAIChat?: () => void;
   
   // Progress
   progress: number;
@@ -91,10 +93,12 @@ export default function ContextualToolbar({
   showAnnotations,
   showSettings,
   showSearch,
+  showAIChat = false,
   onToggleToc,
   onToggleAnnotations,
   onToggleSettings,
   onToggleSearch,
+  onToggleAIChat,
   progress,
   chapterTitle,
   timeLeft,
@@ -292,6 +296,17 @@ export default function ContextualToolbar({
                   >
                     <AdjustmentsHorizontalIcon className="w-5 h-5" />
                   </button>
+                  {onToggleAIChat && (
+                    <button
+                      onClick={onToggleAIChat}
+                      className={`p-3 rounded-xl reader-btn-hover ${
+                        showAIChat ? 'reader-btn-active' : ''
+                      }`}
+                      aria-label="AI Assistant"
+                    >
+                      <SparklesIcon className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -584,6 +599,18 @@ export default function ContextualToolbar({
               >
                 <PencilSquareIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
               </button>
+              {onToggleAIChat && (
+                <button
+                  onClick={onToggleAIChat}
+                  className={`p-2.5 rounded-xl reader-btn-hover group ${
+                    showAIChat ? 'reader-btn-active' : ''
+                  }`}
+                  aria-label="AI Assistant"
+                  title="AI Assistant (Cmd/Ctrl+J)"
+                >
+                  <SparklesIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                </button>
+              )}
               <button
                 onClick={onToggleSettings}
                 className={`p-2.5 rounded-xl reader-btn-hover group ${

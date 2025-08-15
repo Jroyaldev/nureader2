@@ -50,6 +50,7 @@ interface ReaderState {
   fontSize: number;
   showSearch: boolean;
   showSettings: boolean;
+  showAIChat: boolean;
   isBookmarked: boolean;
   isFullscreen: boolean;
   timeLeft: string;
@@ -98,6 +99,7 @@ export function useReaderState() {
   const [fontSize, setFontSize] = useState<number>(16);
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showAIChat, setShowAIChat] = useState<boolean>(false);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
@@ -134,6 +136,7 @@ export function useReaderState() {
     fontSize,
     showSearch,
     showSettings,
+    showAIChat,
     isBookmarked,
     isFullscreen,
     timeLeft,
@@ -163,6 +166,7 @@ export function useReaderState() {
     setFontSize,
     setShowSearch,
     setShowSettings,
+    setShowAIChat,
     setIsBookmarked,
     setIsFullscreen,
     setTimeLeft,

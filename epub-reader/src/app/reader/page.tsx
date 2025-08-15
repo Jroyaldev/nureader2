@@ -15,6 +15,7 @@ import ContextualToolbar from "@/components/reader/ContextualToolbar";
 import SearchPanel from "@/components/reader/SearchPanel";
 import { EnhancedSettingsPanel, SimplifiedReadingSettings } from "@/components/reader/EnhancedSettingsPanel";
 import { useReaderState } from '@/hooks/useReaderState';
+import AIChatPanel from "@/components/reader/AIChatPanel";
 
 
 const defaultBookUrl = "/sample.epub";
@@ -44,6 +45,7 @@ export default function ReaderPage() {
     fontSize,
     showSearch,
     showSettings,
+    showAIChat,
     isBookmarked,
     isFullscreen,
     timeLeft,
@@ -71,6 +73,7 @@ export default function ReaderPage() {
     setFontSize,
     setShowSearch,
     setShowSettings,
+    setShowAIChat,
     setIsBookmarked,
     setIsFullscreen,
     setTimeLeft,
@@ -88,6 +91,7 @@ export default function ReaderPage() {
   const [savedProgress, setSavedProgress] = useState<{location: string, percentage: number} | null>(null);
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [containerReady, setContainerReady] = useState<boolean>(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const saveProgressQueueRef = useRef<{ progress: number; timestamp: number } | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -254,8 +258,10 @@ export default function ReaderPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setAuthReady(!!session);
+        setCurrentUserId(session?.user?.id || null);
       } catch {
         setAuthReady(false);
+        setCurrentUserId(null);
       }
     };
     
@@ -263,6 +269,7 @@ export default function ReaderPage() {
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthReady(!!session);
+      setCurrentUserId(session?.user?.id || null);
     });
 
     return () => subscription.unsubscribe();
@@ -791,6 +798,10 @@ export default function ReaderPage() {
     setShowSearch(prev => !prev);
   }, []);
 
+  const toggleAIChat = useCallback(() => {
+    setShowAIChat(prev => !prev);
+  }, []);
+
   const toggleSettings = useCallback(() => {
     setShowSettings(prev => !prev);
   }, []);
@@ -1156,10 +1167,12 @@ export default function ReaderPage() {
           showAnnotations={showAnnotations}
           showSettings={showSettings}
           showSearch={showSearch}
+          showAIChat={showAIChat}
           onToggleToc={toggleToc}
           onToggleAnnotations={toggleAnnotations}
           onToggleSettings={toggleSettings}
           onToggleSearch={toggleSearch}
+          onToggleAIChat={toggleAIChat}
           
           // Progress
           progress={currentProgress}
@@ -1396,6 +1409,20 @@ export default function ReaderPage() {
           onClose={() => setToast(null)}
         />
       )}
+      
+      {/* AI Chat Panel */}
+      <AIChatPanel
+        isOpen={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        bookTitle={loaded?.title}
+        currentChapter={chapterTitle}
+        currentLocation={navigationState.canGoNext ? `Page ${currentProgress}` : 'End of book'}
+        selectedText={selectedText}
+        bookId={bookId || undefined}
+        userId={currentUserId || undefined}
+        isMobile={isMobile}
+        theme={resolvedTheme as 'light' | 'dark' | 'sepia' | 'night'}
+      />
     </div>
   );
 }
