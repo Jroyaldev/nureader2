@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+
 import { createClient } from "@/utils/supabase/client";
-import { BookOpenIcon, XMarkIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 
 // Browser-compatible UUID generator
 function generateUUID(): string {
@@ -36,7 +36,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
     if (!files || files.length === 0) return;
     
     const file = files[0];
-    if (!file.name.endsWith('.epub')) {
+    if (!file || !file.name.endsWith('.epub')) {
       setError("Please select an EPUB file");
       return;
     }
@@ -60,7 +60,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
       setUploadProgress(10);
       const { error: uploadError } = await supabase.storage
         .from('epub-files')
-        .upload(filePath, file, {
+        .upload(filePath, file as File, {
           contentType: 'application/epub+zip',
           upsert: false
         });
@@ -70,13 +70,36 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
 
       // Extract full metadata from EPUB
       setUploadProgress(50);
-      const arrayBuffer = await file.arrayBuffer();
+      const arrayBuffer = await (file as File).arrayBuffer();
       const mod = await import("epubjs");
       const EpubCtor = mod?.default ?? mod;
-      const book = new (EpubCtor as any)(arrayBuffer);
+      interface EpubMetadata {
+        title?: string;
+        creator?: string;
+        author?: string;
+        description?: string;
+        identifier?: string;
+        language?: string;
+        publisher?: string;
+        pubdate?: string;
+        contributor?: string;
+        rights?: string;
+        subject?: string;
+        [key: string]: unknown;
+      }
+      interface EpubInstance {
+        loaded: {
+          metadata: EpubMetadata;
+          spine: { items: unknown[] };
+          cover?: string;
+        };
+        coverUrl?: () => Promise<string>;
+        destroy?: () => void;
+      }
+      const book = new (EpubCtor as unknown as { new(buffer: ArrayBuffer): EpubInstance })(arrayBuffer);
       
       let metadata = {
-        title: file.name.replace('.epub', ''),
+        title: (file as File).name.replace('.epub', ''),
         author: 'Unknown Author',
         description: null as string | null,
         isbn: null as string | null,
@@ -84,11 +107,11 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
         publisher: null as string | null,
         published_date: null as string | null,
         page_count: null as number | null,
-        metadata: {} as any
+        metadata: {} as Record<string, unknown>
       };
 
       try {
-        const epubMetadata = await book.loaded.metadata;
+        const epubMetadata = book.loaded.metadata;
         metadata = {
           title: epubMetadata.title || metadata.title,
           author: epubMetadata.creator || epubMetadata.author || metadata.author,
@@ -108,7 +131,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
 
         // Try to get page count from spine
         try {
-          const spine = await book.loaded.spine;
+          const spine = book.loaded.spine;
           metadata.page_count = spine?.items?.length || null;
         } catch {}
 
@@ -120,11 +143,11 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
       let coverPath: string | null = null;
       try {
         setUploadProgress(60);
-        const cover = await book.loaded.cover;
+        const cover = book.loaded.cover;
         
         if (cover) {
           // Get the cover URL from the book
-          const coverUrl = await book.coverUrl();
+          const coverUrl = book.coverUrl ? await book.coverUrl() : null;
           
           if (coverUrl) {
             // Fetch the cover image
@@ -176,7 +199,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
           publisher: metadata.publisher,
           published_date: metadata.published_date,
           page_count: metadata.page_count,
-          file_size: file.size,
+          file_size: (file as File).size,
           metadata: metadata.metadata
         });
 

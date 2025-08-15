@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface NotePopoverProps {
   visible: boolean;
@@ -108,7 +108,7 @@ export default function NotePopover({
             <div className="px-4 py-3 border-b border-border/30">
               <p className="text-xs text-muted-foreground mb-1">Selected text:</p>
               <p className="text-sm text-foreground/80 italic line-clamp-3">
-                "{selectedText}"
+                &ldquo;{selectedText}&rdquo;
               </p>
             </div>
           )}

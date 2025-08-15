@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
 import {
   XMarkIcon,
   CheckIcon,
@@ -15,6 +14,7 @@ import {
   SparklesIcon,
   BookOpenIcon
 } from '@heroicons/react/24/outline';
+import React, { useState } from 'react';
 
 export interface ReadingSettings {
   // Typography
@@ -131,7 +131,7 @@ export const ReadingSettingsPanel: React.FC<ReadingSettingsPanelProps> = ({
     onSettingsChange({ [key]: value });
   };
   
-  const handleSelectChange = (key: keyof ReadingSettings, value: any) => {
+  const handleSelectChange = (key: keyof ReadingSettings, value: string | number | boolean) => {
     onSettingsChange({ [key]: value });
   };
   

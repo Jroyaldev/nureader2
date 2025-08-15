@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
 import {
   BookOpenIcon,
   MoonIcon,
@@ -13,11 +12,8 @@ import {
   ChevronRightIcon,
   HomeIcon,
   BookmarkIcon,
-  DocumentTextIcon,
-  ShareIcon,
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
-  XMarkIcon,
   CheckIcon,
   SparklesIcon,
   AdjustmentsHorizontalIcon,
@@ -25,6 +21,7 @@ import {
   LockOpenIcon
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import React, { useState, useEffect } from 'react';
 
 interface ContextualToolbarProps {
   // Navigation
@@ -314,7 +311,7 @@ export default function ContextualToolbar({
                 {Object.entries(themeConfigs).map(([key, config]) => (
                   <button
                     key={key}
-                    onClick={() => handleThemeSelect(key as any)}
+                    onClick={() => handleThemeSelect(key as 'light' | 'dark' | 'sepia' | 'night')}
                     className={`relative p-4 rounded-2xl border-2 transition-all ${
                       currentTheme === key 
                         ? 'border-[rgb(var(--accent))] shadow-lg scale-105' 
@@ -367,7 +364,7 @@ export default function ContextualToolbar({
             {Object.entries(themeConfigs).map(([key, config]) => (
               <button
                 key={key}
-                onClick={() => handleThemeSelect(key as any)}
+                onClick={() => handleThemeSelect(key as 'light' | 'dark' | 'sepia' | 'night')}
                 className={`relative px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
                   currentTheme === key 
                     ? 'reader-btn-active shadow-sm' 

@@ -1,6 +1,5 @@
 "use client";
 
-import React from 'react';
 import { 
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -14,6 +13,7 @@ import {
   HomeIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
+import React from 'react';
 
 interface ReaderToolbarProps {
   onNavigateHome: () => void;

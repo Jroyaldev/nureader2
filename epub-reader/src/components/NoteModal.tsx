@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+
 import Tooltip from './Tooltip';
 
 interface NoteModalProps {
@@ -113,7 +114,7 @@ export default function NoteModal({
             <div className="mb-4 p-3 rounded-[var(--radius)] bg-[rgba(var(--muted),0.06)] border border-[rgba(var(--border),var(--border-opacity))]">
               <div className="text-xs font-medium text-muted mb-2">Selected text:</div>
               <div className="text-sm text-foreground italic line-clamp-3">
-                "{selectedText}"
+                &ldquo;{selectedText}&rdquo;
               </div>
             </div>
           )}

@@ -96,7 +96,7 @@ export default function Tooltip({
 
   return (
     <div className="relative inline-block">
-      {React.cloneElement(children, {
+      {React.cloneElement(children as React.ReactElement<React.HTMLAttributes<HTMLElement>>, {
         onMouseEnter: showTooltip,
         onMouseLeave: hideTooltip,
         onFocus: showTooltip,

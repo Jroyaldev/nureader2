@@ -1,7 +1,5 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-
 import {
   ChevronRightIcon,
   ChevronDownIcon,
@@ -14,6 +12,7 @@ import {
   ArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { BookOpenIcon as BookOpenSolidIcon } from '@heroicons/react/24/solid';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 interface TocItem {
   label: string;
@@ -137,7 +136,7 @@ const TocItemComponent: React.FC<{
                 onNavigate={onNavigate}
                 searchQuery={searchQuery}
                 isMobile={isMobile}
-                expandAll={expandAll}
+                expandAll={expandAll ?? false}
               />
             );
           })}
@@ -183,9 +182,9 @@ const TocItemWithState: React.FC<{
       onToggle={() => setIsExpanded(!isExpanded)}
       onNavigate={onNavigate}
       searchQuery={searchQuery}
-      isMobile={isMobile}
-      currentChapter={currentChapter}
-      expandAll={expandAll}
+      isMobile={isMobile ?? false}
+      currentChapter={currentChapter ?? ''}
+      expandAll={expandAll ?? false}
     />
   );
 };
@@ -218,7 +217,7 @@ export default function TableOfContents({
         const child = n.subitems ? mapFilter(n.subitems) : [];
         const match = n.label.toLowerCase().includes(query);
         if (match || child.length) {
-          out.push({ ...n, subitems: child.length ? child : n.subitems });
+          out.push({ ...n, subitems: child.length ? child : (n.subitems || []) });
         }
       }
       return out;
@@ -340,7 +339,7 @@ export default function TableOfContents({
                     onNavigate={handleNavigate}
                     searchQuery={searchQuery}
                     isMobile={isMobile}
-                    expandAll={expandAll}
+                    expandAll={expandAll ?? false}
                   />
                 </div>
               ))}
@@ -486,7 +485,7 @@ export default function TableOfContents({
                     onNavigate={handleNavigate}
                     searchQuery={searchQuery}
                     isMobile={isMobile}
-                    expandAll={expandAll}
+                    expandAll={expandAll ?? false}
                   />
                 </div>
               ))}

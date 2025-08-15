@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { XMarkIcon, SparklesIcon, BookOpenIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import { useState, useEffect, useRef } from "react";
+
+import { createClient } from "@/utils/supabase/client";
 
 interface Book {
   id: string;
@@ -165,7 +166,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
 
       // Upload to storage with proper error handling
       setUploadProgress(50);
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('book-covers')
         .upload(filePath, file, {
           contentType: file.type,
@@ -175,11 +176,12 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
         // Check for common errors
-        if (uploadError.message?.includes('row-level security') || uploadError.statusCode === 403) {
+        const errorWithStatus = uploadError as { statusCode?: number; message?: string };
+        if (uploadError.message?.includes('row-level security') || errorWithStatus.statusCode === 403) {
           throw new Error('Permission denied. Please ensure you are logged in.');
-        } else if (uploadError.message?.includes('not found') || uploadError.statusCode === 404) {
+        } else if (uploadError.message?.includes('not found') || errorWithStatus.statusCode === 404) {
           throw new Error('Storage bucket not found. Please contact support.');
-        } else if (uploadError.message?.includes('payload too large') || uploadError.statusCode === 413) {
+        } else if (uploadError.message?.includes('payload too large') || errorWithStatus.statusCode === 413) {
           throw new Error('File is too large. Maximum size is 10MB.');
         }
         throw new Error(uploadError.message || 'Failed to upload cover image');
@@ -376,7 +378,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
                   <div className="w-32 h-48 rounded-[var(--radius)] overflow-hidden bg-gradient-to-br from-[rgba(var(--muted),0.05)] to-[rgba(var(--muted),0.1)]">
                     {book.cover_path && getCoverUrl(book.cover_path) ? (
                       <img 
-                        src={getCoverUrl(book.cover_path)!} 
+                        src={getCoverUrl(book.cover_path) || ''} 
                         alt={`${book.title} cover`}
                         className="w-full h-full object-cover"
                       />

@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { 
   ChatBubbleLeftIcon, 
   BookmarkIcon, 
@@ -11,6 +9,9 @@ import {
   PencilIcon,
   MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
+import { useState, useEffect, useCallback } from "react";
+
+import { createClient } from "@/utils/supabase/client";
 
 interface Annotation {
   id: string;
@@ -220,11 +221,11 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                 { key: 'note', label: 'Notes' },
                 { key: 'bookmark', label: 'Bookmarks' }
               ].map(({ key, label }) => {
-                const active = filter === (key as any);
+                const active = filter === (key as 'all' | 'highlight' | 'note' | 'bookmark');
                 return (
                   <button
                     key={key}
-                    onClick={() => setFilter(key as any)}
+                    onClick={() => setFilter(key as 'all' | 'highlight' | 'note' | 'bookmark')}
                     className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                       active 
                         ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))]' 
@@ -311,8 +312,8 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                             backgroundColor: annotation.color || 'rgba(251, 191, 36, 0.5)',
                             boxShadow: `0 0 0 2px ${annotation.color || 'rgba(251, 191, 36, 0.5)'}40, 0 2px 4px rgba(0,0,0,0.1)`
                           }}
-                          title={getColorInfo(annotation.color).name + ' highlight'}
-                          aria-label={getColorInfo(annotation.color).name + ' highlight'}
+                          title={getColorInfo(annotation.color)?.name + ' highlight'}
+                          aria-label={getColorInfo(annotation.color)?.name + ' highlight'}
                         />
                       )}
                       {annotation.annotation_type === 'note' && (
@@ -389,7 +390,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                     ) : annotation.content ? (
                       <div className="bg-[rgba(var(--muted),0.04)] rounded-lg p-3">
                         <p className="text-sm leading-relaxed italic text-foreground/85">
-                          "{annotation.content}"
+                          &ldquo;{annotation.content}&rdquo;
                         </p>
                       </div>
                     ) : null}

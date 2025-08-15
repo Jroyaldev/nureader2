@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   PencilIcon,
   ChatBubbleBottomCenterTextIcon,
-  BookmarkIcon,
   ShareIcon,
   ClipboardDocumentIcon,
   TrashIcon,
@@ -12,14 +10,11 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   CheckIcon,
-  DocumentDuplicateIcon,
   ArrowDownTrayIcon,
-  ChevronRightIcon,
-  TagIcon,
-  CalendarIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import React, { useState, useEffect, useRef } from 'react';
 
 export interface Annotation {
   id: string;
@@ -77,8 +72,6 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
       const toolbar = toolbarRef.current;
       const rect = toolbar.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
       let adjustedX = position.x - rect.width / 2;
       let adjustedY = position.y - rect.height - 10;
       
@@ -191,7 +184,7 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
       
       {/* Selection Preview */}
       <div className="mt-2 glass rounded-xl p-3 max-w-xs">
-        <p className="text-xs text-muted line-clamp-2">"{selectedText}"</p>
+        <p className="text-xs text-muted line-clamp-2">&ldquo;{selectedText}&rdquo;</p>
       </div>
     </div>
   );
@@ -464,7 +457,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                       {/* Highlighted Text */}
                       {annotation.text && (
                         <p className="text-sm mb-2 line-clamp-3">
-                          "{annotation.text}"
+                          &ldquo;{annotation.text}&rdquo;
                         </p>
                       )}
                       

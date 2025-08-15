@@ -1,26 +1,49 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+import { Button, Modal, Tooltip } from '@/components/ui';
 import { readingService } from '@/services/readingService';
-import { Button, Modal, Tooltip, Card } from '@/components/ui';
+import type { Annotation as BaseAnnotation } from '@/types';
 import { cn } from '@/utils';
 
-export interface Annotation {
-  id: string;
-  bookId: string;
-  type: 'highlight' | 'note' | 'bookmark';
-  cfiRange: string;
+// Extended annotation type for local use with additional EPUB-specific fields
+interface Annotation extends Omit<BaseAnnotation, 'createdAt' | 'updatedAt'> {
+  cfiRange?: string;
   selectedText?: string;
-  noteContent?: string;
-  color?: string;
+  noteContent?: string | null;
   chapterId?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+// Type for EPUB.js rendition object
+type EPUBContent = {
+  window: Window;
+  document: Document;
+};
+
+interface Rendition {
+  annotations: {
+    highlight: (cfi: string, data?: object, callback?: (e: MouseEvent) => void, className?: string, styles?: object) => void;
+    remove: (cfi: string, type?: string) => void;
+    mark: (cfi: string, data?: object, callback?: (e: MouseEvent) => void) => void;
+    removeAll: () => void;
+  };
+  on(event: 'selected', callback: (cfiRange: string, contents: EPUBContent) => void): void;
+  on(event: 'click', callback: (e: MouseEvent) => void): void;
+  on(event: string, callback: (...args: unknown[]) => void): void;
+  off: (event: string) => void;
+  getContents: () => EPUBContent[];
+  manager?: { container: HTMLElement };
+  currentLocation: () => { start: { cfi: string; index?: number } };
+  book?: { spine: { get: (id: string) => { index: number; href: string; idref: string } } };
+  display?: (target: string | number) => Promise<void>;
 }
 
 interface AnnotationSystemProps {
   bookId: string;
-  rendition: any; // EPUB.js rendition
+  rendition: Rendition;
   onAnnotationClick?: (annotation: Annotation) => void;
   className?: string;
 }
@@ -48,7 +71,10 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteContent, setNoteContent] = useState('');
-  const [selectedColor, setSelectedColor] = useState(annotationColors[0].value);
+  const [selectedColor, setSelectedColor] = useState(annotationColors[0]?.value || '#FFE066');
+  // For future annotation editing functionality
+  // @ts-expect-error - Intentionally unused for future feature
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [editingAnnotation, setEditingAnnotation] = useState<Annotation | null>(null);
   const [showAnnotationsList, setShowAnnotationsList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,17 +82,12 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
 
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Load annotations
-  useEffect(() => {
-    loadAnnotations();
-  }, [bookId]);
-
   // Setup rendition hooks
   useEffect(() => {
     if (!rendition) return;
 
     // Handle text selection
-    rendition.on('selected', (cfiRange: string, contents: any) => {
+    rendition.on('selected', (cfiRange, contents) => {
       const selection = contents.window.getSelection();
       if (selection && selection.toString().trim()) {
         handleTextSelection(selection, cfiRange);
@@ -86,17 +107,32 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
       rendition.off('selected');
       rendition.off('click');
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rendition, annotations]);
 
   // Load annotations from database
-  const loadAnnotations = async () => {
+  const loadAnnotations = useCallback(async () => {
     try {
       const data = await readingService.getAnnotations(bookId);
-      setAnnotations(data);
+      // Map database annotations to local format
+      const mappedAnnotations: Annotation[] = data.map(ann => ({
+        ...ann,
+        cfiRange: ann.location, // Map location to cfiRange
+        selectedText: ann.content,
+        noteContent: ann.note,
+        createdAt: ann.createdAt.toString(),
+        updatedAt: ann.updatedAt.toString()
+      }));
+      setAnnotations(mappedAnnotations);
     } catch (error) {
       console.error('Failed to load annotations:', error);
     }
-  };
+  }, [bookId]);
+
+  // Load annotations on mount and bookId change
+  useEffect(() => {
+    loadAnnotations();
+  }, [loadAnnotations]);
 
   // Handle text selection
   const handleTextSelection = (selection: Selection, cfiRange: string) => {
@@ -126,7 +162,7 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
     
     if (rendition && rendition.manager) {
       const contents = rendition.getContents();
-      contents.forEach((content: any) => {
+      contents.forEach((content) => {
         content.window.getSelection()?.removeAllRanges();
       });
     }
@@ -140,14 +176,26 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
       const annotation = await readingService.createAnnotation({
         bookId,
         type: 'highlight',
-        cfiRange: selectionCfi,
-        selectedText,
+        content: selectedText,
+        location: selectionCfi,
         color: color || selectedColor,
-        chapterId: getCurrentChapter(),
+        note: null,
+        tags: [],
+        isPrivate: false
       });
 
-      setAnnotations([...annotations, annotation]);
-      renderAnnotation(annotation);
+      const mappedAnnotation: Annotation = {
+        ...annotation,
+        cfiRange: annotation.location,
+        selectedText: annotation.content,
+        noteContent: annotation.note,
+        chapterId: getCurrentChapter(),
+        createdAt: annotation.createdAt.toString(),
+        updatedAt: annotation.updatedAt.toString()
+      };
+
+      setAnnotations([...annotations, mappedAnnotation]);
+      renderAnnotation(mappedAnnotation);
       clearSelection();
     } catch (error) {
       console.error('Failed to create highlight:', error);
@@ -199,11 +247,33 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
     }
   };
 
-  // Update annotation
+  // Update annotation (currently unused but kept for future use)
+  // @ts-expect-error - Intentionally unused for future feature
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateAnnotation = async (id: string, updates: Partial<Annotation>) => {
     try {
-      const updated = await readingService.updateAnnotation(id, updates);
-      setAnnotations(annotations.map(a => a.id === id ? updated : a));
+      // Map local annotation format to API format
+      const apiUpdates: Partial<BaseAnnotation> = {};
+      if (updates.type !== undefined) apiUpdates.type = updates.type;
+      if (updates.selectedText !== undefined) apiUpdates.content = updates.selectedText;
+      if (updates.cfiRange !== undefined) apiUpdates.location = updates.cfiRange;
+      if (updates.noteContent !== undefined) apiUpdates.note = updates.noteContent;
+      if (updates.color !== undefined) apiUpdates.color = updates.color;
+      if (updates.tags !== undefined) apiUpdates.tags = updates.tags;
+      if (updates.isPrivate !== undefined) apiUpdates.isPrivate = updates.isPrivate;
+      
+      const updated = await readingService.updateAnnotation(id, apiUpdates);
+      
+      const mappedAnnotation: Annotation = {
+        ...updated,
+        cfiRange: updated.location,
+        selectedText: updated.content,
+        noteContent: updated.note,
+        createdAt: updated.createdAt.toString(),
+        updatedAt: updated.updatedAt.toString()
+      };
+      
+      setAnnotations(annotations.map(a => a.id === id ? mappedAnnotation : a));
       renderAnnotations();
     } catch (error) {
       console.error('Failed to update annotation:', error);
@@ -219,7 +289,10 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
       // Remove from rendition
       const annotation = annotations.find(a => a.id === id);
       if (annotation && rendition) {
-        rendition.annotations.remove(annotation.cfiRange, 'highlight');
+        const cfi = annotation.cfiRange || annotation.location;
+        if (cfi) {
+          rendition.annotations.remove(cfi, 'highlight');
+        }
       }
     } catch (error) {
       console.error('Failed to delete annotation:', error);
@@ -230,11 +303,14 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
   const renderAnnotation = (annotation: Annotation) => {
     if (!rendition) return;
 
-    const color = annotation.color || annotationColors[0].value;
+    const color = annotation.color || annotationColors[0]?.value || '#FFE066';
     
     if (annotation.type === 'highlight' || annotation.type === 'note') {
+      const cfi = annotation.cfiRange || annotation.location;
+      if (!cfi) return;
+      
       rendition.annotations.highlight(
-        annotation.cfiRange,
+        cfi,
         { id: annotation.id },
         (e: MouseEvent) => {
           e.stopPropagation();
@@ -247,8 +323,11 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
         }
       );
     } else if (annotation.type === 'bookmark') {
+      const cfi = annotation.cfiRange || annotation.location;
+      if (!cfi) return;
+      
       rendition.annotations.mark(
-        annotation.cfiRange,
+        cfi,
         { id: annotation.id },
         (e: MouseEvent) => {
           e.stopPropagation();
@@ -285,9 +364,12 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
 
   // Navigate to annotation
   const navigateToAnnotation = (annotation: Annotation) => {
-    if (!rendition) return;
+    if (!rendition || !rendition.display) return;
     
-    rendition.display(annotation.cfiRange);
+    const cfi = annotation.cfiRange || annotation.location;
+    if (!cfi) return;
+    
+    rendition.display(cfi);
     setShowAnnotationsList(false);
   };
 
@@ -505,7 +587,7 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
             
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
+              onChange={(e) => setFilterType(e.target.value as 'all' | 'highlight' | 'note' | 'bookmark')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900"
             >
               <option value="all">All</option>
@@ -521,7 +603,7 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
               Export
             </Button>
             <label>
-              <Button variant="outline" size="sm" as="span">
+              <Button variant="outline" size="sm">
                 Import
               </Button>
               <input

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface NoteMobileModalProps {
   visible: boolean;
@@ -79,7 +79,7 @@ export default function NoteMobileModal({
                 <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Selected Text</p>
                 <div className="bg-muted/30 rounded-lg p-3">
                   <p className="text-sm text-foreground/80 italic">
-                    "{selectedText}"
+                    &ldquo;{selectedText}&rdquo;
                   </p>
                 </div>
               </div>
