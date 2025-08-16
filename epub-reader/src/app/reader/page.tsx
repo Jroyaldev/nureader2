@@ -7,7 +7,7 @@ import AnnotationPanel from "@/components/AnnotationPanel";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import NotePopover from "@/components/reader/NotePopover";
 import NoteMobileModal from "@/components/reader/NoteMobileModal";
-import Toast from "@/components/Toast";
+import { Toast } from "@/components/ui/Toast/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
 import TableOfContents from "@/components/reader/TableOfContents";
