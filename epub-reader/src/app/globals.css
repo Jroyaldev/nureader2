@@ -3,6 +3,7 @@
 /* @import "../styles/utilities.css"; */
 @import "../styles/animations.css";
 @import "../styles/reader-theme.css";
+@import "../styles/reader-mobile.css";
 @import "../styles/toc.css";
 
 @layer base {

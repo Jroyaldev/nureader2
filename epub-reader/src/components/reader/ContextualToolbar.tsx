@@ -21,7 +21,7 @@ import {
   LockOpenIcon
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface ContextualToolbarProps {
   // Navigation
@@ -113,67 +113,94 @@ export default function ContextualToolbar({
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showFontMenu, setShowFontMenu] = useState(false);
   const [toolbarVisible, setToolbarVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   
-  // Auto-hide logic for desktop with improved persistence
+  // Use refs to avoid re-renders and dependency issues
+  const lastScrollYRef = useRef(0);
+  const hideTimeoutRef = useRef<NodeJS.Timeout>();
+  const mouseInZoneRef = useRef(false);
+  
+  // Stable auto-hide logic without bouncing
   useEffect(() => {
-    if (!autoHide || isMobile) return;
+    // Skip auto-hide on mobile or when pinned
+    if (!autoHide || isMobile || isPinned) {
+      setToolbarVisible(true);
+      return;
+    }
     
-    let hideTimeout: NodeJS.Timeout;
-    let showTimeout: NodeJS.Timeout;
+    const showToolbar = () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+      setToolbarVisible(true);
+    };
+    
+    const scheduleHide = (delay: number = 3000) => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+      hideTimeoutRef.current = setTimeout(() => {
+        // Only hide if not hovering and mouse not in zone
+        if (!isHovering && !mouseInZoneRef.current) {
+          setToolbarVisible(false);
+        }
+      }, delay);
+    };
     
     const handleMouseMove = (e: MouseEvent) => {
-      const isNearTop = e.clientY < 150; // Increased trigger zone
-      const isNearBottom = e.clientY > window.innerHeight - 150;
+      const TRIGGER_ZONE = 80; // Smaller, more precise trigger zone
+      const isNearTop = e.clientY < TRIGGER_ZONE;
       
-      if (isNearTop || isNearBottom || isHovering) {
-        clearTimeout(hideTimeout);
-        clearTimeout(showTimeout);
-        // Immediate show
-        setToolbarVisible(true);
+      if (isNearTop) {
+        mouseInZoneRef.current = true;
+        showToolbar();
+        // Don't schedule hide while in zone
       } else {
-        // Longer delay before hiding (5 seconds)
-        clearTimeout(hideTimeout);
-        hideTimeout = setTimeout(() => {
-          if (!isHovering) setToolbarVisible(false);
-        }, 5000);
+        if (mouseInZoneRef.current) {
+          // Just left the zone
+          mouseInZoneRef.current = false;
+          if (!isHovering) {
+            scheduleHide(2000); // 2 second delay after leaving zone
+          }
+        }
       }
     };
     
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      clearTimeout(showTimeout);
+      const scrollDelta = currentScrollY - lastScrollYRef.current;
       
-      if (currentScrollY < lastScrollY || currentScrollY < 50) {
-        // Scrolling up or near top - show toolbar
-        setToolbarVisible(true);
-        // Keep visible for longer when scrolling
-        clearTimeout(hideTimeout);
-        hideTimeout = setTimeout(() => {
-          if (!isHovering) setToolbarVisible(false);
-        }, 4000);
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down - hide after delay
-        if (!isHovering) {
-          showTimeout = setTimeout(() => {
-            setToolbarVisible(false);
-          }, 1500);
+      // Only react to significant scroll
+      if (Math.abs(scrollDelta) > 10) {
+        if (scrollDelta < 0) {
+          // Scrolling up - show toolbar
+          showToolbar();
+          scheduleHide(3000);
+        } else if (currentScrollY > 100) {
+          // Scrolling down and not near top
+          if (!isHovering && !mouseInZoneRef.current) {
+            scheduleHide(500); // Quick hide on scroll down
+          }
         }
+        lastScrollYRef.current = currentScrollY;
       }
-      setLastScrollY(currentScrollY);
     };
     
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('scroll', handleScroll);
+    // Initial setup
+    setToolbarVisible(true);
+    scheduleHide(5000); // Show for 5 seconds initially
+    
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
-      clearTimeout(hideTimeout);
-      clearTimeout(showTimeout);
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
     };
-  }, [autoHide, isMobile, lastScrollY, isHovering]);
+  }, [autoHide, isMobile, isPinned, isHovering]); // Minimal dependencies
   
   const handleThemeSelect = (theme: 'light' | 'dark') => {
     onThemeChange(theme);
@@ -201,9 +228,9 @@ export default function ContextualToolbar({
           </div>
         </div>
         
-        {/* Bottom Navigation Bar */}
+        {/* Bottom Navigation Bar - Always visible on mobile */}
         <div className={`fixed bottom-0 left-0 right-0 z-[80] transition-all duration-300 ${
-          toolbarVisible && isVisible ? 'translate-y-0' : 'translate-y-full'
+          isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}>
           <div className="bg-gradient-to-t from-[rgb(var(--bg))] via-[rgb(var(--bg))]/98 to-transparent pt-8 pb-safe">
             <div className="mobile-sheet rounded-t-3xl">
@@ -377,7 +404,7 @@ export default function ContextualToolbar({
             {Object.entries(themeConfigs).map(([key, config]) => (
               <button
                 key={key}
-                onClick={() => handleThemeSelect(key as 'light' | 'dark' | 'sepia' | 'night')}
+                onClick={() => handleThemeSelect(key as 'light' | 'dark')}
                 className={`relative px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
                   currentTheme === key 
                     ? 'reader-btn-active shadow-sm' 
@@ -396,15 +423,29 @@ export default function ContextualToolbar({
       )}
       {/* Top Floating Toolbar */}
       <div 
-        className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-all duration-500 ${
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-all ${
           toolbarVisible && isVisible 
             ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 -translate-y-4 pointer-events-none'
+            : 'opacity-0 -translate-y-8 pointer-events-none'
         }`}
+        style={{
+          transitionDuration: toolbarVisible ? '300ms' : '500ms',
+          transitionTimingFunction: toolbarVisible ? 'cubic-bezier(0.4, 0, 0.2, 1)' : 'cubic-bezier(0.4, 0, 0.6, 1)'
+        }}
         onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
+        onMouseLeave={() => {
+          setIsHovering(false);
+          // Don't immediately hide when mouse leaves
+          if (autoHide && !isPinned) {
+            setTimeout(() => {
+              if (!isHovering) setToolbarVisible(false);
+            }, 2000);
+          }
+        }}
       >
-        <div className="reader-floating rounded-2xl shadow-2xl animate-slide-down">
+        <div className="reader-floating rounded-2xl shadow-2xl" style={{
+          animation: toolbarVisible ? 'slide-down 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+        }}>
           {/* Compact Progress Bar */}
           {chapterTitle && (
             <div className="px-6 pt-4 pb-3">
