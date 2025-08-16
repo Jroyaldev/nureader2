@@ -76,29 +76,29 @@ export default function NoteModal({
       onClick={onCancel}
     >
       <div
-        className="absolute inset-0 bg-[rgba(var(--bg),0.8)] backdrop-blur-xl"
+        className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-xl"
       />
       <div
-        className="relative floating rounded-[var(--radius-2xl)] max-w-md w-full mx-4 animate-scale-in"
+        className="relative bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-2xl max-w-md w-full mx-4 animate-scale-in font-inter"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[rgba(var(--border),var(--border-opacity))]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 dark:border-gray-700/20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[rgb(var(--accent))] rounded-[var(--radius)] flex items-center justify-center">
+            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold tracking-tight">Add Note</h3>
-              <p className="text-sm text-muted">Create a note for the selection</p>
+              <h3 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white font-inter">Add Note</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-inter">Create a note for the selection</p>
             </div>
           </div>
           <Tooltip content="Close (Esc)" position="left">
             <button
               onClick={handleCancel}
-              className="btn-icon -mr-2"
+              className="w-8 h-8 rounded-lg bg-white/10 dark:bg-gray-800/20 hover:bg-white/20 dark:hover:bg-gray-700/30 border border-white/10 dark:border-gray-700/20 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 flex items-center justify-center font-inter -mr-2"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="3" y1="3" x2="11" y2="11" />
@@ -111,9 +111,9 @@ export default function NoteModal({
         <div className="p-6">
           {/* Selected Text Preview */}
           {selectedText && (
-            <div className="mb-4 p-3 rounded-[var(--radius)] bg-[rgba(var(--muted),0.06)] border border-[rgba(var(--border),var(--border-opacity))]">
-              <div className="text-xs font-medium text-muted mb-2">Selected text:</div>
-              <div className="text-sm text-foreground italic line-clamp-3">
+            <div className="mb-4 p-3 rounded-lg bg-white/30 dark:bg-gray-800/30 border border-white/20 dark:border-gray-700/20">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 font-inter">Selected text:</div>
+              <div className="text-sm text-gray-900 dark:text-white italic line-clamp-3 font-inter">
                 &ldquo;{selectedText}&rdquo;
               </div>
             </div>
@@ -121,18 +121,18 @@ export default function NoteModal({
 
           {/* Highlight Color Picker */}
           <div className="mb-4">
-            <div className="text-sm font-medium text-foreground mb-2">Highlight color (optional):</div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white mb-2 font-inter">Highlight color (optional):</div>
             <div className="flex gap-2 flex-wrap">
               <Tooltip content="No highlight" position="top">
                 <button
                   onClick={() => setSelectedHighlight('')}
-                  className={`w-8 h-8 rounded-[var(--radius-sm)] border-2 transition-all duration-200 hover:scale-110 flex items-center justify-center ${
+                  className={`w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110 flex items-center justify-center font-inter ${
                     selectedHighlight === ''
-                      ? 'border-[rgb(var(--accent))] bg-[rgba(var(--accent),0.1)]'
-                      : 'border-[rgba(var(--border),var(--border-opacity))] bg-surface'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-white/20 dark:border-gray-700/20 bg-white/20 dark:bg-gray-800/20'
                   }`}
                 >
-                  <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -141,12 +141,12 @@ export default function NoteModal({
                 <Tooltip key={color.name} content={color.name} position="top">
                   <button
                     onClick={() => setSelectedHighlight(color.value)}
-                    className={`w-8 h-8 rounded-[var(--radius-sm)] border-2 transition-all duration-200 hover:scale-110 flex items-center justify-center text-xs ${
-                      selectedHighlight === color.value ? 'border-[rgb(var(--accent))] scale-105' : ''
+                    className={`w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110 flex items-center justify-center text-xs font-inter ${
+                      selectedHighlight === color.value ? 'border-blue-500 scale-105' : ''
                     }`}
                     style={{
                       backgroundColor: color.value,
-                      borderColor: selectedHighlight === color.value ? 'rgb(var(--accent))' : color.border,
+                      borderColor: selectedHighlight === color.value ? '#3b82f6' : color.border,
                     }}
                   >
                     {/* The icon is sufficient, no need for text */}
@@ -158,7 +158,7 @@ export default function NoteModal({
 
           {/* Note Textarea */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2 font-inter">
               Your note:
             </label>
             <textarea
@@ -166,14 +166,14 @@ export default function NoteModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Write your thoughts about this passage..."
-              className="w-full h-32 p-3 text-sm border border-[rgba(var(--border),var(--border-opacity))] rounded-[var(--radius)] bg-surface text-foreground placeholder-muted resize-none focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))] transition-all duration-200"
+              className="w-full h-32 p-3 text-sm border border-white/20 dark:border-gray-700/20 rounded-lg bg-white/30 dark:bg-gray-800/30 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 font-inter"
               autoFocus
             />
             <div className="flex justify-between items-center mt-2">
-              <div className="text-xs text-muted">
+              <div className="text-xs text-gray-600 dark:text-gray-400 font-inter">
                 {note.length}/1000 characters
               </div>
-              <div className="text-xs text-muted">
+              <div className="text-xs text-gray-600 dark:text-gray-400 font-inter">
                 Press Ctrl+Enter to save
               </div>
             </div>
@@ -183,14 +183,14 @@ export default function NoteModal({
           <div className="flex gap-3 justify-end">
             <button
               onClick={handleCancel}
-              className="btn-secondary"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white/20 dark:bg-gray-800/20 border border-white/20 dark:border-gray-700/20 rounded-lg hover:bg-white/30 dark:hover:bg-gray-700/30 transition-all duration-200 font-inter"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!note.trim()}
-              className="btn-primary"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed border border-blue-500 hover:border-blue-600 disabled:border-gray-400 rounded-lg transition-all duration-200 font-inter"
             >
               Save Note
             </button>

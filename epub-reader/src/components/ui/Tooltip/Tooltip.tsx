@@ -486,45 +486,45 @@ export const Tooltip: React.FC<TooltipProps> = ({
     'aria-expanded': trigger === 'click' ? isOpen : undefined,
   });
 
-  // Variant styles
+  // Variant styles with glassmorphism
   const variantStyles = {
-    default: 'bg-gray-900 dark:bg-gray-700 text-white border-gray-800 dark:border-gray-600',
-    info: 'bg-blue-600 dark:bg-blue-700 text-white border-blue-500 dark:border-blue-600',
-    warning: 'bg-yellow-600 dark:bg-yellow-700 text-white border-yellow-500 dark:border-yellow-600',
-    error: 'bg-red-600 dark:bg-red-700 text-white border-red-500 dark:border-red-600',
-    success: 'bg-green-600 dark:bg-green-700 text-white border-green-500 dark:border-green-600',
+    default: 'bg-white/90 dark:bg-black/90 backdrop-blur-md text-gray-900 dark:text-white border-gray-200/50 dark:border-gray-700/50 font-inter',
+    info: 'bg-blue-50/90 dark:bg-blue-950/90 backdrop-blur-md text-blue-900 dark:text-blue-100 border-blue-200/50 dark:border-blue-700/50 font-inter',
+    warning: 'bg-yellow-50/90 dark:bg-yellow-950/90 backdrop-blur-md text-yellow-900 dark:text-yellow-100 border-yellow-200/50 dark:border-yellow-700/50 font-inter',
+    error: 'bg-red-50/90 dark:bg-red-950/90 backdrop-blur-md text-red-900 dark:text-red-100 border-red-200/50 dark:border-red-700/50 font-inter',
+    success: 'bg-green-50/90 dark:bg-green-950/90 backdrop-blur-md text-green-900 dark:text-green-100 border-green-200/50 dark:border-green-700/50 font-inter',
   };
 
   const arrowStyles = {
     default: {
-      top: 'border-t-gray-900 dark:border-t-gray-700',
-      bottom: 'border-b-gray-900 dark:border-b-gray-700',
-      left: 'border-l-gray-900 dark:border-l-gray-700',
-      right: 'border-r-gray-900 dark:border-r-gray-700',
+      top: 'border-t-white/90 dark:border-t-black/90',
+      bottom: 'border-b-white/90 dark:border-b-black/90',
+      left: 'border-l-white/90 dark:border-l-black/90',
+      right: 'border-r-white/90 dark:border-r-black/90',
     },
     info: {
-      top: 'border-t-blue-600 dark:border-t-blue-700',
-      bottom: 'border-b-blue-600 dark:border-b-blue-700',
-      left: 'border-l-blue-600 dark:border-l-blue-700',
-      right: 'border-r-blue-600 dark:border-r-blue-700',
+      top: 'border-t-blue-50/90 dark:border-t-blue-950/90',
+      bottom: 'border-b-blue-50/90 dark:border-b-blue-950/90',
+      left: 'border-l-blue-50/90 dark:border-l-blue-950/90',
+      right: 'border-r-blue-50/90 dark:border-r-blue-950/90',
     },
     warning: {
-      top: 'border-t-yellow-600 dark:border-t-yellow-700',
-      bottom: 'border-b-yellow-600 dark:border-b-yellow-700',
-      left: 'border-l-yellow-600 dark:border-l-yellow-700',
-      right: 'border-r-yellow-600 dark:border-r-yellow-700',
+      top: 'border-t-yellow-50/90 dark:border-t-yellow-950/90',
+      bottom: 'border-b-yellow-50/90 dark:border-b-yellow-950/90',
+      left: 'border-l-yellow-50/90 dark:border-l-yellow-950/90',
+      right: 'border-r-yellow-50/90 dark:border-r-yellow-950/90',
     },
     error: {
-      top: 'border-t-red-600 dark:border-t-red-700',
-      bottom: 'border-b-red-600 dark:border-b-red-700',
-      left: 'border-l-red-600 dark:border-l-red-700',
-      right: 'border-r-red-600 dark:border-r-red-700',
+      top: 'border-t-red-50/90 dark:border-t-red-950/90',
+      bottom: 'border-b-red-50/90 dark:border-b-red-950/90',
+      left: 'border-l-red-50/90 dark:border-l-red-950/90',
+      right: 'border-r-red-50/90 dark:border-r-red-950/90',
     },
     success: {
-      top: 'border-t-green-600 dark:border-t-green-700',
-      bottom: 'border-b-green-600 dark:border-b-green-700',
-      left: 'border-l-green-600 dark:border-l-green-700',
-      right: 'border-r-green-600 dark:border-r-green-700',
+      top: 'border-t-green-50/90 dark:border-t-green-950/90',
+      bottom: 'border-b-green-50/90 dark:border-b-green-950/90',
+      left: 'border-l-green-50/90 dark:border-l-green-950/90',
+      right: 'border-r-green-50/90 dark:border-r-green-950/90',
     },
   };
 

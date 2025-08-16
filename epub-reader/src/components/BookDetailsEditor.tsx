@@ -235,14 +235,14 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-4xl bg-[rgb(var(--bg))] rounded-[var(--radius-lg)] shadow-2xl animate-slide-up overflow-hidden">
+      <div className="relative w-full max-w-4xl bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-[var(--radius-lg)] shadow-2xl animate-slide-up overflow-hidden border border-black/10 dark:border-white/10 font-inter">
         {/* Header */}
         <div className="border-b border-[rgba(var(--muted),0.1)] p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold tracking-[-0.02em]">Edit Book Details</h2>
             <button
               onClick={onClose}
-              className="btn-icon w-10 h-10"
+              className="btn-icon w-10 h-10 touch-manipulation font-inter"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
@@ -252,20 +252,20 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
           <div className="flex gap-1 mt-6">
             <button
               onClick={() => setActiveTab('metadata')}
-              className={`px-4 py-2 text-sm font-medium rounded-[var(--radius)] transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-[var(--radius)] transition-colors touch-manipulation font-inter ${
                 activeTab === 'metadata' 
-                  ? 'bg-[rgba(var(--accent),0.1)] text-[rgb(var(--accent))]' 
-                  : 'text-muted hover:text-foreground'
+                  ? 'bg-blue-500/10 text-blue-500' 
+                  : 'text-muted active:text-foreground'
               }`}
             >
               Metadata
             </button>
             <button
               onClick={() => setActiveTab('cover')}
-              className={`px-4 py-2 text-sm font-medium rounded-[var(--radius)] transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-[var(--radius)] transition-colors touch-manipulation font-inter ${
                 activeTab === 'cover' 
-                  ? 'bg-[rgba(var(--accent),0.1)] text-[rgb(var(--accent))]' 
-                  : 'text-muted hover:text-foreground'
+                  ? 'bg-blue-500/10 text-blue-500' 
+                  : 'text-muted active:text-foreground'
               }`}
             >
               Book Cover
@@ -400,7 +400,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
                       <div className="space-y-3">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="btn-secondary w-full inline-flex items-center justify-center gap-2"
+                          className="btn-secondary w-full inline-flex items-center justify-center gap-2 touch-manipulation font-inter"
                           disabled={isLoading}
                         >
                           <ArrowUpTrayIcon className="w-4 h-4" />
@@ -416,7 +416,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
                         {uploadProgress > 0 && uploadProgress < 100 && (
                           <div className="w-full bg-[rgba(var(--muted),0.1)] rounded-full h-2">
                             <div 
-                              className="bg-[rgb(var(--accent))] h-2 rounded-full transition-all duration-300"
+                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${uploadProgress}%` }}
                             />
                           </div>
@@ -445,10 +445,10 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
                               <button
                                 key={preset.id}
                                 onClick={() => setSelectedPreset(preset.id)}
-                                className={`p-3 rounded-[var(--radius)] border transition-all text-left ${
+                                className={`p-3 rounded-[var(--radius)] border transition-all text-left touch-manipulation font-inter ${
                                   selectedPreset === preset.id
-                                    ? 'border-[rgb(var(--accent))] bg-[rgba(var(--accent),0.05)]'
-                                    : 'border-[rgba(var(--muted),0.2)] hover:border-[rgba(var(--muted),0.4)]'
+                                    ? 'border-blue-500 bg-blue-500/5'
+                                    : 'border-[rgba(var(--muted),0.2)] active:border-[rgba(var(--muted),0.4)]'
                                 }`}
                               >
                                 <div className="font-medium text-sm">{preset.name}</div>
@@ -478,7 +478,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
                         
                         {/* Generate Button */}
                         <button
-                          className="btn-primary w-full inline-flex items-center justify-center gap-2"
+                          className="btn-primary w-full inline-flex items-center justify-center gap-2 touch-manipulation font-inter"
                           disabled={isLoading}
                         >
                           <SparklesIcon className="w-4 h-4" />
@@ -498,7 +498,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
           <div className="flex justify-end gap-3">
             <button
               onClick={onClose}
-              className="btn-secondary px-6"
+              className="btn-secondary px-6 touch-manipulation font-inter"
               disabled={isLoading}
             >
               Cancel
@@ -506,7 +506,7 @@ export default function BookDetailsEditor({ book, isOpen, onClose, onUpdate }: B
             {activeTab === 'metadata' && (
               <button
                 onClick={handleSaveMetadata}
-                className="btn-primary px-6"
+                className="btn-primary px-6 touch-manipulation font-inter"
                 disabled={isLoading}
               >
                 {isLoading ? 'Saving...' : 'Save Changes'}

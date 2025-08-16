@@ -315,8 +315,8 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={cn(
-          // Base styles
-          'relative bg-white dark:bg-gray-900 shadow-2xl',
+          // Base styles with glassmorphism
+          'relative bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-2xl border border-white/20 dark:border-gray-700/30 font-inter',
           'w-full max-h-[calc(100vh-2rem)]',
           // Size classes
           sizeClasses[size],
@@ -339,12 +339,12 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Header */}
         {(title || showCloseButton) && (
           <div className={cn(
-            'flex items-center justify-between border-b border-gray-200 dark:border-gray-700',
-            // Responsive padding
-            isMobileFullScreen ? 'p-4 sm:p-6' : 'p-6',
-            // Drawer specific styles
-            animation === 'drawer' && 'pb-4'
-          )}>
+              'flex items-center justify-between border-b border-white/20 dark:border-gray-700/30',
+              // Responsive padding
+              isMobileFullScreen ? 'p-4 sm:p-6' : 'p-6',
+              // Drawer specific styles
+              animation === 'drawer' && 'pb-4'
+            )}>
             {title && (
               <h2
                 id="modal-title"
@@ -361,8 +361,8 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 onClick={onClose}
                 className={cn(
-                  'ml-auto p-2 rounded-lg transition-colors',
-                  'hover:bg-gray-100 dark:hover:bg-gray-800',
+                  'ml-auto p-2 rounded-lg transition-colors touch-manipulation',
+                  'active:bg-gray-100/80 dark:active:bg-gray-800/80',
                   'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
                   'dark:focus:ring-offset-gray-900'
                 )}
@@ -417,7 +417,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Footer */}
         {footer && (
           <div className={cn(
-            'flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700',
+            'flex items-center justify-end gap-3 border-t border-white/20 dark:border-gray-700/30',
             // Responsive padding
             isMobileFullScreen ? 'p-4 sm:p-6' : 'p-6',
             // Mobile stacking
@@ -713,7 +713,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             </h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-lg active:bg-gray-100/80 dark:active:bg-gray-800/80 transition-colors touch-manipulation"
               aria-label="Close"
             >
               <svg

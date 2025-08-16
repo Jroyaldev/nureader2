@@ -12,6 +12,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
 import TableOfContents from "@/components/reader/TableOfContents";
 import ContextualToolbar from "@/components/reader/ContextualToolbar";
+import MobileToolbar from "@/components/reader/MobileToolbar";
 import SearchPanel from "@/components/reader/SearchPanel";
 import { EnhancedSettingsPanel, SimplifiedReadingSettings } from "@/components/reader/EnhancedSettingsPanel";
 import { useReaderState } from '@/hooks/useReaderState';
@@ -1146,8 +1147,8 @@ export default function ReaderPage() {
         />
       )}
 
-      {/* ContextualToolbar - handles both desktop and mobile */}
-      {loaded && (
+      {/* Contextual Toolbar - Desktop/Tablet */}
+      {!isMobile && loaded && (
         <ContextualToolbar
           // Navigation
           onNavigateHome={handleNavigateHome}
@@ -1197,6 +1198,37 @@ export default function ReaderPage() {
           onTogglePin={togglePinnedToolbar}
         />
       )}
+
+      {/* Mobile Toolbar */}
+      {isMobile && loaded && (
+        <MobileToolbar
+          onNavigateHome={handleNavigateHome}
+          onNavigatePrev={handlePreviousPage}
+          onNavigateNext={handleNextPage}
+          canGoNext={navigationState.canGoNext}
+          canGoPrev={navigationState.canGoPrev}
+          currentTheme={userTheme as any}
+          onThemeChange={handleThemeChange}
+          fontSize={fontSize}
+          onFontSizeChange={handleFontSizeChange}
+          showToc={showToc}
+          showAnnotations={showAnnotations}
+          showSettings={showSettings}
+          showSearch={showSearch}
+          showAIChat={showAIChat}
+          onToggleToc={toggleToc}
+          onToggleAnnotations={toggleAnnotations}
+          onToggleSettings={toggleSettings}
+          onToggleSearch={toggleSearch}
+          onToggleAIChat={toggleAIChat}
+          progress={currentProgress}
+          chapterTitle={chapterTitle}
+          timeLeft={timeLeft}
+          isBookmarked={isBookmarked}
+          onToggleBookmark={toggleBookmark}
+          isVisible={loaded && !error}
+        />
+      )}
       
       {/* Open EPUB button when no book is loaded */}
       {!loaded && !bookId && (
@@ -1233,6 +1265,7 @@ export default function ReaderPage() {
         onSearch={handleSearch}
         onNavigateToResult={handleNavigateToSearchResult}
         currentChapter={chapterTitle}
+        isMobile={isMobile}
       />
 
       {/* Settings Panel */}
@@ -1242,6 +1275,7 @@ export default function ReaderPage() {
         onSettingsChange={handleSettingsChange}
         onClose={toggleSettings}
         onReset={handleResetSettings}
+        isMobile={isMobile}
       />
 
       {/* Mobile toolbar is now handled by ContextualToolbar component above */}

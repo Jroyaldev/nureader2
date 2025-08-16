@@ -209,15 +209,15 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     
     // Variant classes
     const variantClasses = {
-      default: 'bg-white border-gray-200 focus:border-primary-500',
-      filled: 'bg-gray-50 border-transparent focus:bg-white focus:border-primary-500',
+      default: 'bg-white/80 backdrop-blur-md border-white/20 focus:border-primary-500 shadow-lg',
+      filled: 'bg-white/60 backdrop-blur-md border-white/10 focus:bg-white/80 focus:border-primary-500 shadow-lg',
     };
     
     const baseInputClasses = cn(
       // Base styles
-      'w-full rounded-lg border transition-all duration-200',
+      'w-full rounded-lg border transition-all duration-200 font-inter touch-manipulation',
       'placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20',
-      'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
+      'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50/50 disabled:backdrop-blur-md',
       
       // Size
       sizeClasses[size],
@@ -242,8 +242,8 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     
     const suggestionsClasses = cn(
       'absolute top-full left-0 right-0 z-50 mt-1',
-      'bg-white border border-gray-200 rounded-lg shadow-lg',
-      'max-h-60 overflow-y-auto',
+      'bg-white/90 backdrop-blur-md border border-white/20 rounded-lg shadow-xl',
+      'max-h-60 overflow-y-auto font-inter',
       'animate-in fade-in-0 zoom-in-95 duration-100',
       suggestionsClassName
     );
@@ -302,7 +302,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             <button
               type="button"
               onClick={handleClear}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 active:text-gray-600 transition-colors touch-manipulation"
               aria-label="Clear search"
             >
               <svg
@@ -330,10 +330,10 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
                 key={suggestion.id}
                 type="button"
                 className={cn(
-                  'w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors',
-                  'flex items-center gap-3 border-b border-gray-100 last:border-b-0',
-                  'focus:outline-none focus:bg-gray-50',
-                  selectedSuggestionIndex === index && 'bg-primary-50 text-primary-700'
+                  'w-full px-4 py-3 text-left active:bg-white/60 transition-colors touch-manipulation',
+                  'flex items-center gap-3 border-b border-white/10 last:border-b-0',
+                  'focus:outline-none focus:bg-white/60',
+                  selectedSuggestionIndex === index && 'bg-primary-50/80 text-primary-700'
                 )}
                 onClick={() => handleSuggestionClick(suggestion)}
                 role="option"

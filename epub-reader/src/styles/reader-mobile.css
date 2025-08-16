@@ -49,6 +49,139 @@
     -webkit-backdrop-filter: blur(16px) saturate(180%);
   }
 
+  /* New Mobile Toolbar Styles */
+  .mobile-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding-top: env(safe-area-inset-top);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .mobile-toolbar.hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  .mobile-toolbar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    min-height: 56px;
+  }
+
+  .mobile-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mobile-toolbar-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 0 16px;
+  }
+
+  .mobile-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #374151;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+
+  .mobile-toolbar-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .mobile-toolbar-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+  }
+
+  .mobile-toolbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-toolbar-progress {
+    width: 100%;
+    max-width: 200px;
+    height: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .mobile-toolbar-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    border-radius: 1px;
+    transition: width 0.3s ease;
+  }
+
+  /* Dark theme support */
+  .dark .mobile-toolbar {
+    background: rgba(17, 24, 39, 0.85);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .mobile-toolbar-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #d1d5db;
+  }
+
+  .dark .mobile-toolbar-btn:active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .mobile-toolbar-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+  }
+
+  .dark .mobile-toolbar-title {
+    color: #f9fafb;
+  }
+
+  .dark .mobile-toolbar-progress {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   /* Mobile button interactions */
   .mobile-btn {
     position: relative;

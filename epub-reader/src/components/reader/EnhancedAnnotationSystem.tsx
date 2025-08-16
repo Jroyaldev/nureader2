@@ -109,12 +109,12 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
       className="fixed z-[100] animate-scale-in"
       style={{ left: position.x, top: position.y }}
     >
-      <div className="glass-strong rounded-2xl shadow-2xl p-1 flex items-center gap-0.5">
+      <div className="bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 p-1 flex items-center gap-0.5 font-inter">
         {/* Color Picker */}
         <div className="relative">
           <button
             onClick={() => setShowColorPicker(!showColorPicker)}
-            className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all group flex items-center gap-2"
+            className="p-2.5 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-all group flex items-center gap-2 touch-manipulation font-inter"
             aria-label="Highlight"
             title="Highlight"
           >
@@ -123,12 +123,12 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
           </button>
           
           {showColorPicker && (
-            <div className="absolute bottom-full mb-2 left-0 glass rounded-xl shadow-xl p-2 flex gap-1 animate-slide-up">
+            <div className="absolute bottom-full mb-2 left-0 bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-xl shadow-xl border border-white/20 p-2 flex gap-1 animate-slide-up font-inter">
               {HIGHLIGHT_COLORS.map((color) => (
                 <button
                   key={color.value}
                   onClick={() => handleHighlight(color.value)}
-                  className={`w-8 h-8 rounded-lg ${color.className} hover:scale-110 transition-transform`}
+                  className={`w-8 h-8 rounded-lg ${color.className} active:scale-110 transition-transform touch-manipulation`}
                   aria-label={`Highlight ${color.name}`}
                   title={color.name}
                 />
@@ -142,7 +142,7 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
         {/* Actions */}
         <button
           onClick={onNote}
-          className="p-2.5 rounded-xl reader-btn-hover group"
+          className="p-2.5 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-all group touch-manipulation font-inter"
           aria-label="Add Note"
           title="Add Note"
         >
@@ -151,7 +151,7 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
         
         <button
           onClick={handleCopy}
-          className="p-2.5 rounded-xl reader-btn-hover group"
+          className="p-2.5 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-all group touch-manipulation font-inter"
           aria-label="Copy"
           title={copied ? "Copied!" : "Copy"}
         >
@@ -164,7 +164,7 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
         
         <button
           onClick={onShare}
-          className="p-2.5 rounded-xl reader-btn-hover group"
+          className="p-2.5 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-all group touch-manipulation font-inter"
           aria-label="Share"
           title="Share"
         >
@@ -175,7 +175,7 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
         
         <button
           onClick={onClose}
-          className="p-2.5 rounded-xl reader-btn-hover group"
+          className="p-2.5 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-all group touch-manipulation font-inter"
           aria-label="Close"
         >
           <XMarkIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -183,7 +183,7 @@ export const FloatingSelectionToolbar: React.FC<FloatingSelectionToolbarProps> =
       </div>
       
       {/* Selection Preview */}
-      <div className="mt-2 glass rounded-xl p-3 max-w-xs">
+      <div className="mt-2 bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-xl border border-white/20 p-3 max-w-xs font-inter">
         <p className="text-xs text-muted line-clamp-2">&ldquo;{selectedText}&rdquo;</p>
       </div>
     </div>
@@ -295,7 +295,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
     <div className={`fixed right-0 top-0 h-full z-40 transition-all duration-300 ${
       visible ? 'translate-x-0' : 'translate-x-full'
     }`}>
-      <div className="h-full w-96 glass-strong shadow-2xl flex flex-col">
+      <div className="h-full w-96 bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-2xl border border-white/20 flex flex-col font-inter">
         {/* Header */}
         <div className="p-6 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-4">
@@ -308,7 +308,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
             </h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 active:bg-black/5 dark:active:bg-white/10 rounded-lg transition-colors touch-manipulation font-inter"
               aria-label="Close"
             >
               <XMarkIcon className="w-5 h-5" />
@@ -323,7 +323,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
               placeholder="Search annotations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-[rgb(var(--accent))] focus:ring-2 focus:ring-[rgb(var(--accent))]/20 transition-all text-sm"
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-white/20 dark:border-gray-700/20 backdrop-blur-sm focus:border-blue-500/30 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-inter text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
           
@@ -335,10 +335,10 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all touch-manipulation font-inter ${
                     filterType === type
-                      ? 'bg-[rgb(var(--accent))] text-white'
-                      : 'hover:bg-black/5 dark:hover:bg-white/10'
+                      ? 'bg-blue-500 text-white'
+                      : 'active:bg-black/5 dark:active:bg-white/10'
                   }`}
                 >
                   {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -350,7 +350,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
             {/* Sort & More Filters */}
             <button
               onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 active:bg-black/5 dark:active:bg-white/10 rounded-lg transition-colors touch-manipulation font-inter"
               aria-label="Filters"
             >
               <FunnelIcon className="w-4 h-4" />
@@ -359,7 +359,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
             {/* Export */}
             <button
               onClick={onExport}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors ml-auto"
+              className="p-2 active:bg-black/5 dark:active:bg-white/10 rounded-lg transition-colors ml-auto touch-manipulation font-inter"
               aria-label="Export"
               title="Export Annotations"
             >
@@ -380,10 +380,10 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                         : [...prev, tag]
                     );
                   }}
-                  className={`px-2 py-1 rounded-full text-xs transition-all ${
+                  className={`px-2 py-1 rounded-full text-xs transition-all touch-manipulation font-inter ${
                     selectedTags.includes(tag)
-                      ? 'bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))] border border-[rgb(var(--accent))]/30'
-                      : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'
+                      ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                      : 'bg-black/5 dark:bg-white/5 active:bg-black/10 dark:active:bg-white/10'
                   }`}
                 >
                   #{tag}
@@ -408,7 +408,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                     className="group cursor-pointer"
                     onClick={() => onAnnotationClick(annotation)}
                   >
-                    <div className="p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+                    <div className="p-3 rounded-xl active:bg-black/5 dark:active:bg-white/5 transition-all touch-manipulation">
                       {/* Annotation Header */}
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
@@ -422,7 +422,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                             <ChatBubbleBottomCenterTextIcon className="w-4 h-4 text-muted" />
                           )}
                           {annotation.type === 'bookmark' && (
-                            <BookmarkSolidIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
+                            <BookmarkSolidIcon className="w-4 h-4 text-blue-500" />
                           )}
                           <span className="text-xs text-muted">
                             {formatDate(annotation.createdAt)}
@@ -436,7 +436,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                               e.stopPropagation();
                               onAnnotationEdit(annotation);
                             }}
-                            className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                            className="p-1 active:bg-black/10 dark:active:bg-white/10 rounded transition-colors touch-manipulation font-inter"
                             aria-label="Edit"
                           >
                             <PencilIcon className="w-3 h-3" />
@@ -446,7 +446,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                               e.stopPropagation();
                               onAnnotationDelete(annotation.id);
                             }}
-                            className="p-1 hover:bg-red-500/10 text-red-500 rounded transition-colors"
+                            className="p-1 active:bg-red-500/10 text-red-500 rounded transition-colors touch-manipulation font-inter"
                             aria-label="Delete"
                           >
                             <TrashIcon className="w-3 h-3" />
@@ -505,7 +505,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
         
         {/* Sort Menu Dropdown */}
         {showFilterMenu && (
-          <div className="absolute top-40 right-6 glass rounded-xl shadow-xl p-2 z-50 animate-scale-in">
+          <div className="absolute top-40 right-6 bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-xl shadow-xl border border-white/20 p-2 z-50 animate-scale-in font-inter">
             <div className="text-xs font-medium text-muted px-3 py-2">Sort by</div>
             {(['recent', 'oldest', 'chapter', 'type'] as SortBy[]).map((sort) => (
               <button
@@ -514,10 +514,10 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                   setSortBy(sort);
                   setShowFilterMenu(false);
                 }}
-                className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-colors flex items-center justify-between ${
+                className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-colors flex items-center justify-between touch-manipulation font-inter ${
                   sortBy === sort
-                    ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))]'
-                    : 'hover:bg-black/5 dark:hover:bg-white/10'
+                    ? 'bg-blue-500/10 text-blue-500'
+                    : 'active:bg-black/5 dark:active:bg-white/10'
                 }`}
               >
                 {sort.charAt(0).toUpperCase() + sort.slice(1)}

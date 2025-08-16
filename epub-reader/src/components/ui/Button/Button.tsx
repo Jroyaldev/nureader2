@@ -7,19 +7,22 @@ import { cn } from '@/lib/utils';
  * Provides consistent styling across all button types with enhanced accessibility
  */
 const buttonVariants = cva(
-  // Base styles with enhanced accessibility and animations
-  'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 select-none relative overflow-hidden active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none',
+  // Base styles with enhanced accessibility, animations, and Inter font
+  'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 select-none relative overflow-hidden active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none font-inter touch-manipulation',
   {
     variants: {
       variant: {
-        primary: 'bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500 shadow-md hover:shadow-lg',
-        secondary: 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:ring-gray-500 border border-gray-200 dark:border-gray-700',
-        outline: 'border-2 border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 focus-visible:ring-gray-500',
-        ghost: 'bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-gray-500',
-        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-md hover:shadow-lg',
-        success: 'bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500 shadow-md hover:shadow-lg',
-        warning: 'bg-yellow-500 text-white hover:bg-yellow-600 focus-visible:ring-yellow-500 shadow-md hover:shadow-lg',
-        link: 'text-blue-600 dark:text-blue-400 underline-offset-4 hover:underline focus-visible:ring-blue-500 bg-transparent p-0 h-auto',
+        primary: 'bg-blue-600 text-white active:bg-blue-700 focus-visible:ring-blue-500 shadow-md active:shadow-lg',
+        secondary: 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 active:bg-gray-200 dark:active:bg-gray-700 focus-visible:ring-gray-500 border border-gray-200 dark:border-gray-700',
+        outline: 'border-2 border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 active:bg-gray-50 dark:active:bg-gray-800 focus-visible:ring-gray-500',
+        ghost: 'bg-transparent text-gray-700 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 focus-visible:ring-gray-500',
+        danger: 'bg-red-600 text-white active:bg-red-700 focus-visible:ring-red-500 shadow-md active:shadow-lg',
+        success: 'bg-green-600 text-white active:bg-green-700 focus-visible:ring-green-500 shadow-md active:shadow-lg',
+        warning: 'bg-yellow-500 text-white active:bg-yellow-600 focus-visible:ring-yellow-500 shadow-md active:shadow-lg',
+        link: 'text-blue-600 dark:text-blue-400 underline-offset-4 active:underline focus-visible:ring-blue-500 bg-transparent p-0 h-auto',
+        glass: 'bg-white/10 dark:bg-white/5 text-gray-900 dark:text-white backdrop-blur-md border border-white/20 dark:border-white/10 active:bg-white/20 dark:active:bg-white/10 shadow-lg active:shadow-xl focus-visible:ring-white/50',
+        'glass-primary': 'bg-blue-500/20 text-blue-900 dark:text-blue-100 backdrop-blur-md border border-blue-300/30 dark:border-blue-400/20 active:bg-blue-500/30 shadow-lg active:shadow-xl focus-visible:ring-blue-400/50',
+        'glass-danger': 'bg-red-500/20 text-red-900 dark:text-red-100 backdrop-blur-md border border-red-300/30 dark:border-red-400/20 active:bg-red-500/30 shadow-lg active:shadow-xl focus-visible:ring-red-400/50',
       },
       size: {
         xs: 'h-7 px-2 text-xs gap-1 rounded-md',
@@ -226,10 +229,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           buttonVariants({ variant, size, fullWidth, loading, gradient }),
           pulse && 'animate-pulse',
-          gradient && variant === 'primary' && 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700',
-          gradient && variant === 'danger' && 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700',
-          gradient && variant === 'success' && 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700',
-          gradient && variant === 'warning' && 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600',
+          gradient && variant === 'primary' && 'bg-gradient-to-r from-blue-600 to-purple-600 active:from-blue-700 active:to-purple-700',
+          gradient && variant === 'danger' && 'bg-gradient-to-r from-red-600 to-pink-600 active:from-red-700 active:to-pink-700',
+          gradient && variant === 'success' && 'bg-gradient-to-r from-green-600 to-emerald-600 active:from-green-700 active:to-emerald-700',
+          gradient && variant === 'warning' && 'bg-gradient-to-r from-yellow-500 to-orange-500 active:from-yellow-600 active:to-orange-600',
           className
         )}
         {...props}
@@ -337,7 +340,7 @@ export const ButtonGroup: React.FC<ButtonGroupProps> = ({
           '[&>button:not(:first-child)]:-ml-px',
           '[&>button:not(:first-child)]:border-l-0',
           '[&>button]:focus:z-10',
-          '[&>button]:hover:z-10',
+          '[&>button]:active:z-10',
         ],
         // Attached vertical styling
         attached && orientation === 'vertical' && [
@@ -347,7 +350,7 @@ export const ButtonGroup: React.FC<ButtonGroupProps> = ({
           '[&>button:not(:first-child)]:-mt-px',
           '[&>button:not(:first-child)]:border-t-0',
           '[&>button]:focus:z-10',
-          '[&>button]:hover:z-10',
+          '[&>button]:active:z-10',
         ],
         // Non-attached spacing
         !attached && orientation === 'horizontal' && 'gap-2',

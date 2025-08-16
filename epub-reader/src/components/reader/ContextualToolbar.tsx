@@ -222,7 +222,7 @@ export default function ContextualToolbar({
         }`}>
           <div className="h-1 reader-progress-track">
             <div 
-              className="h-full bg-gradient-to-r from-[rgb(var(--accent))] to-[rgb(var(--accent))]/70 transition-all duration-500"
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -250,7 +250,7 @@ export default function ContextualToolbar({
                 </div>
                 <div className="reader-progress-track h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-[rgb(var(--accent))] to-[rgb(var(--accent))]/70 rounded-full transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -262,7 +262,7 @@ export default function ContextualToolbar({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={onNavigateHome}
-                    className="p-3 rounded-xl reader-btn-hover"
+                    className="p-3 rounded-xl reader-btn-hover touch-manipulation font-inter"
                     aria-label="Library"
                   >
                     <HomeIcon className="w-5 h-5" />
@@ -270,7 +270,7 @@ export default function ContextualToolbar({
                   <button
                     onClick={onNavigatePrev}
                     disabled={!canGoPrev}
-                    className="p-3 rounded-xl reader-btn-hover disabled:opacity-30"
+                    className="p-3 rounded-xl reader-btn-hover disabled:opacity-30 touch-manipulation font-inter"
                     aria-label="Previous"
                   >
                     <ChevronLeftIcon className="w-5 h-5" />
@@ -278,7 +278,7 @@ export default function ContextualToolbar({
                   <button
                     onClick={onNavigateNext}
                     disabled={!canGoNext}
-                    className="p-3 rounded-xl reader-btn-hover disabled:opacity-30"
+                    className="p-3 rounded-xl reader-btn-hover disabled:opacity-30 touch-manipulation font-inter"
                     aria-label="Next"
                   >
                     <ChevronRightIcon className="w-5 h-5" />
@@ -289,8 +289,8 @@ export default function ContextualToolbar({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={onToggleBookmark}
-                    className={`p-3 rounded-xl reader-btn-hover ${
-                      isBookmarked ? 'text-[rgb(var(--accent))]' : ''
+                    className={`p-3 rounded-xl reader-btn-hover touch-manipulation font-inter ${
+                      isBookmarked ? 'text-blue-500' : ''
                     }`}
                     aria-label="Bookmark"
                   >
@@ -298,14 +298,14 @@ export default function ContextualToolbar({
                   </button>
                   <button
                     onClick={() => setShowThemeMenu(!showThemeMenu)}
-                    className="p-3 rounded-xl reader-btn-hover"
+                    className="p-3 rounded-xl reader-btn-hover touch-manipulation font-inter"
                     aria-label="Theme"
                   >
                     {React.createElement(themeConfigs[currentTheme].icon, { className: "w-5 h-5" })}
                   </button>
                   <button
                     onClick={onToggleToc}
-                    className={`p-3 rounded-xl reader-btn-hover ${
+                    className={`p-3 rounded-xl reader-btn-hover touch-manipulation font-inter ${
                       showToc ? 'reader-btn-active' : ''
                     }`}
                     aria-label="Contents"
@@ -314,7 +314,7 @@ export default function ContextualToolbar({
                   </button>
                   <button
                     onClick={onToggleSettings}
-                    className={`p-3 rounded-xl reader-btn-hover ${
+                    className={`p-3 rounded-xl reader-btn-hover touch-manipulation font-inter ${
                       showSettings ? 'reader-btn-active' : ''
                     }`}
                     aria-label="Settings"
@@ -324,7 +324,7 @@ export default function ContextualToolbar({
                   {onToggleAIChat && (
                     <button
                       onClick={onToggleAIChat}
-                      className={`p-3 rounded-xl reader-btn-hover ${
+                      className={`p-3 rounded-xl reader-btn-hover touch-manipulation font-inter ${
                         showAIChat ? 'reader-btn-active' : ''
                       }`}
                       aria-label="AI Assistant"
@@ -342,20 +342,20 @@ export default function ContextualToolbar({
         {showThemeMenu && (
           <div className="fixed inset-0 z-[85] flex items-end justify-center p-4 animate-fade-in">
             <div 
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/50 backdrop-blur-md"
               onClick={() => setShowThemeMenu(false)}
             />
-            <div className="relative w-full max-w-sm reader-floating rounded-3xl p-6 animate-slide-up">
+            <div className="relative w-full max-w-sm bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-3xl p-6 animate-slide-up shadow-2xl border border-black/10 dark:border-white/10 font-inter">
               <h3 className="text-lg font-semibold mb-4">Reading Theme</h3>
               <div className="grid grid-cols-2 gap-3">
                 {Object.entries(themeConfigs).map(([key, config]) => (
                   <button
                     key={key}
                     onClick={() => handleThemeSelect(key as 'light' | 'dark')}
-                    className={`relative p-4 rounded-2xl border-2 transition-all ${
+                    className={`relative p-4 rounded-2xl border-2 transition-all touch-manipulation font-inter ${
                       currentTheme === key 
-                        ? 'border-[rgb(var(--accent))] shadow-lg scale-105' 
-                        : 'border-[rgb(var(--border))]/10 hover:border-[rgb(var(--border))]/20'
+                        ? 'border-blue-500 shadow-lg scale-105' 
+                        : 'border-white/10 dark:border-gray-700/20 active:border-white/20 dark:active:border-gray-700/30'
                     }`}
                     style={{ backgroundColor: config.bg }}
                   >
@@ -370,7 +370,7 @@ export default function ContextualToolbar({
                     </div>
                     {currentTheme === key && (
                       <div className="absolute top-2 right-2">
-                        <CheckIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
+                        <CheckIcon className="w-4 h-4 text-blue-500" />
                       </div>
                     )}
                   </button>
@@ -389,7 +389,7 @@ export default function ContextualToolbar({
       {/* Theme Menu Dropdown - Rendered outside toolbar for proper visibility */}
       {showThemeMenu && (
         <div 
-          className="fixed reader-glass rounded-2xl p-3 shadow-2xl animate-scale-in"
+          className="fixed bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-2xl p-3 shadow-2xl animate-scale-in border border-black/10 dark:border-white/10 font-inter"
           style={{
             minWidth: '260px',
             zIndex: 90,
@@ -405,7 +405,7 @@ export default function ContextualToolbar({
               <button
                 key={key}
                 onClick={() => handleThemeSelect(key as 'light' | 'dark')}
-                className={`relative px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`relative px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 touch-manipulation font-inter ${
                   currentTheme === key 
                     ? 'reader-btn-active shadow-sm' 
                     : 'reader-btn-hover'
@@ -455,7 +455,7 @@ export default function ContextualToolbar({
                   <div className="relative flex-1 min-w-[200px] max-w-[300px]">
                     <div className="h-1.5 reader-progress-track rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-[rgb(var(--accent))] via-[rgb(var(--accent))]/85 to-[rgb(var(--accent))]/70 rounded-full transition-all duration-500 ease-out relative"
+                        className="h-full bg-gradient-to-r from-blue-500 via-blue-500/85 to-blue-400 rounded-full transition-all duration-500 ease-out relative"
                         style={{ width: `${progress}%` }}
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
@@ -482,29 +482,29 @@ export default function ContextualToolbar({
             <div className="flex items-center gap-1 px-2">
               <button
                 onClick={onNavigateHome}
-                className="p-2.5 rounded-xl reader-btn-hover group"
+                className="p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter"
                 aria-label="Library"
                 title="Back to Library"
               >
-                <HomeIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                <HomeIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
               </button>
               <button
                 onClick={onNavigatePrev}
                 disabled={!canGoPrev}
-                className="p-2.5 rounded-xl reader-btn-hover disabled:opacity-30 disabled:cursor-not-allowed group"
+                className="p-2.5 rounded-xl reader-btn-hover disabled:opacity-30 disabled:cursor-not-allowed group touch-manipulation font-inter"
                 aria-label="Previous"
                 title="Previous Page (←)"
               >
-                <ChevronLeftIcon className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
+                <ChevronLeftIcon className="w-4 h-4 group-active:-translate-x-0.5 transition-transform duration-200" />
               </button>
               <button
                 onClick={onNavigateNext}
                 disabled={!canGoNext}
-                className="p-2.5 rounded-xl reader-btn-hover disabled:opacity-30 disabled:cursor-not-allowed group"
+                className="p-2.5 rounded-xl reader-btn-hover disabled:opacity-30 disabled:cursor-not-allowed group touch-manipulation font-inter"
                 aria-label="Next"
                 title="Next Page (→)"
               >
-                <ChevronRightIcon className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
+                <ChevronRightIcon className="w-4 h-4 group-active:translate-x-0.5 transition-transform duration-200" />
               </button>
             </div>
             
@@ -516,26 +516,26 @@ export default function ContextualToolbar({
               <div className="flex items-center gap-0.5 bg-[rgb(var(--bg))]/30 rounded-xl p-0.5">
                 <button
                   onClick={() => adjustFontSize(-2)}
-                  className="px-2.5 py-2 rounded-lg reader-btn-hover group"
+                  className="px-2.5 py-2 rounded-lg reader-btn-hover group touch-manipulation font-inter"
                   aria-label="Decrease font"
                   title="Decrease Font Size"
                 >
-                  <span className="text-xs font-bold opacity-80 group-hover:opacity-100 transition-opacity">A−</span>
+                  <span className="text-xs font-bold opacity-80 group-active:opacity-100 transition-opacity">A−</span>
                 </button>
                 <button
                   onClick={() => setShowFontMenu(!showFontMenu)}
-                  className="px-3 py-1.5 rounded-lg"
+                  className="px-3 py-1.5 rounded-lg touch-manipulation font-inter"
                   title="Font Size"
                 >
                   <span className="text-[11px] font-semibold tabular-nums opacity-70">{fontSize}px</span>
                 </button>
                 <button
                   onClick={() => adjustFontSize(2)}
-                  className="px-2.5 py-2 rounded-lg reader-btn-hover group"
+                  className="px-2.5 py-2 rounded-lg reader-btn-hover group touch-manipulation font-inter"
                   aria-label="Increase font"
                   title="Increase Font Size"
                 >
-                  <span className="text-xs font-bold opacity-80 group-hover:opacity-100 transition-opacity">A+</span>
+                  <span className="text-xs font-bold opacity-80 group-active:opacity-100 transition-opacity">A+</span>
                 </button>
               </div>
               
@@ -543,12 +543,12 @@ export default function ContextualToolbar({
               <div className="relative">
                 <button
                   onClick={() => setShowThemeMenu(!showThemeMenu)}
-                  className="p-2.5 rounded-xl reader-btn-hover group"
+                  className="p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter"
                   aria-label="Theme"
                   title={`Theme: ${themeConfigs[currentTheme].label}`}
                 >
                   {React.createElement(themeConfigs[currentTheme].icon, { 
-                    className: "w-4 h-4 group-hover:scale-110 transition-transform duration-200" 
+                    className: "w-4 h-4 group-active:scale-110 transition-transform duration-200" 
                   })}
                 </button>
                 
@@ -557,14 +557,14 @@ export default function ContextualToolbar({
               {/* Fullscreen */}
               <button
                 onClick={onToggleFullscreen}
-                className="p-2.5 rounded-xl reader-btn-hover group"
+                className="p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter"
                 aria-label="Fullscreen"
                 title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
               >
                 {isFullscreen ? (
-                  <ArrowsPointingInIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <ArrowsPointingInIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
                 ) : (
-                  <ArrowsPointingOutIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <ArrowsPointingOutIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
                 )}
               </button>
             </div>
@@ -577,18 +577,18 @@ export default function ContextualToolbar({
               {onTogglePin && (
                 <button
                   onClick={onTogglePin}
-                  className={`p-2.5 rounded-xl transition-all duration-300 group ${
+                  className={`p-2.5 rounded-xl transition-all duration-300 group touch-manipulation font-inter ${
                     isPinned 
-                      ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] hover:bg-[rgb(var(--accent))]/15' 
-                      : 'reader-btn-hover opacity-60 hover:opacity-100'
+                      ? 'bg-blue-500/10 text-blue-500 active:bg-blue-500/15'
+        : 'reader-btn-hover opacity-60 active:opacity-100'
                   }`}
                   aria-label={isPinned ? "Unpin toolbar" : "Pin toolbar"}
                   title={isPinned ? "Unpin toolbar (auto-hide when idle)" : "Pin toolbar (always visible)"}
                 >
                   {isPinned ? (
-                    <LockClosedIcon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                    <LockClosedIcon className="w-4 h-4 transition-transform duration-300 group-active:scale-110" />
                   ) : (
-                    <LockOpenIcon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                    <LockOpenIcon className="w-4 h-4 transition-transform duration-300 group-active:scale-110" />
                   )}
                 </button>
               )}
@@ -596,69 +596,69 @@ export default function ContextualToolbar({
               <div className="reader-divider" />
               <button
                 onClick={onToggleSearch}
-                className={`p-2.5 rounded-xl reader-btn-hover group ${
+                className={`p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter ${
                   showSearch ? 'reader-btn-active' : ''
                 }`}
                 aria-label="Search"
                 title="Search (Ctrl+F)"
               >
-                <MagnifyingGlassIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                <MagnifyingGlassIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
               </button>
               <button
                 onClick={onToggleBookmark}
-                className={`p-2.5 rounded-xl reader-btn-hover group ${
-                  isBookmarked ? 'text-[rgb(var(--accent))]' : ''
+                className={`p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter ${
+                  isBookmarked ? 'text-blue-500' : ''
                 }`}
                 aria-label="Bookmark"
                 title={isBookmarked ? "Remove Bookmark" : "Add Bookmark"}
               >
                 {isBookmarked ? (
-                  <BookmarkSolidIcon className="w-4 h-4 group-hover:scale-125 transition-all duration-200 animate-bookmark-add" />
+                  <BookmarkSolidIcon className="w-4 h-4 group-active:scale-125 transition-all duration-200 animate-bookmark-add" />
                 ) : (
-                  <BookmarkIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <BookmarkIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
                 )}
               </button>
               <button
                 onClick={onToggleToc}
-                className={`p-2.5 rounded-xl reader-btn-hover group ${
+                className={`p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter ${
                   showToc ? 'reader-btn-active' : ''
                 }`}
                 aria-label="Contents"
                 title="Table of Contents"
               >
-                <Bars3Icon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                <Bars3Icon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
               </button>
               <button
                 onClick={onToggleAnnotations}
-                className={`p-2.5 rounded-xl reader-btn-hover group ${
+                className={`p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter ${
                   showAnnotations ? 'reader-btn-active' : ''
                 }`}
                 aria-label="Annotations"
                 title="Annotations & Notes"
               >
-                <PencilSquareIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                <PencilSquareIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
               </button>
               {onToggleAIChat && (
                 <button
                   onClick={onToggleAIChat}
-                  className={`p-2.5 rounded-xl reader-btn-hover group ${
+                  className={`p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter ${
                     showAIChat ? 'reader-btn-active' : ''
                   }`}
                   aria-label="AI Assistant"
                   title="AI Assistant (Cmd/Ctrl+J)"
                 >
-                  <SparklesIcon className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <SparklesIcon className="w-4 h-4 group-active:scale-110 transition-transform duration-200" />
                 </button>
               )}
               <button
                 onClick={onToggleSettings}
-                className={`p-2.5 rounded-xl reader-btn-hover group ${
+                className={`p-2.5 rounded-xl reader-btn-hover group touch-manipulation font-inter ${
                   showSettings ? 'reader-btn-active' : ''
                 }`}
                 aria-label="Settings"
                 title="Reading Settings"
               >
-                <Cog6ToothIcon className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
+                <Cog6ToothIcon className="w-4 h-4 group-active:rotate-90 transition-transform duration-500" />
               </button>
             </div>
           </div>
@@ -669,7 +669,7 @@ export default function ContextualToolbar({
       {!toolbarVisible && (
         <div className="fixed top-0 left-0 right-0 z-[75] h-0.5 reader-progress-track">
           <div 
-            className="h-full bg-[rgb(var(--accent))]/40 transition-all duration-500"
+            className="h-full bg-blue-500/40 transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>

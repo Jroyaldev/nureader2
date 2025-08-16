@@ -151,25 +151,25 @@ const TabBar = React.forwardRef<HTMLDivElement, TabBarProps>(
           container: 'bg-muted/30 rounded-lg p-1',
           tab: 'rounded-md transition-all duration-200',
           active: 'bg-background text-foreground shadow-sm',
-          inactive: 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+          inactive: 'text-muted-foreground active:text-foreground active:bg-muted/50',
         },
         pills: {
           container: 'bg-transparent',
           tab: 'rounded-full transition-all duration-200 border border-transparent',
           active: 'bg-primary text-primary-foreground border-primary',
-          inactive: 'text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:border-border',
+          inactive: 'text-muted-foreground active:text-foreground active:bg-muted/50 active:border-border',
         },
         underline: {
           container: 'bg-transparent border-b border-border',
           tab: 'transition-all duration-200 border-b-2 border-transparent -mb-px',
           active: 'text-foreground border-primary',
-          inactive: 'text-muted-foreground hover:text-foreground hover:border-muted',
+          inactive: 'text-muted-foreground active:text-foreground active:border-muted',
         },
         buttons: {
           container: 'bg-transparent gap-2',
           tab: 'rounded-md transition-all duration-200 border',
           active: 'bg-primary text-primary-foreground border-primary',
-          inactive: 'bg-background text-foreground border-border hover:bg-muted/50',
+          inactive: 'bg-background text-foreground border-border active:bg-muted/50',
         },
       };
       return variants[variant];

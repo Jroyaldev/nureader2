@@ -55,7 +55,7 @@ const TocItemComponent: React.FC<{
     const regex = new RegExp(`(${searchQuery})`, 'gi');
     const parts = text.split(regex);
     return parts.map((part, i) => 
-      regex.test(part) ? <mark key={i} className="bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))] rounded px-0.5">{part}</mark> : part
+      regex.test(part) ? <mark key={i} className="bg-blue-500/20 text-blue-500 rounded px-0.5">{part}</mark> : part
     );
   };
 
@@ -73,8 +73,8 @@ const TocItemComponent: React.FC<{
           w-full text-left transition-all duration-200 rounded-lg group
           ${level === 0 ? 'py-3 px-4' : level === 1 ? 'py-2.5 px-4 pl-8' : 'py-2 px-4 pl-12'}
           ${isActive 
-            ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))]' 
-            : 'hover:bg-[rgba(var(--muted),0.08)] text-foreground hover:text-[rgb(var(--accent))]'
+            ? 'bg-blue-500/10 text-blue-500'
+        : 'hover:bg-[rgba(var(--muted),0.08)] text-foreground hover:text-blue-500'
           }
         `}
       >
@@ -97,7 +97,7 @@ const TocItemComponent: React.FC<{
             )}
             
             {!hasChildren && level === 0 && (
-              <DocumentTextIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[rgb(var(--accent))]' : 'text-muted'}`} />
+              <DocumentTextIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-500' : 'text-muted'}`} />
             )}
             
             <span className={`
@@ -111,7 +111,7 @@ const TocItemComponent: React.FC<{
           
           {isActive && (
             <div className="shrink-0 flex items-center gap-2">
-              <CheckIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
+              <CheckIcon className="w-4 h-4 text-blue-500" />
             </div>
           )}
           
@@ -263,87 +263,126 @@ export default function TableOfContents({
   const totalChapters = items.length;
 
   if (isMobile) {
-    // Mobile: Bottom sheet design
+    // Mobile: Enhanced bottom sheet with glassmorphism
     return (
       <div className={`
-        fixed inset-0 z-[90] transition-all duration-300
+        fixed inset-0 z-[90] transition-all duration-500
         ${isOpen ? 'visible' : 'invisible'}
       `}>
-        {/* Backdrop */}
+        {/* Enhanced Backdrop */}
         <div 
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+          className={`absolute inset-0 bg-black/40 backdrop-blur-md transition-all duration-500 ${
             isOpen ? 'opacity-100' : 'opacity-0'
           }`}
           onClick={onClose}
         />
         
-        {/* Bottom Sheet */}
+        {/* Enhanced Bottom Sheet with Glassmorphism */}
         <div className={`
-          absolute bottom-0 left-0 right-0 reader-floating no-top-glint rounded-t-3xl
-          transition-transform duration-300 ease-out max-h-[85vh] flex flex-col
+          absolute bottom-0 left-0 right-0 
+          bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl
+          border border-white/20 dark:border-gray-700/30
+          shadow-2xl shadow-black/20
+          rounded-t-3xl transition-all duration-500 ease-out 
+          max-h-[85vh] flex flex-col
           ${isOpen ? 'translate-y-0' : 'translate-y-full'}
+          safe-area-pb
         `}>
-          {/* Handle */}
-          <div className="flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1 bg-[rgba(var(--muted),0.3)] rounded-full" />
+          {/* Enhanced Handle */}
+          <div className="flex justify-center pt-4 pb-3">
+            <div className="w-12 h-1.5 bg-gray-300/60 dark:bg-gray-600/60 rounded-full" />
           </div>
           
-          {/* Header */}
-          <div className="px-6 pb-4 reader-divider-h rounded-t-3xl">
+          {/* Enhanced Header */}
+          <div className="px-6 pb-4 border-b border-gray-200/30 dark:border-gray-700/30">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <BookOpenSolidIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
-                <h2 className="text-lg font-semibold">Contents</h2>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center backdrop-blur-sm">
+            <BookOpenSolidIcon className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Contents</h2>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Navigate chapters</p>
+                </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 -mr-2 rounded-lg hover:bg-[rgba(var(--muted),0.1)]"
+                className="p-2.5 -mr-2 rounded-xl bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-all duration-200 backdrop-blur-sm"
               >
-                <XMarkIcon className="w-5 h-5" />
+                <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
             
-            {/* Stats */}
-            <div className="flex items-center gap-4 text-sm text-muted">
-              <span>{chaptersRead} of {totalChapters} chapters</span>
-              <span>•</span>
-              <span className="font-medium">{progress}% complete</span>
+            {/* Enhanced Stats */}
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-200/20 dark:border-gray-700/20">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{chaptersRead} of {totalChapters} chapters</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs px-2 py-1 bg-blue-500/10 text-blue-500 rounded-full font-medium">
+                  {progress}% complete
+                </div>
+              </div>
             </div>
             
-            {/* Search */}
+            {/* Enhanced Search */}
             <div className="relative mt-4">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search chapters..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-[rgba(var(--muted),0.05)] rounded-lg text-sm placeholder-muted focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/20"
+                className="w-full pl-11 pr-4 py-3 bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200 font-inter"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 hover:bg-gray-300/50 dark:hover:bg-gray-600/50 transition-all duration-200"
+                >
+                  <XMarkIcon className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                </button>
+              )}
             </div>
           </div>
           
-          {/* Content */}
+          {/* Enhanced Content */}
           <div 
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto px-4 py-4"
+            className="flex-1 overflow-y-auto px-6 py-4 scrollbar-thin scrollbar-thumb-gray-300/50 dark:scrollbar-thumb-gray-600/50 scrollbar-track-transparent"
           >
-            <div className="space-y-1 pb-6">
-              {filteredItems.map((item, idx) => (
-                <div key={`${item.href}-${idx}`} ref={currentChapter === item.label ? activeItemRef : undefined}>
-                  <TocItemWithState
-                    item={item}
-                    level={0}
-                    currentChapter={currentChapter}
-                    onNavigate={handleNavigate}
-                    searchQuery={searchQuery}
-                    isMobile={isMobile}
-                    expandAll={expandAll ?? false}
-                  />
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100/50 dark:bg-gray-800/30 flex items-center justify-center backdrop-blur-sm">
+                  <MagnifyingGlassIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
-              ))}
-            </div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">No chapters found</p>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs text-blue-500 hover:text-blue-400 font-medium font-inter transition-colors duration-200"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1 pb-8">
+                {filteredItems.map((item, idx) => (
+                  <div key={`${item.href}-${idx}`} ref={currentChapter === item.label ? activeItemRef : undefined}>
+                    <TocItemWithState
+                      item={item}
+                      level={0}
+                      currentChapter={currentChapter}
+                      onNavigate={handleNavigate}
+                      searchQuery={searchQuery}
+                      isMobile={isMobile}
+                      expandAll={expandAll ?? false}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -361,13 +400,13 @@ export default function TableOfContents({
         <div className="px-6 py-5 shrink-0 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent))]/20 to-[rgb(var(--accent))]/10 flex items-center justify-center">
-                <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center">
+                <BookOpenIcon className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-base font-semibold">Table of Contents</h3>
+                <h3 className="text-base font-semibold font-inter text-gray-900 dark:text-white">Table of Contents</h3>
                 {bookTitle && (
-                  <p className="text-xs text-muted truncate max-w-[200px]">{bookTitle}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-inter truncate max-w-[200px]">{bookTitle}</p>
                 )}
               </div>
             </div>
@@ -381,13 +420,13 @@ export default function TableOfContents({
           
           {/* Progress Bar */}
           <div className="mb-3">
-            <div className="flex items-center justify-between text-xs text-muted mb-1">
+            <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 font-inter mb-1">
               <span>Chapter {chaptersRead} of {totalChapters}</span>
               <span className="font-medium tabular-nums">{progress}%</span>
             </div>
             <div className="h-1.5 bg-[rgba(var(--muted),0.1)] rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-[rgb(var(--accent))] to-[rgb(var(--accent))]/70 rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -402,9 +441,9 @@ export default function TableOfContents({
               placeholder="Search chapters..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-9 py-2 bg-[rgba(var(--muted),0.05)] rounded-lg text-sm placeholder-muted 
-                       focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/20 focus:bg-[rgba(var(--muted),0.08)]
-                       transition-colors"
+              className="w-full pl-9 pr-9 py-2 bg-white/50 dark:bg-gray-800/50 border border-white/20 dark:border-gray-700/20 rounded-lg text-sm placeholder-gray-500 dark:placeholder-gray-400 font-inter text-gray-900 dark:text-white backdrop-blur-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 focus:bg-white/70 dark:focus:bg-gray-800/70
+                       transition-all duration-200"
             />
             {searchQuery && (
               <button
@@ -469,7 +508,7 @@ export default function TableOfContents({
               <p className="text-sm text-muted">No chapters found</p>
               <button
                 onClick={() => setSearchQuery('')}
-                className="mt-2 text-xs text-[rgb(var(--accent))] hover:underline"
+                className="mt-2 text-xs text-blue-500 hover:text-blue-400 font-inter transition-colors duration-200"
               >
                 Clear search
               </button>

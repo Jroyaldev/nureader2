@@ -67,15 +67,15 @@ const BottomNavigationItem = React.forwardRef<HTMLButtonElement, BottomNavigatio
             'scale-105',
           ] : [
             'text-muted-foreground',
-            'hover:text-foreground hover:scale-105',
-            'active:scale-95',
+            'active:text-foreground active:scale-105',
+            'transition-transform',
           ],
           
           // Disabled state
           disabled && [
             'opacity-50',
             'cursor-not-allowed',
-            'hover:scale-100 active:scale-100',
+            'active:scale-100',
           ],
           
           className

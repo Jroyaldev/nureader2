@@ -1,6 +1,6 @@
 "use client";
 
-import { XMarkIcon, SparklesIcon, PaperAirplaneIcon, DocumentTextIcon, HashtagIcon, LightBulbIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, SparklesIcon, PaperAirplaneIcon, DocumentTextIcon, HashtagIcon, LightBulbIcon, AcademicCapIcon, PlusIcon, BookmarkIcon, PencilIcon } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 import { mockChatCompletionStream } from '@/lib/mock-ai-api';
@@ -91,6 +91,8 @@ export default function AIChatPanel({
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
+  const [showContextSelector, setShowContextSelector] = useState(false);
+  const [availableContext, setAvailableContext] = useState<ContextItem[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -110,6 +112,42 @@ export default function AIChatPanel({
         }
       };
       setContextItems([locationContext]);
+      
+      // Initialize available context with mock data
+      const mockAvailableContext: ContextItem[] = [
+        {
+          id: 'highlight-1',
+          type: 'highlight',
+          label: 'Key Concept',
+          content: 'The fundamental principle of quantum mechanics states that...',
+          metadata: {
+            chapter: 'Chapter 3',
+            color: 'yellow',
+            createdAt: new Date(Date.now() - 86400000)
+          }
+        },
+        {
+          id: 'note-1',
+          type: 'note',
+          label: 'Personal Insight',
+          content: 'This reminds me of the discussion about consciousness in...',
+          metadata: {
+            chapter: 'Chapter 2',
+            createdAt: new Date(Date.now() - 172800000)
+          }
+        },
+        {
+          id: 'bookmark-1',
+          type: 'bookmark',
+          label: 'Important Section',
+          content: 'The author\'s main argument about artificial intelligence...',
+          metadata: {
+            chapter: 'Chapter 1',
+            createdAt: new Date(Date.now() - 259200000)
+          }
+        }
+      ];
+      setAvailableContext(mockAvailableContext);
     }
   }, [isOpen, bookTitle, currentChapter, currentLocation]);
   
@@ -168,6 +206,23 @@ export default function AIChatPanel({
       minute: '2-digit',
       hour12: true 
     });
+  };
+  
+  const addContextItem = (item: ContextItem) => {
+    if (!contextItems.find(existing => existing.id === item.id)) {
+      setContextItems(prev => [...prev, item]);
+    }
+    setShowContextSelector(false);
+  };
+
+  const getContextIcon = (type: string) => {
+    switch (type) {
+      case 'highlight': return PencilIcon;
+      case 'note': return DocumentTextIcon;
+      case 'bookmark': return BookmarkIcon;
+      case 'location': return HashtagIcon;
+      default: return DocumentTextIcon;
+    }
   };
   
   // Send message
@@ -229,106 +284,101 @@ export default function AIChatPanel({
     }
   };
 
+
+
   // Mobile full-screen design - elegant and minimal
   if (isMobile) {
     return (
-      <div className={`
-        fixed inset-0 z-[90] 
-        ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
-      `}>
-        {/* Minimal backdrop */}
-        <div className={`
-          absolute inset-0 transition-all duration-500
-          ${isOpen ? 'opacity-100' : 'opacity-0'}
-        `}>
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-2xl" />
-        </div>
+      <div className={`fixed inset-0 z-50 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-black/30 backdrop-blur-md"
+          onClick={onClose}
+        />
         
-        {/* Mobile panel */}
-        <div className={`
-          absolute inset-x-0 bottom-0 top-[10vh]
-          transition-all duration-500 transform
-          ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}
-        `}>
-          <div className="h-full flex flex-col bg-[rgb(var(--bg))]/95 backdrop-blur-2xl rounded-t-3xl shadow-2xl">
-            {/* Minimal header */}
-            <div className="shrink-0 px-6 py-5 border-b border-[rgba(var(--border),0.08)]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[rgb(var(--fg))] flex items-center justify-center">
-                    <SparklesIcon className="w-5 h-5 text-[rgb(var(--bg))]" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold">AI Assistant</h3>
-                    {bookTitle && (
-                      <p className="text-xs text-muted opacity-70 truncate max-w-[200px]">
-                        {bookTitle}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-xl hover:bg-[rgba(var(--muted),0.08)] transition-colors"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
+        {/* Panel */}
+        <div className={`absolute inset-0 bg-white/95 backdrop-blur-xl transition-transform duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-full'} border-t border-white/20 shadow-2xl`}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200/30 bg-white/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20">
+                <SparklesIcon className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 font-inter">AI Assistant</h2>
+                <p className="text-sm text-gray-600 font-inter">Ask questions about your reading</p>
               </div>
             </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white/20 active:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation"
+            >
+              <XMarkIcon className="w-5 h-5 text-gray-700" />
+            </button>
+          </div>
 
             {/* Context bar */}
-            {contextItems.length > 0 && (
-              <div className="shrink-0 px-6 py-3 border-b border-[rgba(var(--border),0.08)]">
+            <div className="shrink-0 px-6 py-3 border-b border-[rgba(var(--border),0.08)]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 font-inter">Context</span>
+                <button
+                  onClick={() => setShowContextSelector(true)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/20 active:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation"
+                >
+                  <PlusIcon className="w-4 h-4 text-gray-600" />
+                  <span className="text-xs text-gray-600 font-inter">Add</span>
+                </button>
+              </div>
+              {contextItems.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {contextItems.map(item => (
-                    <div
-                      key={item.id}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
-                        ${item.type === 'location' 
-                          ? 'bg-black text-white dark:bg-black dark:text-white' 
-                          : 'bg-[rgba(var(--muted),0.08)] text-muted hover:bg-[rgba(var(--muted),0.12)]'
-                        }
-                        transition-colors
-                      `}
-                    >
-                      <span className="max-w-[140px] truncate">{item.label}</span>
-                      {item.type !== 'location' && (
+                  {contextItems.map((item) => {
+                    const IconComponent = getContextIcon(item.type);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 rounded-xl text-sm"
+                      >
+                        <IconComponent className="w-3 h-3 text-blue-600" />
+                        <span className="truncate max-w-[120px] text-gray-700 font-inter">{item.label}</span>
                         <button
                           onClick={() => removeContextItem(item.id)}
-                          className="hover:opacity-60 transition-opacity"
+                          className="p-1.5 rounded-full active:bg-white/30 transition-all duration-200 touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
                         >
-                          <XMarkIcon className="w-3 h-3" />
+                          <XMarkIcon className="w-4 h-4 text-gray-500" />
                         </button>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-gray-500 font-inter">No context selected. Tap Add to include highlights, notes, or bookmarks.</p>
+              )}
+            </div>
             
             {/* Messages / Quick actions */}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full py-8">
-                  <div className="w-14 h-14 rounded-2xl bg-[rgba(var(--muted),0.08)] flex items-center justify-center mb-5">
-                    <SparklesIcon className="w-7 h-7 text-[rgb(var(--muted))]" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-6">
+                    <SparklesIcon className="w-8 h-8 text-blue-600" />
                   </div>
-                  <h4 className="text-base font-semibold mb-2">How can I help?</h4>
-                  <p className="text-sm text-muted text-center mb-5 max-w-[260px]">
+                  <h4 className="text-lg font-semibold mb-2 font-inter">How can I help?</h4>
+                  <p className="text-sm text-gray-600 text-center mb-6 max-w-[280px] font-inter">
                     Ask questions about the text or request analysis.
                   </p>
-                  <div className="grid grid-cols-2 gap-2 w-full">
+                  <div className="w-full max-w-sm space-y-3">
                     {QUICK_ACTIONS.map(action => (
                       <button
                         key={action.id}
                         onClick={() => setInputValue(action.prompt)}
-                        className="group relative p-3 rounded-xl border transition-all hover:scale-[1.02]"
-                        style={{ backgroundColor: action.color, borderColor: action.borderColor }}
+                        className="w-full flex items-center gap-3 p-4 bg-white/20 active:bg-white/30 rounded-2xl transition-all duration-200 text-left backdrop-blur-sm border border-white/20 touch-manipulation"
                       >
-                        <div className="flex items-center gap-2">
-                          <action.icon className="w-4 h-4 text-[rgb(var(--fg))]" />
-                          <span className="text-xs font-medium">{action.label}</span>
+                        <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                          <action.icon className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm font-inter">{action.label}</div>
+                          <div className="text-xs text-gray-600 font-inter">{action.prompt}</div>
                         </div>
                       </button>
                     ))}
@@ -343,16 +393,16 @@ export default function AIChatPanel({
                     >
                       <div className={`max-w-[85%] ${message.role === 'user' ? 'order-1' : ''}`}>
                         <div className={`
-                          px-4 py-2.5 rounded-2xl text-sm
+                          px-4 py-3 rounded-2xl text-sm backdrop-blur-sm border
                           ${message.role === 'user'
-                            ? 'bg-[rgb(var(--fg))] dark:bg-white text-[rgb(var(--bg))] dark:text-black'
-                            : 'bg-[rgba(var(--muted),0.08)] text-foreground'
+                            ? 'bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white border-blue-400/30'
+                            : 'bg-white/30 text-gray-900 border-white/20'
                           }
                         `}>
-                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <p className="whitespace-pre-wrap font-inter">{message.content}</p>
                         </div>
                         <p className={`
-                          text-[10px] text-muted mt-1 px-1 opacity-50
+                          text-[10px] text-gray-600 mt-2 px-1 opacity-70 font-inter
                           ${message.role === 'user' ? 'text-right' : ''}
                         `}>
                           {formatTime(message.timestamp)}
@@ -362,11 +412,11 @@ export default function AIChatPanel({
                   ))}
                   {isStreaming && (
                     <div className="flex justify-start">
-                      <div className="px-4 py-2.5 bg-[rgba(var(--muted),0.08)] rounded-2xl">
+                      <div className="px-4 py-2.5 bg-white/30 rounded-2xl backdrop-blur-sm border border-white/20">
                         <div className="flex gap-1">
-                          <span className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-pulse" />
-                          <span className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                          <span className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
+                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                         </div>
                       </div>
                     </div>
@@ -377,37 +427,98 @@ export default function AIChatPanel({
             </div>
             
             {/* Input area */}
-            <div className="shrink-0 p-4 border-t border-[rgba(var(--border),0.08)]">
-              <div className="relative">
-                <textarea
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask about this text..."
-                  disabled={isStreaming}
-                  className="w-full px-4 py-3 pr-12 bg-[rgba(var(--muted),0.05)] border border-[rgba(var(--border),0.08)] rounded-2xl resize-none focus:outline-none focus:border-[rgba(var(--border),0.15)] transition-all text-sm placeholder:text-muted/50"
-                  rows={2}
-                />
+            <div className="shrink-0 p-4 border-t border-gray-200/20 bg-white/10 backdrop-blur-sm">
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <textarea
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask a question about your reading..."
+                    className="w-full px-4 py-3 bg-white/30 border border-white/20 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-sm backdrop-blur-sm placeholder-gray-500 font-inter"
+                    rows={1}
+                    style={{ minHeight: '44px', maxHeight: '120px' }}
+                  />
+                </div>
                 <button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isStreaming}
-                  className={`
-                    absolute bottom-3 right-3 p-2 rounded-xl transition-all
-                    ${inputValue.trim() && !isStreaming
-                      ? 'bg-[rgb(var(--fg))] dark:bg-white text-[rgb(var(--bg))] dark:text-black'
-                      : 'bg-[rgba(var(--muted),0.1)] text-muted cursor-not-allowed'
-                    }
-                  `}
+                  className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 active:from-blue-600 active:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white rounded-2xl transition-all duration-200 shrink-0 backdrop-blur-sm border border-blue-400/30 disabled:border-gray-400/30 touch-manipulation"
                 >
-                  <PaperAirplaneIcon className="w-4 h-4" />
+                  <PaperAirplaneIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
+            
+            {/* Context Selector Modal */}
+            {showContextSelector && (
+              <div className="absolute inset-0 z-10 bg-black/30 backdrop-blur-md flex items-end">
+                <div className="w-full bg-white/95 backdrop-blur-xl rounded-t-3xl border-t border-white/20 shadow-2xl max-h-[70vh] flex flex-col">
+                 {/* Handle */}
+                 <div className="flex justify-center py-3">
+                   <div className="w-12 h-1 bg-gray-300 rounded-full" />
+                 </div>
+                 
+                 {/* Header */}
+                 <div className="flex items-center justify-between px-4 pb-4">
+                   <h3 className="text-lg font-semibold text-gray-900 font-inter">Add Context</h3>
+                   <button
+                     onClick={() => setShowContextSelector(false)}
+                     className="p-2 rounded-xl bg-white/20 active:bg-white/30 transition-all duration-200 touch-manipulation"
+                   >
+                     <XMarkIcon className="w-5 h-5 text-gray-700" />
+                   </button>
+                 </div>
+                 
+                 {/* Available Context */}
+                 <div className="flex-1 overflow-y-auto px-4 pb-4">
+                   <div className="space-y-3">
+                     {availableContext.map((item) => {
+                       const IconComponent = getContextIcon(item.type);
+                       const isSelected = contextItems.find(selected => selected.id === item.id);
+                       return (
+                         <button
+                           key={item.id}
+                           onClick={() => addContextItem(item)}
+                           disabled={isSelected}
+                           className={`w-full flex items-start gap-3 p-4 rounded-2xl text-left transition-all duration-200 backdrop-blur-sm border touch-manipulation ${
+                             isSelected 
+                               ? 'bg-gray-100/50 border-gray-200/50 opacity-50 cursor-not-allowed'
+                               : 'bg-white/20 active:bg-white/30 border-white/20'
+                           }`}
+                         >
+                           <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 shrink-0">
+                             <IconComponent className="w-4 h-4 text-blue-600" />
+                           </div>
+                           <div className="flex-1 min-w-0">
+                             <div className="flex items-center gap-2 mb-1">
+                               <span className="font-medium text-gray-900 text-sm font-inter">{item.label}</span>
+                               <span className="text-xs text-gray-500 font-inter capitalize">{item.type}</span>
+                             </div>
+                             <p className="text-sm text-gray-600 line-clamp-2 font-inter">{item.content}</p>
+                             {item.metadata?.chapter && (
+                               <p className="text-xs text-gray-500 mt-1 font-inter">{item.metadata.chapter}</p>
+                             )}
+                           </div>
+                           {isSelected && (
+                             <div className="text-green-600 shrink-0">
+                               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                               </svg>
+                             </div>
+                           )}
+                         </button>
+                       );
+                     })}
+                   </div>
+                 </div>
+               </div>
+               </div>
+              )}
           </div>
         </div>
-      </div>
-    );
+      );
   }
   
   // Desktop elegant sidebar - matching homepage aesthetic
@@ -418,15 +529,15 @@ export default function AIChatPanel({
     `}>
       {/* Elegant glass panel matching homepage */}
       <div className="reader-floating no-top-glint rounded-2xl flex flex-col h-full">
-        {/* Minimal header */}
-        <div className="shrink-0 border-b border-black/5 dark:border-white/5">
+        {/* Enhanced header with glassmorphism */}
+        <div className="shrink-0 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-white/10 to-white/5">
           <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[rgb(var(--fg))] dark:bg-white flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-[rgb(var(--fg))] dark:bg-white flex items-center justify-center backdrop-blur-sm border border-white/20">
                 <SparklesIcon className="w-5 h-5 text-[rgb(var(--bg))] dark:text-black" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-foreground tracking-tight">AI Assistant</h2>
+                <h2 className="text-base font-semibold text-foreground tracking-tight font-inter">AI Assistant</h2>
                 {bookTitle && (
                   <p className="text-xs text-muted font-medium truncate max-w-[200px]">
                     {bookTitle}
@@ -436,40 +547,56 @@ export default function AIChatPanel({
             </div>
             <button
               onClick={onClose}
-              className="p-2 -mr-2 rounded-lg hover:bg-[rgba(var(--muted),0.1)] transition-colors"
+              className="p-2 -mr-2 rounded-lg active:bg-[rgba(var(--muted),0.1)] transition-colors backdrop-blur-sm border border-white/20 touch-manipulation"
               aria-label="Close"
             >
               <XMarkIcon className="w-4 h-4" />
             </button>
           </div>
           
-          {/* Minimal context bar */}
+          {/* Enhanced context bar with glassmorphism */}
           {contextItems.length > 0 && (
             <div className="px-6 pb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20">
+                  <BookmarkIcon className="w-3 h-3 text-blue-600" />
+                </div>
+                <span className="text-sm font-medium text-muted font-inter">Context</span>
+                <button
+                  onClick={() => setShowContextSelector(true)}
+                  className="ml-auto p-1.5 rounded-lg bg-white/20 active:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation"
+                >
+                  <PlusIcon className="w-3 h-3 text-gray-700" />
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {contextItems.map(item => (
-                  <div
-                    key={item.id}
-                    className={`
-                      inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
-                      ${item.type === 'location' 
-                        ? 'bg-black text-white dark:bg-black dark:text-white' 
-                        : 'bg-[rgba(var(--muted),0.08)] text-muted hover:bg-[rgba(var(--muted),0.12)]'
-                      }
-                      transition-colors
-                    `}
-                  >
-                    <span className="max-w-[120px] truncate">{item.label}</span>
-                    {item.type !== 'location' && (
-                      <button
-                        onClick={() => removeContextItem(item.id)}
-                        className="hover:opacity-60 transition-opacity"
-                      >
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {contextItems.map(item => {
+                  const IconComponent = getContextIcon(item.type);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`
+                        inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
+                        ${item.type === 'location' 
+                          ? 'bg-black text-white dark:bg-black dark:text-white' 
+                          : 'bg-white/20 backdrop-blur-sm border border-white/20 text-muted active:bg-white/30 touch-manipulation'
+                        }
+                        transition-colors
+                      `}
+                    >
+                      <IconComponent className="w-3 h-3 text-blue-600" />
+                      <span className="max-w-[120px] truncate font-inter">{item.label}</span>
+                      {item.type !== 'location' && (
+                        <button
+                          onClick={() => removeContextItem(item.id)}
+                          className="p-1 rounded-full active:bg-white/30 transition-all duration-200 touch-manipulation min-w-[28px] min-h-[28px] flex items-center justify-center"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -495,7 +622,7 @@ export default function AIChatPanel({
                   <button
                     key={action.id}
                     onClick={() => setInputValue(action.prompt)}
-                    className="group relative p-3 rounded-xl border transition-all hover:scale-[1.02]"
+                    className="group relative p-3 rounded-xl border transition-all active:scale-[1.02] touch-manipulation"
                     style={{
                       backgroundColor: action.color,
                       borderColor: action.borderColor
@@ -553,8 +680,8 @@ export default function AIChatPanel({
           )}
         </div>
         
-        {/* Clean input area */}
-        <div className="shrink-0 border-t border-black/5 dark:border-white/5 p-4">
+        {/* Enhanced input area with glassmorphism */}
+        <div className="shrink-0 border-t border-white/20 bg-gradient-to-r from-white/5 to-white/10 p-4">
           <div className="relative">
             <textarea
               ref={inputRef}
@@ -563,30 +690,91 @@ export default function AIChatPanel({
               onKeyPress={handleKeyPress}
               placeholder="Ask about this text..."
               disabled={isStreaming}
-              className="w-full px-4 py-3 pr-12 bg-[rgba(var(--muted),0.05)] border border-[rgba(var(--border),0.08)] rounded-xl resize-none focus:outline-none focus:border-[rgba(var(--border),0.2)] transition-all duration-200 text-sm placeholder:text-muted/50"
+              className="w-full px-4 py-3 pr-12 bg-white/20 backdrop-blur-sm border border-white/20 rounded-xl resize-none focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-500/30 transition-all duration-200 text-sm placeholder:text-gray-500 font-inter"
               rows={2}
             />
             <button
               onClick={handleSend}
               disabled={!inputValue.trim() || isStreaming}
               className={`
-                absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200
+                absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 backdrop-blur-sm border
                 ${inputValue.trim() && !isStreaming
-                  ? 'bg-[rgb(var(--fg))] dark:bg-white text-[rgb(var(--bg))] dark:text-black hover:opacity-90'
-                  : 'bg-[rgba(var(--muted),0.08)] text-muted cursor-not-allowed'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 active:from-blue-600 active:to-blue-700 text-white border-blue-400/30 touch-manipulation'
+                  : 'bg-gray-400/20 text-gray-400 cursor-not-allowed border-gray-400/20'
                 }
               `}
             >
               <PaperAirplaneIcon className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex items-center justify-center mt-3 text-[10px] text-muted opacity-50">
+          <div className="flex items-center justify-center mt-3 text-[10px] text-gray-600 opacity-50 font-inter">
             <span>⌘J to close</span>
             <span className="mx-2">·</span>
             <span>Enter to send</span>
           </div>
         </div>
-      </div>
-    </div>
-  );
+         
+         {/* Context Selector Modal for Desktop */}
+         {showContextSelector && (
+           <div className="absolute inset-0 z-10 bg-black/30 backdrop-blur-md flex items-center justify-center p-4">
+             <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-h-[70vh] flex flex-col">
+               {/* Header */}
+               <div className="flex items-center justify-between p-4 border-b border-white/20">
+                 <h3 className="text-lg font-semibold text-gray-900 font-inter">Add Context</h3>
+                 <button
+                     onClick={() => setShowContextSelector(false)}
+                     className="p-2 rounded-xl bg-white/20 active:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation"
+                   >
+                   <XMarkIcon className="w-5 h-5 text-gray-700" />
+                 </button>
+               </div>
+               
+               {/* Available Context */}
+               <div className="flex-1 overflow-y-auto p-4">
+                 <div className="space-y-3">
+                   {availableContext.map((item) => {
+                     const IconComponent = getContextIcon(item.type);
+                     const isSelected = contextItems.find(selected => selected.id === item.id);
+                     return (
+                       <button
+                           key={item.id}
+                           onClick={() => addContextItem(item)}
+                           disabled={isSelected}
+                           className={`w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all duration-200 backdrop-blur-sm border touch-manipulation ${
+                             isSelected 
+                               ? 'bg-gray-100/50 border-gray-200/50 opacity-50 cursor-not-allowed'
+                               : 'bg-white/20 active:bg-white/30 border-white/20'
+                           }`}
+                       >
+                         <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 shrink-0">
+                           <IconComponent className="w-4 h-4 text-blue-600" />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <div className="flex items-center gap-2 mb-1">
+                             <span className="font-medium text-gray-900 text-sm font-inter">{item.label}</span>
+                             <span className="text-xs text-gray-500 font-inter capitalize">{item.type}</span>
+                           </div>
+                           <p className="text-sm text-gray-600 line-clamp-2 font-inter">{item.content}</p>
+                           {item.metadata?.chapter && (
+                             <p className="text-xs text-gray-500 mt-1 font-inter">{item.metadata.chapter}</p>
+                           )}
+                         </div>
+                         {isSelected && (
+                           <div className="text-green-600 shrink-0">
+                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                             </svg>
+                           </div>
+                         )}
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
+             </div>
+               </div>
+             )}
+          </div>
+        </div>
+      );
 }

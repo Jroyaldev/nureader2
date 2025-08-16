@@ -63,7 +63,7 @@ const HamburgerMenu = React.forwardRef<HTMLButtonElement, HamburgerMenuProps>(
           'relative flex items-center justify-center',
           'rounded-md transition-colors duration-200',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-          'hover:bg-muted/50 active:bg-muted',
+          'active:bg-muted touch-manipulation',
           'touch-manipulation select-none',
           sizeClasses.button,
           getColorClasses(),
@@ -190,7 +190,7 @@ const MobileHeader = React.forwardRef<HTMLDivElement, MobileHeaderProps>(
                 className={cn(
                   'flex items-center justify-center w-10 h-10',
                   'rounded-md transition-colors duration-200',
-                  'hover:bg-muted/50 active:bg-muted',
+                  'active:bg-muted touch-manipulation',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                   'touch-manipulation select-none'
                 )}
@@ -317,7 +317,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-3',
                   'text-left transition-colors duration-200',
-                  'hover:bg-muted/50 active:bg-muted',
+                  'active:bg-muted touch-manipulation',
                   'focus:outline-none focus-visible:bg-muted/50',
                   'touch-manipulation select-none',
                   item.disabled && 'opacity-50 cursor-not-allowed'

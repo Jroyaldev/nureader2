@@ -73,7 +73,7 @@ export default function ReaderToolbar({
               </div>
               <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[rgb(var(--accent))] rounded-full transition-all duration-300"
+                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -163,7 +163,7 @@ export default function ReaderToolbar({
               <div className="relative flex-1 min-w-[200px]">
                 <div className="h-1 bg-white/10 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-[rgb(var(--accent))] rounded-full transition-all duration-300"
+                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -246,7 +246,7 @@ export default function ReaderToolbar({
             <button
               onClick={onToggleToc}
               className={`p-2 rounded-lg hover:bg-white/10 transition-colors group ${
-                showToc ? 'bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))]' : ''
+                showToc ? 'bg-blue-500/20 text-blue-500' : ''
               }`}
               aria-label="Table of contents"
               title="Table of Contents"
@@ -256,7 +256,7 @@ export default function ReaderToolbar({
             <button
               onClick={onToggleAnnotations}
               className={`p-2 rounded-lg hover:bg-white/10 transition-colors group ${
-                showAnnotations ? 'bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))]' : ''
+                showAnnotations ? 'bg-blue-500/20 text-blue-500' : ''
               }`}
               aria-label="Annotations"
               title="Annotations"
