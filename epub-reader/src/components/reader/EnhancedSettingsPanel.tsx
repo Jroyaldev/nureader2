@@ -153,7 +153,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
         />
         
         {/* Mobile Bottom Sheet */}
-        <div className={`absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-white/20 dark:border-gray-700/30 shadow-2xl transform transition-all duration-500 ease-out flex flex-col max-h-[85vh] font-inter ${visible ? 'translate-y-0' : 'translate-y-full'}`} style={{
+        <div className={`absolute bottom-0 left-0 right-0 modal-glass border-t transform transition-all duration-500 ease-out flex flex-col max-h-[85vh] font-inter ${visible ? 'translate-y-0' : 'translate-y-full'}`} style={{
           borderTopLeftRadius: '24px',
           borderTopRightRadius: '24px',
         }}>
@@ -163,7 +163,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
           </div>
           
           {/* Mobile Header */}
-          <div className="px-6 pb-4 border-b border-white/10 dark:border-gray-700/30 font-inter">
+          <div className="px-6 pb-4 modal-header font-inter">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
@@ -374,9 +374,9 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
       transition-all duration-500 ${visible ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'}
     `}>
       {/* Enhanced glass panel matching TOC/Annotations style */}
-      <div className="bg-white/90 dark:bg-black/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl flex flex-col h-full font-inter">
+      <div className="modal-glass rounded-2xl flex flex-col h-full font-inter">
         {/* Header */}
-        <div className="shrink-0 border-b border-white/10 dark:border-gray-700/30">
+        <div className="shrink-0 modal-header">
           <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 backdrop-blur-sm flex items-center justify-center">

@@ -215,6 +215,61 @@
     border: 1px solid rgba(var(--border), 0.2);
   }
   
+  /* Unified modal glassmorphism design system */
+  .modal-glass {
+    backdrop-filter: blur(40px) saturate(200%);
+    background: rgba(var(--bg), 0.90);
+    border: 1px solid rgba(var(--border), 0.15);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08),
+                0 8px 25px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  
+  /* Dark mode modal glass */
+  .dark .modal-glass {
+    background: rgba(var(--surface), 0.90);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
+                0 8px 25px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  
+  /* Modal header styling */
+  .modal-header {
+    border-bottom: 1px solid rgba(var(--border), 0.08);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+  }
+  
+  .dark .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+  }
+  
+  /* Modal input styling */
+  .modal-input {
+    background: rgba(var(--bg), 0.20);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(var(--border), 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.25, 1);
+  }
+  
+  .modal-input:focus {
+    background: rgba(var(--bg), 0.30);
+    border-color: rgba(var(--accent), 0.4);
+    box-shadow: 0 0 0 3px rgba(var(--accent), 0.1);
+  }
+  
+  .dark .modal-input {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .dark .modal-input:focus {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(var(--accent), 0.6);
+    box-shadow: 0 0 0 3px rgba(var(--accent), 0.2);
+  }
+  
   .entrance-fade {
     animation: fade-in 0.6s ease-out;
   }

@@ -297,9 +297,9 @@ export default function AIChatPanel({
         />
         
         {/* Panel */}
-        <div className={`absolute inset-0 bg-white/95 backdrop-blur-xl transition-transform duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-full'} border-t border-white/20 shadow-2xl`}>
+        <div className={`absolute inset-0 modal-glass transition-transform duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-full'} border-t`}>
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200/30 bg-white/10">
+          <div className="flex items-center justify-between p-4 modal-header">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20">
                 <SparklesIcon className="w-5 h-5 text-blue-600" />
@@ -436,7 +436,7 @@ export default function AIChatPanel({
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Ask a question about your reading..."
-                    className="w-full px-4 py-3 bg-white/30 border border-white/20 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-sm backdrop-blur-sm placeholder-gray-500 font-inter"
+                    className="w-full px-4 py-3 modal-input rounded-2xl resize-none focus:outline-none text-sm placeholder-gray-500 font-inter"
                     rows={1}
                     style={{ minHeight: '44px', maxHeight: '120px' }}
                   />
@@ -528,9 +528,9 @@ export default function AIChatPanel({
       transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'}
     `}>
       {/* Elegant glass panel matching homepage */}
-      <div className="reader-floating no-top-glint rounded-2xl flex flex-col h-full">
+      <div className="modal-glass rounded-2xl flex flex-col h-full">
         {/* Enhanced header with glassmorphism */}
-        <div className="shrink-0 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-white/10 to-white/5">
+        <div className="shrink-0 modal-header">
           <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[rgb(var(--fg))] dark:bg-white flex items-center justify-center backdrop-blur-sm border border-white/20">
@@ -690,7 +690,7 @@ export default function AIChatPanel({
               onKeyPress={handleKeyPress}
               placeholder="Ask about this text..."
               disabled={isStreaming}
-              className="w-full px-4 py-3 pr-12 bg-white/20 backdrop-blur-sm border border-white/20 rounded-xl resize-none focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-500/30 transition-all duration-200 text-sm placeholder:text-gray-500 font-inter"
+              className="w-full px-4 py-3 pr-12 modal-input rounded-xl resize-none focus:outline-none text-sm placeholder:text-gray-500 font-inter"
               rows={2}
             />
             <button

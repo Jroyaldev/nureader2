@@ -9,8 +9,8 @@
       "command": "npx",
       "args": ["@supabase/mcp-server-supabase"],
       "env": {
-        "SUPABASE_URL": "${NEXT_PUBLIC_SUPABASE_URL}",
-        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+        "SUPABASE_URL": "https://fnzapidlrugrposlojlg.supabase.co",
+        "SUPABASE_ACCESS_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuemFwaWRscnVncnBvc2xvamxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwMjA0MzUsImV4cCI6MjA2OTU5NjQzNX0.1a3Sco44mwtIYY-eJBAUKgFZ3gh2nGbNnmlGwCsBh6I"
       }
     }
   }

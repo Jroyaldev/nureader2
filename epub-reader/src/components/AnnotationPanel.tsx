@@ -165,12 +165,12 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   return (
     <div className={`
       fixed right-6 top-1/2 -translate-y-1/2 z-[85] w-[380px] h-[min(700px,90vh)]
-      transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'}
+      transition-all duration-500 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}
     `}>
       {/* Panel surface - glassmorphism styling */}
-      <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-2xl flex flex-col h-full font-inter">
+      <div className="modal-glass rounded-2xl flex flex-col h-full font-inter">
         {/* Header - Refined */}
-        <div className="shrink-0 border-b border-black/5 dark:border-white/5">
+        <div className="shrink-0 modal-header">
           <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center">
@@ -199,7 +199,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search annotations..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-white/20 dark:bg-gray-800/20 backdrop-blur-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/30 placeholder:text-muted-foreground/50 font-inter"
+                className="w-full pl-9 pr-3 py-2 text-xs modal-input rounded-lg focus:outline-none placeholder:text-muted-foreground/50 font-inter"
               />
               {searchQuery && (
                 <button
