@@ -1,0 +1,94 @@
+/* Text Color Standardization */
+
+/* Primary text colors - use these instead of hardcoded gray-* classes */
+.text-primary {
+  color: rgb(var(--fg));
+}
+
+.text-secondary {
+  color: rgb(var(--muted));
+}
+
+.text-tertiary {
+  color: rgba(var(--muted), 0.7);
+}
+
+/* Light mode specific text utilities */
+[data-theme="light"] .text-light-primary {
+  color: rgb(28, 32, 36); /* --fg in light mode */
+}
+
+[data-theme="light"] .text-light-secondary {
+  color: rgb(110, 118, 126); /* --muted in light mode */
+}
+
+[data-theme="light"] .text-light-tertiary {
+  color: rgba(110, 118, 126, 0.7);
+}
+
+/* Dark mode specific text utilities */
+[data-theme="dark"] .text-dark-primary {
+  color: rgb(255, 255, 255);
+}
+
+[data-theme="dark"] .text-dark-secondary {
+  color: rgb(156, 163, 175);
+}
+
+[data-theme="dark"] .text-dark-tertiary {
+  color: rgba(156, 163, 175, 0.7);
+}
+
+/* Replace common hardcoded patterns */
+.text-consistent {
+  color: rgb(var(--fg));
+}
+
+.text-consistent-muted {
+  color: rgb(var(--muted));
+}
+
+/* Ensure proper contrast on glass surfaces */
+.glass-text {
+  color: rgb(var(--fg));
+  text-shadow: 0 0 8px rgba(var(--bg), 0.8);
+}
+
+/* Interactive text states */
+.text-interactive {
+  color: rgb(var(--muted));
+  transition: color 0.2s ease;
+}
+
+.text-interactive:hover {
+  color: rgb(var(--fg));
+}
+
+/* Fix for common problematic patterns */
+.text-gray-900 {
+  color: rgb(var(--fg)) !important;
+}
+
+.dark .text-gray-900 {
+  color: rgb(var(--fg)) !important;
+}
+
+.text-white {
+  color: rgb(var(--fg)) !important;
+}
+
+.text-gray-600 {
+  color: rgb(var(--muted)) !important;
+}
+
+.dark .text-gray-300 {
+  color: rgb(var(--muted)) !important;
+}
+
+.text-gray-500 {
+  color: rgba(var(--muted), 0.8) !important;
+}
+
+.dark .text-gray-400 {
+  color: rgba(var(--muted), 0.8) !important;
+}
