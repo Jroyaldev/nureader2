@@ -349,7 +349,7 @@ export default function ContextualToolbar({
               className="absolute inset-0 bg-black/50 backdrop-blur-md"
               onClick={() => setShowThemeMenu(false)}
             />
-            <div className="relative w-full max-w-sm bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-3xl p-6 animate-slide-up shadow-2xl border border-black/10 dark:border-white/10 font-inter">
+            <div className="relative w-full max-w-sm glass-modal rounded-3xl p-6 animate-slide-up font-inter">
               <h3 className="text-lg font-semibold mb-4">Reading Theme</h3>
               <div className="grid grid-cols-2 gap-3">
                 {Object.entries(themeConfigs).map(([key, config]) => (
@@ -393,7 +393,7 @@ export default function ContextualToolbar({
       {/* Theme Menu Dropdown - Rendered outside toolbar for proper visibility */}
       {showThemeMenu && (
         <div 
-          className="fixed bg-white/90 dark:bg-black/90 backdrop-blur-md rounded-2xl p-3 shadow-2xl animate-scale-in border border-black/10 dark:border-white/10 font-inter"
+          className="fixed glass-modal rounded-2xl p-3 animate-scale-in font-inter"
           style={{
             minWidth: '260px',
             zIndex: 90,

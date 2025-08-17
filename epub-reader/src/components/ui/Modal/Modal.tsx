@@ -297,7 +297,7 @@ export const Modal: React.FC<ModalProps> = ({
         'fixed inset-0 z-50 flex p-4',
         // Background and blur
         blurBackground ? 'backdrop-blur-sm' : '',
-        backdropClassName || 'bg-black/50',
+        backdropClassName || 'modal-backdrop',
         // Position
         positionClasses[modalPosition],
         // Animation
@@ -316,7 +316,7 @@ export const Modal: React.FC<ModalProps> = ({
         ref={modalRef}
         className={cn(
           // Base styles with glassmorphism
-          'relative bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-2xl border border-white/20 dark:border-gray-700/30 font-inter',
+          'relative glass-modal font-inter',
           'w-full max-h-[calc(100vh-2rem)]',
           // Size classes
           sizeClasses[size],

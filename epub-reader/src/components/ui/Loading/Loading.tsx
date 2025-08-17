@@ -127,8 +127,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
         <div
           className={cn(
             'absolute inset-0 flex flex-col items-center justify-center',
-            'bg-white/80 dark:bg-gray-900/80',
-            blur && 'backdrop-blur-sm',
+            'glass-overlay loading-overlay',
             'z-10 animate-in fade-in-0'
           )}
         >

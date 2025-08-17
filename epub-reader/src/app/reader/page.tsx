@@ -1346,7 +1346,7 @@ export default function ReaderPage() {
 
       {/* Loading Overlay */}
       {showLoadingOverlay && (
-        <div className="fixed inset-0 bg-[rgba(var(--bg),0.85)] backdrop-blur-xl flex items-center justify-center z-50">
+        <div className="fixed inset-0 glass-overlay loading-overlay flex items-center justify-center z-50">
           <div className="floating rounded-[var(--radius-2xl)] p-12 animate-scale-in" style={{
             boxShadow: "0 30px 90px -20px rgba(0, 0, 0, 0.3), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
           }}>

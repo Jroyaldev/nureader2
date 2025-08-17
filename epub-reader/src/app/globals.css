@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import '../styles/glass.css';
 
 @tailwind base;
 @tailwind components;
@@ -218,7 +219,7 @@
   /* Unified modal glassmorphism design system */
   .modal-glass {
     backdrop-filter: blur(40px) saturate(200%);
-    background: rgba(var(--bg), 0.90);
+    background: rgba(var(--bg), 0.95); /* Increased opacity for better readability */
     border: 1px solid rgba(var(--border), 0.15);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08),
                 0 8px 25px rgba(0, 0, 0, 0.04),
@@ -227,7 +228,7 @@
   
   /* Dark mode modal glass */
   .dark .modal-glass {
-    background: rgba(var(--surface), 0.90);
+    background: rgba(var(--surface), 0.95); /* Increased opacity for better readability */
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
                 0 8px 25px rgba(0, 0, 0, 0.2),

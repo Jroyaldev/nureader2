@@ -76,10 +76,10 @@ export default function NoteModal({
       onClick={onCancel}
     >
       <div
-        className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-xl"
+        className="absolute inset-0 modal-backdrop"
       />
       <div
-        className="relative bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-2xl max-w-md w-full mx-4 animate-scale-in font-inter"
+        className="relative glass-modal rounded-2xl max-w-md w-full mx-4 animate-scale-in font-inter"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
