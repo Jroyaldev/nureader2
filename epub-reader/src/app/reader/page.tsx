@@ -17,11 +17,12 @@ import SearchPanel from "@/components/reader/SearchPanel";
 import { EnhancedSettingsPanel, SimplifiedReadingSettings } from "@/components/reader/EnhancedSettingsPanel";
 import { useReaderState } from '@/hooks/useReaderState';
 import AIChatPanel from "@/components/reader/AIChatPanel";
+import { useSidebar, UIStateProvider } from '@/contexts/UIStateContext';
 
 
 const defaultBookUrl = "/sample.epub";
 
-export default function ReaderPage() {
+function ReaderPageContent() {
   const {
     containerRef,
     epubRendererRef,
@@ -84,6 +85,13 @@ export default function ReaderPage() {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const theme = resolvedTheme; // Use global theme preference
+  
+  // Sidebar management with centralized state
+  const tocSidebar = useSidebar('toc');
+  const annotationsSidebar = useSidebar('annotations');
+  const settingsSidebar = useSidebar('settings');
+  const searchSidebar = useSidebar('search');
+  const aiSidebar = useSidebar('ai');
   
   // UI state
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -614,12 +622,12 @@ export default function ReaderPage() {
   }, []);
 
   const toggleToc = useCallback(() => {
-    setShowToc(prev => !prev);
-  }, []);
+    tocSidebar.toggle();
+  }, [tocSidebar]);
 
   const toggleAnnotations = useCallback(() => {
-    setShowAnnotations(prev => !prev);
-  }, []);
+    annotationsSidebar.toggle();
+  }, [annotationsSidebar]);
 
   const togglePinnedToolbar = useCallback(() => {
     setIsToolbarPinned(prev => !prev);
@@ -804,16 +812,16 @@ export default function ReaderPage() {
   }, []);
 
   const toggleSearch = useCallback(() => {
-    setShowSearch(prev => !prev);
-  }, []);
+    searchSidebar.toggle();
+  }, [searchSidebar]);
 
   const toggleAIChat = useCallback(() => {
-    setShowAIChat(prev => !prev);
-  }, []);
+    aiSidebar.toggle();
+  }, [aiSidebar]);
 
   const toggleSettings = useCallback(() => {
-    setShowSettings(prev => !prev);
-  }, []);
+    settingsSidebar.toggle();
+  }, [settingsSidebar]);
 
   // Settings handlers
   const handleSettingsChange = useCallback((newSettings: Partial<SimplifiedReadingSettings>) => {
@@ -1172,11 +1180,11 @@ export default function ReaderPage() {
           onFontSizeChange={handleFontSizeChange}
           
           // Panels
-          showToc={showToc}
-          showAnnotations={showAnnotations}
-          showSettings={showSettings}
-          showSearch={showSearch}
-          showAIChat={showAIChat}
+          showToc={tocSidebar.isOpen}
+          showAnnotations={annotationsSidebar.isOpen}
+          showSettings={settingsSidebar.isOpen}
+          showSearch={searchSidebar.isOpen}
+          showAIChat={aiSidebar.isOpen}
           onToggleToc={toggleToc}
           onToggleAnnotations={toggleAnnotations}
           onToggleSettings={toggleSettings}
@@ -1219,11 +1227,11 @@ export default function ReaderPage() {
           onThemeChange={handleThemeChange}
           fontSize={fontSize}
           onFontSizeChange={handleFontSizeChange}
-          showToc={showToc}
-          showAnnotations={showAnnotations}
-          showSettings={showSettings}
-          showSearch={showSearch}
-          showAIChat={showAIChat}
+          showToc={tocSidebar.isOpen}
+          showAnnotations={annotationsSidebar.isOpen}
+          showSettings={settingsSidebar.isOpen}
+          showSearch={searchSidebar.isOpen}
+          showAIChat={aiSidebar.isOpen}
           onToggleToc={toggleToc}
           onToggleAnnotations={toggleAnnotations}
           onToggleSettings={toggleSettings}
@@ -1259,7 +1267,7 @@ export default function ReaderPage() {
         items={toc}
         currentChapter={chapterTitle}
         onNavigate={onTocJump}
-        isOpen={showToc}
+        isOpen={tocSidebar.isOpen}
         onClose={toggleToc}
         isMobile={isMobile}
         progress={currentProgress}
@@ -1268,7 +1276,7 @@ export default function ReaderPage() {
 
       {/* Search Panel */}
       <SearchPanel
-        isOpen={showSearch}
+        isOpen={searchSidebar.isOpen}
         onClose={toggleSearch}
         onSearch={handleSearch}
         onNavigateToResult={handleNavigateToSearchResult}
@@ -1278,7 +1286,7 @@ export default function ReaderPage() {
 
       {/* Settings Panel */}
       <EnhancedSettingsPanel
-        visible={showSettings}
+        visible={settingsSidebar.isOpen}
         settings={readingSettings}
         onSettingsChange={handleSettingsChange}
         onClose={toggleSettings}
@@ -1369,8 +1377,8 @@ export default function ReaderPage() {
       {/* Annotation Panel */}
       <AnnotationPanel
         bookId={bookId || ""}
-        isOpen={showAnnotations}
-        onClose={() => setShowAnnotations(false)}
+        isOpen={annotationsSidebar.isOpen}
+        onClose={() => annotationsSidebar.close()}
         onJumpToAnnotation={jumpToAnnotation}
         onDeleteAnnotation={(annotationId) => {
           if (epubRendererRef.current) {
@@ -1454,8 +1462,8 @@ export default function ReaderPage() {
       
       {/* AI Chat Panel */}
       <AIChatPanel
-        isOpen={showAIChat}
-        onClose={() => setShowAIChat(false)}
+        isOpen={aiSidebar.isOpen}
+        onClose={() => aiSidebar.close()}
         bookTitle={loaded?.title}
         currentChapter={chapterTitle}
         currentLocation={navigationState.canGoNext ? `Page ${currentProgress}` : 'End of book'}
@@ -1466,5 +1474,13 @@ export default function ReaderPage() {
         theme={resolvedTheme as 'light' | 'dark'}
       />
     </div>
+  );
+}
+
+export default function ReaderPage() {
+  return (
+    <UIStateProvider>
+      <ReaderPageContent />
+    </UIStateProvider>
   );
 }
