@@ -1,0 +1,212 @@
+/* Fluid Typography System for Responsive Design */
+
+:root {
+  /* Base scale factors for different device types */
+  --text-scale-mobile: 1.0;
+  --text-scale-tablet: 1.1; 
+  --text-scale-desktop: 1.2;
+  
+  /* Reading distance optimization */
+  --reading-distance-mobile: 40cm;   /* Closer to face */
+  --reading-distance-tablet: 50cm;   /* Lap distance */
+  --reading-distance-desktop: 60cm;  /* Desk distance */
+  
+  /* Viewport-based fluid typography using clamp() */
+  --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  --text-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+  --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+  --text-3xl: clamp(1.875rem, 1.6rem + 1.375vw, 2.5rem);
+  --text-4xl: clamp(2.25rem, 1.9rem + 1.75vw, 3rem);
+  
+  /* Reading-specific typography optimized for long-form content */
+  --reading-font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --reading-line-height: clamp(1.5, 1.4 + 0.2vw, 1.7);
+  --reading-letter-spacing: clamp(-0.01em, -0.005em + 0.005vw, 0.01em);
+  --reading-paragraph-spacing: clamp(1rem, 0.8rem + 0.5vw, 1.5rem);
+  
+  /* UI element typography */
+  --ui-button-text: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  --ui-label-text: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --ui-heading-text: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+  
+  /* Line height variations */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  --line-height-loose: 2;
+}
+
+/* Mobile-optimized typography (better readability on small screens) */
+@media (max-width: 768px) {
+  :root {
+    /* Larger base sizes for mobile reading comfort */
+    --reading-font-size: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+    --reading-line-height: clamp(1.6, 1.5 + 0.1vw, 1.8);
+    --reading-letter-spacing: clamp(0em, -0.005em + 0.01vw, 0.02em);
+    
+    /* Increased paragraph spacing for mobile */
+    --reading-paragraph-spacing: clamp(1.25rem, 1rem + 0.625vw, 1.75rem);
+    
+    /* Better button sizes for touch targets */
+    --ui-button-text: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+    --ui-label-text: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  :root {
+    --reading-font-size: clamp(1.0625rem, 0.95rem + 0.5625vw, 1.1875rem);
+    --reading-line-height: clamp(1.55, 1.45 + 0.15vw, 1.75);
+  }
+}
+
+/* High DPI display adjustments (Retina, etc.) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  :root {
+    /* Slightly smaller on high-DPI to account for sharpness */
+    --text-base: clamp(1rem, 0.95rem + 0.5vw, 1.125rem);
+    --reading-font-size: clamp(1rem, 0.95rem + 0.5vw, 1.125rem);
+  }
+}
+
+/* Large desktop displays */
+@media (min-width: 1600px) {
+  :root {
+    /* Prevent text from becoming too large on very wide screens */
+    --text-base: clamp(1rem, 0.9rem + 0.3vw, 1.125rem);
+    --text-lg: clamp(1.125rem, 1rem + 0.4vw, 1.25rem);
+    --text-xl: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+    --reading-font-size: clamp(1rem, 0.9rem + 0.3vw, 1.125rem);
+  }
+}
+
+/* Dark mode typography adjustments */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Slightly larger text in dark mode for better readability */
+    --reading-font-size: clamp(1.0625rem, 0.9375rem + 0.525vw, 1.1875rem);
+    --reading-letter-spacing: clamp(0.01em, 0.005em + 0.005vw, 0.02em);
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    /* Static typography for users who prefer reduced motion */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --reading-font-size: 1rem;
+    --reading-line-height: 1.6;
+  }
+}
+
+/* Utility classes for fluid typography */
+.text-fluid-xs { font-size: var(--text-xs); }
+.text-fluid-sm { font-size: var(--text-sm); }
+.text-fluid-base { font-size: var(--text-base); }
+.text-fluid-lg { font-size: var(--text-lg); }
+.text-fluid-xl { font-size: var(--text-xl); }
+.text-fluid-2xl { font-size: var(--text-2xl); }
+.text-fluid-3xl { font-size: var(--text-3xl); }
+.text-fluid-4xl { font-size: var(--text-4xl); }
+
+/* Reading-optimized typography classes */
+.text-reading {
+  font-size: var(--reading-font-size);
+  line-height: var(--reading-line-height);
+  letter-spacing: var(--reading-letter-spacing);
+}
+
+.text-reading-comfortable {
+  font-size: var(--reading-font-size);
+  line-height: var(--line-height-relaxed);
+  letter-spacing: var(--reading-letter-spacing);
+}
+
+.text-reading-compact {
+  font-size: var(--reading-font-size);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--reading-letter-spacing);
+}
+
+/* UI element typography classes */
+.text-ui-button {
+  font-size: var(--ui-button-text);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.text-ui-label {
+  font-size: var(--ui-label-text);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.text-ui-heading {
+  font-size: var(--ui-heading-text);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Reading content specific styles */
+.reading-content {
+  font-size: var(--reading-font-size);
+  line-height: var(--reading-line-height);
+  letter-spacing: var(--reading-letter-spacing);
+}
+
+.reading-content p + p {
+  margin-top: var(--reading-paragraph-spacing);
+}
+
+.reading-content h1,
+.reading-content h2,
+.reading-content h3,
+.reading-content h4,
+.reading-content h5,
+.reading-content h6 {
+  margin-top: calc(var(--reading-paragraph-spacing) * 1.5);
+  margin-bottom: var(--reading-paragraph-spacing);
+  line-height: var(--line-height-tight);
+}
+
+/* Responsive text alignment */
+.text-responsive-center {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .text-responsive-center {
+    text-align: left;
+  }
+}
+
+/* Font weight adjustments for different screen densities */
+@media (-webkit-min-device-pixel-ratio: 1) {
+  .text-reading {
+    font-weight: 400;
+  }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2) {
+  .text-reading {
+    font-weight: 350; /* Slightly lighter on high-DPI screens */
+  }
+}
+
+/* Accessibility: Respect user's font size preferences */
+@media (prefers-reduced-data: reduce) {
+  :root {
+    /* Simpler calculations for reduced data usage */
+    --text-base: 1rem;
+    --reading-font-size: 1rem;
+  }
+}
