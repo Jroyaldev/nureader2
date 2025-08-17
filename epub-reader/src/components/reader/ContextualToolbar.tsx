@@ -207,6 +207,10 @@ export default function ContextualToolbar({
     setShowThemeMenu(false);
   };
   
+  const toggleTheme = () => {
+    onThemeChange(currentTheme === 'light' ? 'dark' : 'light');
+  };
+  
   const adjustFontSize = (delta: number) => {
     const newSize = Math.max(12, Math.min(32, fontSize + delta));
     onFontSizeChange(newSize);

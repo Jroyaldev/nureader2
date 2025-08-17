@@ -783,9 +783,17 @@ export default function ReaderPage() {
     router.push('/library');
   }, [router]);
 
-  const handleThemeChange = useCallback((newTheme: 'light' | 'dark' | 'sepia' | 'night') => {
-    // Set the theme directly - no mapping needed
+  const handleThemeChange = useCallback((newTheme: 'light' | 'dark') => {
+    // Update the theme in ThemeProvider
     setUserTheme(newTheme);
+    
+    // Update reading settings to store the theme
+    setReadingSettings(prev => ({ ...prev, theme: newTheme as any }));
+    
+    // Apply theme to epub renderer
+    if (epubRendererRef.current) {
+      epubRendererRef.current.setTheme(newTheme);
+    }
   }, [setUserTheme]);
 
   const handleFontSizeChange = useCallback((size: number) => {
@@ -1158,7 +1166,7 @@ export default function ReaderPage() {
           canGoPrev={navigationState.canGoPrev}
           
           // Theme & Display
-          currentTheme={userTheme as any}
+          currentTheme={resolvedTheme}
           onThemeChange={handleThemeChange}
           fontSize={fontSize}
           onFontSizeChange={handleFontSizeChange}
@@ -1207,7 +1215,7 @@ export default function ReaderPage() {
           onNavigateNext={handleNextPage}
           canGoNext={navigationState.canGoNext}
           canGoPrev={navigationState.canGoPrev}
-          currentTheme={userTheme as any}
+          currentTheme={resolvedTheme}
           onThemeChange={handleThemeChange}
           fontSize={fontSize}
           onFontSizeChange={handleFontSizeChange}

@@ -202,3 +202,29 @@ npx supabase migration new <name>  # Create new migration
 - **Books Not Loading**: Check authentication state is ready before making database queries
 - **Iframe Sandboxing Warnings**: Avoid direct iframe DOM access in epub.js; use event listeners instead
 - **Race Conditions**: Always include proper dependencies in useEffect arrays and handle async state properly
+
+## Active UI Sprint (See .claude-scratch/ui-sprint/)
+
+### Current UI Issues Being Addressed
+- **Theme Switching**: Light/dark mode toggle not functioning properly
+- **Light Mode Consistency**: Reader components only styled for dark mode
+- **Loading States**: Transparent loading screen causing FOUC
+- **Sidebar Management**: Multiple sidebars can open simultaneously
+- **Icon Quality**: Settings panel icons need improvement
+- **Mobile Optimization**: Full responsive audit and fixes needed
+
+### Sprint Documentation Structure
+Located in `.claude-scratch/ui-sprint/`:
+1. `00-sprint-overview.md` - Master plan and navigation
+2. `01-audit-discovery.md` - Comprehensive UI audit checklist
+3. `02-theme-architecture.md` - Theme system fixes and implementation
+4. `03-loading-states.md` - Loading and transition improvements
+5. `04-component-polish.md` - Component-by-component fixes
+6. `05-mobile-optimization.md` - Mobile-specific improvements
+7. `06-testing-validation.md` - Testing procedures and validation
+
+Each document includes:
+- Navigation instructions to previous/next phase
+- Technical implementation details
+- Potential roadblocks and solutions
+- Desktop and mobile considerations
