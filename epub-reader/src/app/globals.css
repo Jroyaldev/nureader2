@@ -5,6 +5,7 @@
 @import '../styles/glass.css';
 @import '../styles/text-colors.css';
 @import '../styles/typography/fluid.css';
+@import '../styles/unified-panels.css';
 
 @tailwind base;
 @tailwind components;

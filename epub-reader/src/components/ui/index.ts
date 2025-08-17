@@ -18,6 +18,9 @@ export { ReaderPanel } from './reader/ReaderPanel';
 export { ReaderButton } from './reader/ReaderButton';
 export { ReaderToolbar } from './reader/ReaderToolbar';
 
+// Unified Panel System - Replaces all inconsistent panel implementations
+export { UnifiedPanel, PanelHeader, PanelContent, PanelFooter, PanelTitle } from './unified/UnifiedPanel';
+
 // Mobile-First Components
 export { default as AdaptivePanel } from './adaptive/AdaptivePanel';
 export { default as TouchButtonMobile } from './touch/TouchButton';
@@ -36,6 +39,9 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'reader';
 export type GlassOpacity = 'low' | 'medium' | 'high' | 'solid';
 export type PanelVariant = 'floating' | 'sidebar' | 'modal' | 'toolbar' | 'bottomSheet';
 export type ComponentSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+
+// Unified Panel Types
+export type { UnifiedPanelProps, PanelHeaderProps, PanelContentProps, PanelFooterProps } from './unified/UnifiedPanel';
 
 // Mobile Component Types
 export type { AdaptivePanelProps } from './adaptive/AdaptivePanel';

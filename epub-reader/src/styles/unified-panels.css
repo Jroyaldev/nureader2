@@ -1,0 +1,355 @@
+/* Unified Panel Design System - Eliminates All Inconsistencies */
+/* Replaces: modal-glass, reader-floating, glass-modal, and inline Tailwind classes */
+
+:root {
+  /* Unified Panel Design Tokens */
+  --panel-bg: var(--bg);
+  --panel-bg-opacity: 0.95;
+  --panel-surface: var(--surface);
+  --panel-border: var(--border);
+  --panel-border-opacity: 0.12;
+  --panel-shadow-light: 0 20px 60px rgba(0, 0, 0, 0.08), 0 8px 25px rgba(0, 0, 0, 0.04);
+  --panel-shadow-dark: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 25px rgba(0, 0, 0, 0.15);
+  --panel-inset-light: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --panel-inset-dark: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  
+  /* Animation System */
+  --panel-transition: all 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --panel-blur: blur(32px) saturate(200%);
+  
+  /* Spacing System */
+  --panel-padding-desktop: 24px;
+  --panel-padding-mobile: 16px;
+  --panel-header-height-desktop: 64px;
+  --panel-header-height-mobile: 56px;
+  --panel-radius: 16px;
+  --panel-gap: 12px;
+  --panel-gap-compact: 8px;
+  
+  /* Z-Index System */
+  --panel-z-sidebar: 40;
+  --panel-z-modal: 50;
+  --panel-z-dropdown: 60;
+  --panel-z-overlay: 35;
+}
+
+/* === CORE UNIFIED PANEL === */
+.unified-panel {
+  /* Background Treatment - Single Source of Truth */
+  background: rgba(var(--panel-bg), var(--panel-bg-opacity));
+  backdrop-filter: var(--panel-blur);
+  -webkit-backdrop-filter: var(--panel-blur);
+  
+  /* Border System */
+  border: 1px solid rgba(var(--panel-border), var(--panel-border-opacity));
+  border-radius: var(--panel-radius);
+  
+  /* Shadow System - Light Mode */
+  box-shadow: 
+    var(--panel-shadow-light),
+    var(--panel-inset-light);
+  
+  /* Typography */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: rgb(var(--fg));
+  
+  /* Animation */
+  transition: var(--panel-transition);
+  
+  /* Performance Optimizations */
+  will-change: transform, opacity;
+  transform: translateZ(0); /* Force hardware acceleration */
+}
+
+/* Dark Mode Overrides */
+.dark .unified-panel {
+  background: rgba(var(--panel-surface), var(--panel-bg-opacity));
+  border: 1px solid rgba(255, 255, 255, var(--panel-border-opacity));
+  box-shadow: 
+    var(--panel-shadow-dark),
+    var(--panel-inset-dark);
+}
+
+/* === PANEL VARIANTS === */
+
+/* Sidebar Panels (TableOfContents, Settings, etc.) */
+.unified-panel--sidebar {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 380px;
+  height: min(700px, 90vh);
+  z-index: var(--panel-z-sidebar);
+  display: flex;
+  flex-direction: column;
+}
+
+.unified-panel--sidebar.position-left {
+  left: 24px;
+}
+
+.unified-panel--sidebar.position-right {
+  right: 24px;
+}
+
+/* Modal Panels (Search, AI Chat, etc.) */
+.unified-panel--modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, 90vw);
+  max-height: 80vh;
+  z-index: var(--panel-z-modal);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dropdown Panels (Context menus, etc.) */
+.unified-panel--dropdown {
+  position: absolute;
+  z-index: var(--panel-z-dropdown);
+  min-width: 200px;
+  max-width: 320px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bottom Sheet (Mobile) */
+.unified-panel--bottomSheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--panel-z-modal);
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+/* === PANEL STRUCTURE === */
+
+/* Panel Header */
+.unified-panel__header {
+  padding: var(--panel-padding-desktop);
+  padding-bottom: var(--panel-gap);
+  border-bottom: 1px solid rgba(var(--panel-border), 0.08);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  flex-shrink: 0;
+  min-height: var(--panel-header-height-desktop);
+  display: flex;
+  align-items: center;
+}
+
+.dark .unified-panel__header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent);
+}
+
+/* Panel Content */
+.unified-panel__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--panel-padding-desktop) var(--panel-padding-desktop);
+  
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--panel-border), 0.3) transparent;
+}
+
+.unified-panel__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.unified-panel__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.unified-panel__content::-webkit-scrollbar-thumb {
+  background: rgba(var(--panel-border), 0.3);
+  border-radius: 3px;
+}
+
+.unified-panel__content::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--panel-border), 0.5);
+}
+
+/* Panel Footer */
+.unified-panel__footer {
+  padding: var(--panel-gap) var(--panel-padding-desktop) var(--panel-padding-desktop);
+  border-top: 1px solid rgba(var(--panel-border), 0.08);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.05), transparent);
+  border-radius: 0 0 var(--panel-radius) var(--panel-radius);
+  flex-shrink: 0;
+}
+
+.dark .unified-panel__footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.02), transparent);
+}
+
+/* === MOBILE ADAPTATIONS === */
+
+@media (max-width: 768px) {
+  .unified-panel--sidebar {
+    /* Transform to bottom sheet on mobile */
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    transform: none;
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+    border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  }
+  
+  .unified-panel--modal {
+    /* Full width modal on mobile */
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    transform: none;
+    width: 100%;
+    height: auto;
+    max-height: 90vh;
+    border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  }
+  
+  .unified-panel__header {
+    padding: var(--panel-padding-mobile);
+    min-height: var(--panel-header-height-mobile);
+  }
+  
+  .unified-panel__content {
+    padding: 0 var(--panel-padding-mobile) var(--panel-padding-mobile);
+  }
+  
+  .unified-panel__footer {
+    padding: var(--panel-gap) var(--panel-padding-mobile) var(--panel-padding-mobile);
+    /* Safe area support */
+    padding-bottom: calc(var(--panel-padding-mobile) + env(safe-area-inset-bottom));
+  }
+}
+
+/* === PANEL STATES === */
+
+/* Opening Animation */
+.unified-panel.state-entering {
+  opacity: 0;
+  transform: translateY(-50%) scale(0.95);
+}
+
+.unified-panel--sidebar.state-entering {
+  opacity: 0;
+}
+
+.unified-panel--sidebar.position-left.state-entering {
+  transform: translateY(-50%) translateX(-100%);
+}
+
+.unified-panel--sidebar.position-right.state-entering {
+  transform: translateY(-50%) translateX(100%);
+}
+
+.unified-panel--bottomSheet.state-entering {
+  transform: translateY(100%);
+}
+
+/* Open State */
+.unified-panel.state-entered {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.unified-panel--sidebar.state-entered {
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+.unified-panel--bottomSheet.state-entered {
+  transform: translateY(0);
+}
+
+/* Closing Animation */
+.unified-panel.state-exiting {
+  opacity: 0;
+  transform: translateY(-50%) scale(0.95);
+}
+
+.unified-panel--sidebar.state-exiting {
+  opacity: 0;
+}
+
+.unified-panel--sidebar.position-left.state-exiting {
+  transform: translateY(-50%) translateX(-100%);
+}
+
+.unified-panel--sidebar.position-right.state-exiting {
+  transform: translateY(-50%) translateX(100%);
+}
+
+.unified-panel--bottomSheet.state-exiting {
+  transform: translateY(100%);
+}
+
+/* === OVERLAY === */
+.unified-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--panel-z-overlay);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  transition: var(--panel-transition);
+}
+
+.unified-panel-overlay.state-entering {
+  opacity: 0;
+}
+
+.unified-panel-overlay.state-entered {
+  opacity: 1;
+}
+
+.unified-panel-overlay.state-exiting {
+  opacity: 0;
+}
+
+/* === ACCESSIBILITY === */
+
+/* Focus management */
+.unified-panel:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .unified-panel,
+  .unified-panel-overlay {
+    transition: none;
+  }
+  
+  .unified-panel.state-entering,
+  .unified-panel.state-entered,
+  .unified-panel.state-exiting {
+    transform: none;
+  }
+  
+  .unified-panel--sidebar.state-entering,
+  .unified-panel--sidebar.state-entered,
+  .unified-panel--sidebar.state-exiting {
+    transform: translateY(-50%);
+  }
+}
