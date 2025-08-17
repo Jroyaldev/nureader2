@@ -280,7 +280,7 @@ export default function TableOfContents({
         {/* Enhanced Bottom Sheet with Glassmorphism */}
         <div className={`
           absolute bottom-0 left-0 right-0 
-          bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl
+          glass-primary backdrop-blur-xl
           border border-white/20 dark:border-gray-700/30
           shadow-2xl shadow-black/20
           rounded-t-3xl transition-all duration-500 ease-out 

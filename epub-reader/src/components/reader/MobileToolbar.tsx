@@ -152,7 +152,7 @@ export default function MobileToolbar({
 
       {/* Main Mobile Toolbar */}
       <div 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out bg-white/90 dark:bg-black/90 backdrop-blur-xl border-b border-white/20 shadow-2xl font-inter ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out glass-primary mobile-toolbar border-b shadow-2xl font-inter ${
           isCollapsed ? 'translate-y-[-100%]' : 'translate-y-0'
         }`}
         style={{

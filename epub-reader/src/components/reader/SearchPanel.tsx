@@ -148,7 +148,7 @@ export default function SearchPanel({
         {/* Bottom Sheet */}
         <div className={`
           absolute bottom-0 left-0 right-0 
-          bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl
+          glass-primary backdrop-blur-xl
           border-t border-black/10 dark:border-white/20
           shadow-2xl transform transition-all duration-500 ease-out
           ${isOpen ? 'translate-y-0' : 'translate-y-full'}
@@ -314,7 +314,7 @@ export default function SearchPanel({
     <div className={`fixed right-0 top-0 h-full z-40 transition-all duration-300 ${
       isOpen ? 'translate-x-0' : 'translate-x-full'
     }`}>
-      <div className="h-full w-96 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-l border-white/20 shadow-2xl flex flex-col font-inter">
+      <div className="h-full w-96 glass-primary backdrop-blur-xl border-l border-white/20 shadow-2xl flex flex-col font-inter">
         {/* Header */}
         <div className="p-6 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-4">
