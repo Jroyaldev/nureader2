@@ -1,0 +1,200 @@
+/* Semantic Color Classes - Theme-Aware Components */
+/* Based on the successful TOC pattern: rgba(var(--variable), opacity) */
+
+/* Surface Classes - Background colors that automatically adapt to theme */
+.surface-primary {
+  background-color: rgba(var(--surface-primary), 1);
+}
+
+.surface-secondary {
+  background-color: rgba(var(--surface-secondary), 1);
+}
+
+.surface-elevated {
+  background-color: rgba(var(--surface-elevated), 1);
+}
+
+/* Glass Effect Classes - Standardized glassmorphism */
+.surface-glass-low {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-low));
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(var(--border-glass), 0.1);
+}
+
+.surface-glass-medium {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-medium));
+  backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(var(--border-glass), 0.15);
+}
+
+.surface-glass-high {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-high));
+  backdrop-filter: blur(28px) saturate(220%);
+  border: 1px solid rgba(var(--border-glass), 0.2);
+}
+
+.surface-glass-solid {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-solid));
+  backdrop-filter: blur(32px) saturate(240%);
+  border: 1px solid rgba(var(--border-glass), 0.25);
+}
+
+/* Text Classes - Semantic text colors */
+.text-primary {
+  color: rgb(var(--text-primary));
+}
+
+.text-secondary {
+  color: rgb(var(--text-secondary));
+}
+
+.text-tertiary {
+  color: rgb(var(--text-tertiary));
+}
+
+.text-inverse {
+  color: rgb(var(--text-inverse));
+}
+
+/* Border Classes - Semantic borders */
+.border-primary {
+  border-color: rgba(var(--border-primary), 0.1);
+}
+
+.border-secondary {
+  border-color: rgba(var(--border-secondary), 0.2);
+}
+
+.border-glass {
+  border-color: rgba(var(--border-glass), 0.15);
+}
+
+/* Interactive Classes - Hover and focus states */
+.interactive-hover {
+  background-color: rgba(var(--interactive-hover), 0.05);
+}
+
+.interactive-active {
+  background-color: rgba(var(--interactive-active), 0.1);
+}
+
+.interactive-focus {
+  outline: 2px solid rgba(var(--interactive-focus), 0.4);
+  outline-offset: 2px;
+}
+
+.interactive-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hover state combinations */
+.hover\:interactive-hover:hover {
+  background-color: rgba(var(--interactive-hover), 0.05);
+}
+
+.hover\:interactive-active:hover {
+  background-color: rgba(var(--interactive-active), 0.08);
+}
+
+.hover\:text-primary:hover {
+  color: rgb(var(--text-primary));
+}
+
+/* Focus state combinations */
+.focus\:interactive-focus:focus {
+  outline: 2px solid rgba(var(--interactive-focus), 0.4);
+  outline-offset: 2px;
+}
+
+/* Active state combinations */
+.active\:interactive-active:active {
+  background-color: rgba(var(--interactive-active), 0.1);
+}
+
+/* Component-specific semantic classes */
+
+/* Reader Panel - Based on successful TOC pattern */
+.reader-panel {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-high));
+  backdrop-filter: blur(28px) saturate(220%);
+  border: 1px solid rgba(var(--border-glass), 0.2);
+  color: rgb(var(--text-primary));
+}
+
+/* Reader Button - Interactive elements in reader */
+.reader-button {
+  color: rgb(var(--text-secondary));
+  transition: all 0.2s ease;
+}
+
+.reader-button:hover {
+  color: rgb(var(--text-primary));
+  background-color: rgba(var(--interactive-hover), 0.05);
+}
+
+.reader-button:active {
+  background-color: rgba(var(--interactive-active), 0.1);
+}
+
+/* Modal Glass - For modals and overlays */
+.modal-glass-enhanced {
+  background-color: rgba(var(--surface-elevated), var(--glass-opacity-solid));
+  backdrop-filter: blur(32px) saturate(240%);
+  border: 1px solid rgba(var(--border-glass), 0.25);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.1),
+    0 8px 25px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(var(--border-glass), 0.4);
+}
+
+/* Panel Header - Consistent panel headers */
+.panel-header {
+  border-bottom: 1px solid rgba(var(--border-primary), 0.08);
+  background: linear-gradient(
+    to bottom, 
+    rgba(var(--border-glass), 0.1), 
+    transparent
+  );
+}
+
+/* Sidebar Glass - For floating sidebars */
+.sidebar-glass {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-high));
+  backdrop-filter: blur(28px) saturate(220%);
+  border: 1px solid rgba(var(--border-glass), 0.2);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+/* Mobile Bottom Sheet - For mobile panels */
+.bottom-sheet-glass {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-solid));
+  backdrop-filter: blur(32px) saturate(240%);
+  border-top: 1px solid rgba(var(--border-glass), 0.25);
+  box-shadow: 
+    0 -8px 32px rgba(0, 0, 0, 0.1),
+    0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Toolbar Glass - For floating toolbars */
+.toolbar-glass {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-medium));
+  backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(var(--border-glass), 0.15);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* Utility classes for dark mode adjustments */
+.dark .surface-glass-low,
+.dark .surface-glass-medium,
+.dark .surface-glass-high,
+.dark .surface-glass-solid {
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(var(--border-glass), 0.08);
+}

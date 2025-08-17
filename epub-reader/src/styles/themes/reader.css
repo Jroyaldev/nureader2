@@ -1,0 +1,324 @@
+/* Reader-Specific Theme Patterns */
+/* Standardized patterns for all reader UI components */
+
+/* Reader Floating Pattern - Based on TOC success */
+.reader-floating {
+  background: rgba(var(--surface-glass), var(--glass-opacity-high));
+  border: 1px solid rgba(var(--border-glass), 0.2);
+  color: rgb(var(--text-primary));
+  backdrop-filter: blur(28px) saturate(220%);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(var(--border-glass), 0.3);
+}
+
+/* No top glint for floating panels (matches TOC) */
+.reader-floating.no-top-glint {
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+/* Reader Button Patterns */
+.reader-btn {
+  color: rgb(var(--text-secondary));
+  transition: all 0.2s ease;
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reader-btn:hover {
+  color: rgb(var(--text-primary));
+  background-color: rgba(var(--interactive-hover), 0.08);
+}
+
+.reader-btn:active {
+  background-color: rgba(var(--interactive-active), 0.12);
+}
+
+.reader-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Reader Panel Content */
+.reader-panel-content {
+  color: rgb(var(--text-primary));
+}
+
+.reader-panel-content .text-muted {
+  color: rgb(var(--text-secondary));
+}
+
+/* Reader Search Input */
+.reader-search-input {
+  background-color: rgba(var(--surface-secondary), 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--border-primary), 0.15);
+  color: rgb(var(--text-primary));
+  transition: all 0.2s ease;
+}
+
+.reader-search-input:focus {
+  background-color: rgba(var(--surface-secondary), 0.9);
+  border-color: rgba(var(--interactive-focus), 0.4);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(var(--interactive-focus), 0.1);
+}
+
+.reader-search-input::placeholder {
+  color: rgb(var(--text-tertiary));
+}
+
+/* Reader Modal Glass (for settings, etc.) */
+.reader-modal-glass {
+  background: rgba(var(--surface-elevated), var(--glass-opacity-solid));
+  backdrop-filter: blur(32px) saturate(240%);
+  border: 1px solid rgba(var(--border-glass), 0.25);
+  color: rgb(var(--text-primary));
+  box-shadow: 
+    0 24px 80px rgba(0, 0, 0, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(var(--border-glass), 0.4);
+}
+
+/* Reader Mobile Toolbar */
+.reader-mobile-toolbar {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-medium));
+  backdrop-filter: blur(24px) saturate(200%);
+  border-bottom: 1px solid rgba(var(--border-glass), 0.15);
+  color: rgb(var(--text-primary));
+}
+
+/* Mobile Button Pattern */
+.mobile-btn {
+  padding: 0.625rem;
+  border-radius: 0.75rem;
+  background-color: rgba(var(--interactive-hover), 0.1);
+  color: rgb(var(--text-secondary));
+  transition: all 0.2s ease;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-btn:active {
+  background-color: rgba(var(--interactive-active), 0.3);
+  transform: scale(0.95);
+}
+
+/* Reader Progress Bar */
+.reader-progress-track {
+  background-color: rgba(var(--text-tertiary), 0.1);
+  height: 0.375rem;
+  border-radius: 0.1875rem;
+  overflow: hidden;
+}
+
+.reader-progress-fill {
+  background: linear-gradient(
+    to right, 
+    rgba(var(--interactive-focus), 1), 
+    rgba(var(--interactive-focus), 0.8)
+  );
+  height: 100%;
+  border-radius: 0.1875rem;
+  transition: width 0.3s ease;
+}
+
+/* Reader Dropdown Menu */
+.reader-dropdown {
+  background-color: rgba(var(--surface-glass), var(--glass-opacity-medium));
+  backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(var(--border-glass), 0.2);
+  border-radius: 1rem;
+  padding: 0.5rem;
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.reader-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  color: rgb(var(--text-primary));
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.reader-dropdown-item:hover {
+  background-color: rgba(var(--interactive-hover), 0.08);
+}
+
+.reader-dropdown-item:active {
+  background-color: rgba(var(--interactive-active), 0.12);
+}
+
+/* Reader Slider */
+.reader-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 0.5rem;
+  background-color: rgba(var(--text-tertiary), 0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 0.25rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.reader-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: rgb(var(--interactive-focus));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(var(--interactive-focus), 0.3);
+  transition: transform 0.2s ease;
+}
+
+.reader-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.reader-slider::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  background: rgb(var(--interactive-focus));
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(var(--interactive-focus), 0.3);
+  transition: transform 0.2s ease;
+}
+
+.reader-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+/* Reader Tab System */
+.reader-tabs {
+  background-color: rgba(var(--surface-secondary), 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.reader-tab {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  color: rgb(var(--text-secondary));
+  background: transparent;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reader-tab[aria-selected="true"] {
+  background-color: rgba(var(--surface-elevated), 0.9);
+  color: rgb(var(--text-primary));
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(var(--border-glass), 0.15);
+}
+
+/* Reader Loading States */
+.reader-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--text-tertiary), 0.1) 25%,
+    rgba(var(--text-tertiary), 0.2) 50%,
+    rgba(var(--text-tertiary), 0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: reader-skeleton-loading 1.5s infinite;
+  border-radius: 0.25rem;
+}
+
+@keyframes reader-skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Reader Empty States */
+.reader-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: rgb(var(--text-secondary));
+}
+
+.reader-empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1rem;
+  background-color: rgba(var(--text-tertiary), 0.1);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--text-tertiary));
+}
+
+/* Dark mode adjustments for reader components */
+.dark .reader-floating,
+.dark .reader-modal-glass,
+.dark .reader-mobile-toolbar,
+.dark .reader-dropdown {
+  box-shadow: 
+    0 24px 80px rgba(0, 0, 0, 0.4),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(var(--border-glass), 0.08);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .reader-floating {
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  
+  .reader-modal-glass {
+    backdrop-filter: blur(24px) saturate(200%);
+  }
+}
+
+/* Motion reduction support */
+@media (prefers-reduced-motion: reduce) {
+  .reader-btn,
+  .reader-search-input,
+  .mobile-btn,
+  .reader-progress-fill,
+  .reader-dropdown-item,
+  .reader-slider::-webkit-slider-thumb,
+  .reader-slider::-moz-range-thumb,
+  .reader-tab {
+    transition: none;
+  }
+  
+  .reader-skeleton {
+    animation: none;
+  }
+}

@@ -2,60 +2,46 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { XMarkIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-// Temporarily reverting to standard patterns to avoid circular dependencies
-// TODO: Reintegrate new component library after fixing build issues
+import { useReader } from '@/contexts/ReaderContext';
 
-interface SearchResult {
-  id: string;
-  text: string;
-  context: string;
-  chapter: string;
-  chapterIndex: number;
-  position: number;
-}
-
-interface SearchPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSearch: (query: string) => Promise<SearchResult[]>;
-  onNavigateToResult: (result: SearchResult) => void;
-  currentChapter?: string;
-  isMobile?: boolean;
-}
-
-export default function SearchPanel({
-  isOpen,
-  onClose,
-  onSearch,
-  onNavigateToResult,
-  currentChapter,
-  isMobile = false
-}: SearchPanelProps) {
+/**
+ * Simplified SearchPanel using the new ReaderContext
+ * 
+ * This demonstrates how components become much cleaner with centralized state:
+ * - No props drilling
+ * - Direct access to reader state
+ * - Cleaner component interface
+ * - Automatic state persistence
+ */
+export default function SimplifiedSearchPanel() {
+  // Access all reader state and actions through context
+  const { state, panels, book, ui } = useReader();
+  
+  // Local component state (not shared)
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
-  const [error, setError] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Focus search input when panel opens
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
+    if (state.panels.search && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
+  }, [state.panels.search]);
 
   // Reset state when panel closes
   useEffect(() => {
-    if (!isOpen) {
+    if (!state.panels.search) {
       setSearchQuery('');
       setSearchResults([]);
       setSelectedResultIndex(-1);
-      setError(null);
     }
-  }, [isOpen]);
+  }, [state.panels.search]);
 
+  // Handle search using context
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -63,29 +49,29 @@ export default function SearchPanel({
     }
 
     setIsSearching(true);
-    setError(null);
     
     try {
-      const results = await onSearch(searchQuery);
+      const results = await book.search(searchQuery);
       setSearchResults(results);
       setSelectedResultIndex(results.length > 0 ? 0 : -1);
       
       if (results.length === 0) {
-        setError(`No results found for "${searchQuery}"`);
+        ui.showToast(`No results found for "${searchQuery}"`, 'info');
       }
-    } catch (err) {
-      setError('Search failed. Please try again.');
-      console.error('Search error:', err);
+    } catch (error) {
+      ui.showToast('Search failed. Please try again.', 'error');
+      console.error('Search error:', error);
     } finally {
       setIsSearching(false);
     }
-  }, [searchQuery, onSearch]);
+  }, [searchQuery, book, ui]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (searchResults.length > 0 && selectedResultIndex >= 0) {
-        onNavigateToResult(searchResults[selectedResultIndex]);
+        // Navigate to result using context
+        // onNavigateToResult(searchResults[selectedResultIndex]);
       } else {
         handleSearch();
       }
@@ -100,28 +86,31 @@ export default function SearchPanel({
         prev > 0 ? prev - 1 : searchResults.length - 1
       );
     } else if (e.key === 'Escape') {
-      onClose();
+      panels.close('search');
     }
-  }, [searchResults, selectedResultIndex, onNavigateToResult, handleSearch, onClose]);
+  }, [searchResults, selectedResultIndex, handleSearch, panels]);
 
-  const handleResultClick = useCallback((result: SearchResult, index: number) => {
+  const handleResultClick = useCallback((result: any, index: number) => {
     setSelectedResultIndex(index);
-    onNavigateToResult(result);
-  }, [onNavigateToResult]);
+    // Navigation would use context methods
+    // navigation.goTo(result.location);
+  }, []);
 
   const navigateToNext = useCallback(() => {
     if (searchResults.length === 0) return;
     const nextIndex = selectedResultIndex < searchResults.length - 1 ? selectedResultIndex + 1 : 0;
     setSelectedResultIndex(nextIndex);
-    onNavigateToResult(searchResults[nextIndex]);
-  }, [searchResults, selectedResultIndex, onNavigateToResult]);
+    // Use context for navigation
+    // navigation.goTo(searchResults[nextIndex].location);
+  }, [searchResults, selectedResultIndex]);
 
   const navigateToPrev = useCallback(() => {
     if (searchResults.length === 0) return;
     const prevIndex = selectedResultIndex > 0 ? selectedResultIndex - 1 : searchResults.length - 1;
     setSelectedResultIndex(prevIndex);
-    onNavigateToResult(searchResults[prevIndex]);
-  }, [searchResults, selectedResultIndex, onNavigateToResult]);
+    // Use context for navigation
+    // navigation.goTo(searchResults[prevIndex].location);
+  }, [searchResults, selectedResultIndex]);
 
   // Scroll selected result into view
   useEffect(() => {
@@ -137,27 +126,27 @@ export default function SearchPanel({
   // Use responsive panel pattern that adapts to mobile/desktop
   return (
     <div className={`${
-      isMobile 
+      state.ui.isMobile 
         ? 'fixed inset-x-0 bottom-0 top-1/3 z-50 transition-all duration-300 transform '
         : 'fixed right-0 top-0 h-full z-40 transition-all duration-300 '
     }${
-      isOpen 
-        ? isMobile 
+      state.panels.search 
+        ? state.ui.isMobile 
           ? 'translate-y-0' 
           : 'translate-x-0'
-        : isMobile 
+        : state.ui.isMobile 
           ? 'translate-y-full' 
           : 'translate-x-full'
     }`}>
       <div className={`h-full ${
-        isMobile 
+        state.ui.isMobile 
           ? 'w-full bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-black/10 dark:border-white/20 rounded-t-2xl'
           : 'w-96 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-l border-black/10 dark:border-white/20'
       } shadow-2xl flex flex-col font-inter`}>
         
         {/* Header */}
         <div className={`p-6 border-b border-black/5 dark:border-white/5 shrink-0 ${
-          isMobile ? 'pb-4' : ''
+          state.ui.isMobile ? 'pb-4' : ''
         }`}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2 font-inter">
@@ -165,7 +154,7 @@ export default function SearchPanel({
               Search Book
             </h2>
             <button
-              onClick={onClose}
+              onClick={() => panels.close('search')}
               className="p-2 hover:bg-black/10 dark:hover:bg-white/20 active:bg-black/20 dark:active:bg-white/30 rounded-lg transition-colors touch-manipulation backdrop-blur-sm"
               aria-label="Close search"
             >
@@ -244,13 +233,6 @@ export default function SearchPanel({
 
         {/* Search Results */}
         <div ref={resultsRef} className="flex-1 overflow-y-auto p-4 space-y-2">
-          {/* Error State */}
-          {error && (
-            <div className="p-4 rounded-xl bg-red-500/20 backdrop-blur-md text-red-600 dark:text-red-400 text-sm font-inter border border-red-500/20">
-              {error}
-            </div>
-          )}
-          
           {/* No Results State */}
           {searchResults.length === 0 && searchQuery && !isSearching && (
             <div className="p-8 text-center">
@@ -278,7 +260,7 @@ export default function SearchPanel({
                 <span className="text-xs font-medium text-muted">
                   {result.chapter}
                 </span>
-                {result.chapter === currentChapter && (
+                {result.chapter === state.book.chapterTitle && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500">
                     Current
                   </span>
@@ -304,10 +286,10 @@ export default function SearchPanel({
         {/* Quick Actions Hint */}
         <div className="p-4 border-t border-black/5 dark:border-white/5 shrink-0">
           <div className={`flex items-center text-xs text-muted ${
-            isMobile ? 'justify-center' : 'justify-between'
+            state.ui.isMobile ? 'justify-center' : 'justify-between'
           }`}>
             <span>Tap result to navigate</span>
-            {!isMobile && <span>↑↓ to navigate • Esc to close</span>}
+            {!state.ui.isMobile && <span>↑↓ to navigate • Esc to close</span>}
           </div>
         </div>
       </div>

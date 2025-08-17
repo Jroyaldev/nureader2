@@ -1,0 +1,93 @@
+/* Enhanced CSS Variable System - Base Theme Variables */
+/* Based on the proven TOC pattern, ensuring every component responds to theme changes */
+
+:root {
+  /* Surface colors - Primary system for backgrounds */
+  --surface-primary: 255 255 255;        /* Main backgrounds (body, cards) */
+  --surface-secondary: 250 250 251;      /* Secondary backgrounds (panels) */
+  --surface-elevated: 255 255 255;       /* Modal/floating panel backgrounds */
+  --surface-glass: 255 255 255;          /* Glass effect base color */
+  
+  /* Text colors - Comprehensive text hierarchy */
+  --text-primary: 28 32 36;              /* Main text, headings */
+  --text-secondary: 110 118 126;         /* Secondary text, descriptions */
+  --text-tertiary: 156 163 175;          /* Tertiary text, labels */
+  --text-inverse: 255 255 255;           /* Text on dark backgrounds */
+  
+  /* Border colors - Semantic border system */
+  --border-primary: 0 0 0;               /* Main borders, dividers */
+  --border-secondary: 156 163 175;       /* Secondary borders */
+  --border-glass: 255 255 255;           /* Glass borders (light edges) */
+  
+  /* Interactive states - Hover and focus colors */
+  --interactive-hover: 0 0 0;            /* Hover background overlay */
+  --interactive-active: 0 0 0;           /* Active/pressed background */
+  --interactive-focus: 59 130 246;       /* Focus ring color */
+  --interactive-disabled: 156 163 175;   /* Disabled state color */
+  
+  /* Glass opacity levels - Standardized transparency */
+  --glass-opacity-low: 0.80;             /* Subtle glass (20% transparent) */
+  --glass-opacity-medium: 0.90;          /* Standard glass (10% transparent) */
+  --glass-opacity-high: 0.95;            /* Strong glass (5% transparent) */
+  --glass-opacity-solid: 0.98;           /* Near-opaque glass (2% transparent) */
+  
+  /* Legacy compatibility - Keep existing variables for gradual migration */
+  --bg: var(--surface-primary);
+  --fg: var(--text-primary);
+  --muted: var(--text-secondary);
+  --border: var(--border-primary);
+  --border-opacity: 0.08;
+  --accent: 59 130 246;
+  --surface: var(--surface-primary);
+  --surface-hover: var(--surface-secondary);
+}
+
+.dark {
+  /* Surface colors - Dark mode system */
+  --surface-primary: 16 18 21;           /* Rich black main background */
+  --surface-secondary: 24 27 31;         /* Elevated dark panels */
+  --surface-elevated: 32 36 41;          /* Modal/floating dark backgrounds */
+  --surface-glass: 16 18 21;             /* Dark glass base color */
+  
+  /* Text colors - Dark mode text hierarchy */
+  --text-primary: 245 245 247;           /* Primary white text */
+  --text-secondary: 155 160 170;         /* Secondary gray text */
+  --text-tertiary: 107 114 128;          /* Tertiary muted text */
+  --text-inverse: 16 18 21;              /* Dark text on light backgrounds */
+  
+  /* Border colors - Dark mode borders */
+  --border-primary: 255 255 255;         /* White borders for contrast */
+  --border-secondary: 75 85 99;          /* Gray borders */
+  --border-glass: 255 255 255;           /* Light glass edges */
+  
+  /* Interactive states - Dark mode interactions */
+  --interactive-hover: 255 255 255;      /* White hover overlay */
+  --interactive-active: 255 255 255;     /* White active overlay */
+  --interactive-focus: 96 165 250;       /* Brighter blue for focus */
+  --interactive-disabled: 75 85 99;      /* Dark disabled state */
+  
+  /* Legacy compatibility - Update existing variables */
+  --bg: var(--surface-primary);
+  --fg: var(--text-primary);
+  --muted: var(--text-secondary);
+  --border: var(--border-primary);
+  --border-opacity: 0.08;
+  --accent: 96 165 250;
+  --surface: var(--surface-secondary);
+  --surface-hover: var(--surface-elevated);
+}
+
+/* Theme transition management */
+.theme-transitioning, 
+.theme-transitioning * {
+  transition-property: background-color, border-color, color, backdrop-filter;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+}
+
+/* Prevent flash of unstyled content */
+html:not(.dark):not(.light) {
+  --surface-primary: 255 255 255;
+  --text-primary: 28 32 36;
+  --surface-glass: 255 255 255;
+}

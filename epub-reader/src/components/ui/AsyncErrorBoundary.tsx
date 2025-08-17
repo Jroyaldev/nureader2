@@ -2,7 +2,7 @@
 
 import React, { Component, ReactNode } from 'react'
 import { ErrorBoundary, ErrorFallbackProps } from './ErrorBoundary'
-import { Button } from './Button'
+import { Button } from './core/Button/Button'
 import { getGlobalErrorHandler } from '../../services/errorHandler'
 
 interface AsyncErrorBoundaryProps {

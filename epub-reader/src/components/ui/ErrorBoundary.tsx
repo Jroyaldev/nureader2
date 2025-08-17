@@ -3,7 +3,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { ErrorHandlerService, ErrorAction, getGlobalErrorHandler } from '../../services/errorHandler'
 import { ErrorType, ErrorCode, ErrorContext } from '../../types'
-import { Button } from './Button'
+import { Button } from './core/Button/Button'
 
 interface Props {
   children: ReactNode

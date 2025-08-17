@@ -21,38 +21,8 @@ export { ReaderToolbar } from './reader/ReaderToolbar';
 // Theme Utilities
 export { cn, getGlassClasses, getReaderClasses, componentPatterns } from '../../utils/theme';
 
-// Existing Components (keep for compatibility)
-export { ErrorBoundary } from './ErrorBoundary';
-export { AsyncErrorBoundary } from './AsyncErrorBoundary';
-
-// Legacy exports
-export { Button as LegacyButton, ButtonGroup } from './Button/Button';
-export { Modal, ConfirmDialog } from './Modal/Modal';
-export { Tooltip, TooltipProvider } from './Tooltip/Tooltip';
-export {
-  Spinner,
-  LoadingOverlay,
-  Skeleton,
-  CardSkeleton,
-  ProgressBar,
-  DotsLoader,
-} from './Loading/Loading';
-
 // Type Definitions
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'reader';
 export type GlassOpacity = 'low' | 'medium' | 'high' | 'solid';
 export type PanelVariant = 'floating' | 'sidebar' | 'modal' | 'toolbar' | 'bottomSheet';
 export type ComponentSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
-
-// Export Loading component if it exists separately
-import React from 'react';
-import { Spinner } from './Loading/Loading';
-
-export const Loading: React.FC<{ message?: string }> = ({ message }) => (
-  <div className="flex flex-col items-center justify-center min-h-[200px]">
-    <Spinner size="lg" />
-    {message && (
-      <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">{message}</p>
-    )}
-  </div>
-);
