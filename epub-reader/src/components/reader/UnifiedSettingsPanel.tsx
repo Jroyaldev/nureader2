@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import { Cog6ToothIcon, SunIcon, MoonIcon, BookOpenIcon } from '@heroicons/react/24/outline';
+import { 
+  Cog6ToothIcon, 
+  SunIcon, 
+  MoonIcon, 
+  SparklesIcon,
+  ComputerDesktopIcon,
+  DevicePhoneMobileIcon,
+  SwatchIcon
+} from '@heroicons/react/24/outline';
 import { UnifiedPanel, PanelHeader, PanelContent, PanelTitle } from '@/components/ui/unified/UnifiedPanel';
 
 interface ReadingSettings {
@@ -49,27 +57,40 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
   ];
 
   const themes = [
-    { label: 'Light', value: 'light', icon: SunIcon, description: 'Clean white background' },
-    { label: 'Dark', value: 'dark', icon: MoonIcon, description: 'Easy on the eyes' },
-    { label: 'Sepia', value: 'sepia', icon: BookOpenIcon, description: 'Warm reading tone' }
+    { label: 'Light', value: 'light', icon: SunIcon, description: 'Bright & focused' },
+    { label: 'Dark', value: 'dark', icon: MoonIcon, description: 'Reduced eye strain' },
+    { label: 'Sepia', value: 'sepia', icon: SparklesIcon, description: 'Warm & cozy' }
   ];
+
+  const tabIcons = {
+    display: ComputerDesktopIcon,
+    layout: DevicePhoneMobileIcon,
+    theme: SwatchIcon
+  };
 
   const TabButton = ({ tab, label, isActive, onClick }: {
     tab: string;
     label: string;
     isActive: boolean;
     onClick: () => void;
-  }) => (
+  }) => {
+    const Icon = tabIcons[tab as keyof typeof tabIcons];
+    return (
     <button
       onClick={onClick}
       className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all touch-manipulation ${
         isActive
-          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-          : 'text-muted hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5'
+          ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] border border-[rgb(var(--accent))]/20'
+          : 'text-muted hover:text-foreground hover:bg-[rgba(var(--muted),0.08)]'
       }`}
     >
-      {label}
+      <div className="flex items-center gap-2">
+        {Icon && <Icon className="w-4 h-4" />}
+        <span>{label}</span>
+      </div>
     </button>
+    );
+  }
   );
 
   const Slider = ({ 
@@ -101,13 +122,16 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer touch-manipulation
+        className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:cursor-pointer
-                   [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md
+                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                   [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
+                   [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
                    [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                   [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                   focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                   [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                   [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:shadow-black/20
+                   [&::-moz-range-thumb]:transition-transform [&::-moz-range-thumb]:hover:scale-110
+                   focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
       />
     </div>
   );
@@ -130,8 +154,8 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 rounded-lg bg-white/60 dark:bg-black/60 backdrop-blur-md 
                    border border-black/10 dark:border-white/10 text-foreground
-                   focus:border-blue-500/30 focus:bg-white/80 dark:focus:bg-black/80 
-                   focus:outline-none focus:ring-2 focus:ring-blue-500/20
+                   focus:border-[rgb(var(--accent))]/30 focus:bg-white/80 dark:focus:bg-black/80 
+                   focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/20
                    transition-all touch-manipulation"
       >
         {options.map((option) => (
@@ -152,17 +176,23 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
       onClose={onClose}
       closeOnEscape
       ariaLabel="Reading settings"
+      className="reader-floating no-top-glint"
     >
       <PanelHeader>
-        <PanelTitle className="flex items-center gap-2">
-          <Cog6ToothIcon className="w-5 h-5" />
-          Reading Settings
-        </PanelTitle>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center shadow-md">
+            <Cog6ToothIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+          </div>
+          <div>
+            <PanelTitle className="text-base font-semibold text-foreground">Reading Settings</PanelTitle>
+            <p className="text-xs text-muted mt-0.5">Customize your reading experience</p>
+          </div>
+        </div>
       </PanelHeader>
 
       <PanelContent>
         {/* Tab Navigation */}
-        <div className="flex gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-lg mb-6">
+        <div className="flex gap-1 p-1 bg-[rgba(var(--muted),0.08)] rounded-lg mb-6">
           <TabButton 
             tab="display" 
             label="Display" 
@@ -222,8 +252,8 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
                       onClick={() => handleSettingChange('textAlign', align)}
                       className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all touch-manipulation ${
                         settings.textAlign === align
-                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                          : 'bg-white/40 dark:bg-black/40 text-muted hover:text-foreground hover:bg-white/60 dark:hover:bg-black/60'
+                          ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] border border-[rgb(var(--accent))]/20'
+                          : 'bg-[rgba(var(--muted),0.05)] text-muted hover:text-foreground hover:bg-[rgba(var(--muted),0.1)]'
                       }`}
                     >
                       {align === 'left' ? 'Left' : 'Justify'}
@@ -276,29 +306,29 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
                   <button
                     key={theme.value}
                     onClick={() => handleSettingChange('theme', theme.value)}
-                    className={`w-full p-4 rounded-xl transition-all touch-manipulation text-left ${
+                    className={`w-full p-4 rounded-lg transition-all touch-manipulation text-left group ${
                       settings.theme === theme.value
-                        ? 'bg-blue-500/10 border border-blue-500/20 shadow-sm'
-                        : 'bg-white/40 dark:bg-black/40 hover:bg-white/60 dark:hover:bg-black/60 border border-black/5 dark:border-white/5'
+                        ? 'bg-[#228b22]/10 border-2 border-[#228b22]/30 shadow-sm'
+                        : 'bg-[rgba(var(--muted),0.05)] hover:bg-[rgba(var(--muted),0.08)] border border-[rgba(var(--border),var(--border-opacity))]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
+                      <div className={`p-2.5 rounded-lg transition-all ${
                         settings.theme === theme.value 
-                          ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' 
-                          : 'bg-black/10 dark:bg-white/10 text-muted'
+                          ? 'bg-[rgb(var(--accent))] text-white shadow-md' 
+                          : 'bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] text-muted'
                       }`}>
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className={`font-medium ${
+                        <div className={`font-semibold text-sm ${
                           settings.theme === theme.value 
-                            ? 'text-blue-600 dark:text-blue-400' 
+                            ? 'text-[rgb(var(--accent))]' 
                             : 'text-foreground'
                         }`}>
                           {theme.label}
                         </div>
-                        <div className="text-sm text-muted">{theme.description}</div>
+                        <div className="text-xs text-muted mt-0.5">{theme.description}</div>
                       </div>
                     </div>
                   </button>
@@ -309,10 +339,10 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
         </div>
 
         {/* Preview Section */}
-        <div className="mt-8 pt-6 border-t border-black/5 dark:border-white/5">
+        <div className="mt-8 pt-6 border-t border-[rgba(var(--border),var(--border-opacity))]">
           <h4 className="text-sm font-medium text-foreground mb-3">Preview</h4>
           <div 
-            className="p-4 rounded-lg bg-white/40 dark:bg-black/40 border border-black/5 dark:border-white/5"
+            className="p-4 rounded-lg bg-[rgba(var(--bg),0.5)] backdrop-blur-sm border border-[rgba(var(--border),var(--border-opacity))]"
             style={{
               fontSize: `${settings.fontSize}px`,
               fontFamily: settings.fontFamily,

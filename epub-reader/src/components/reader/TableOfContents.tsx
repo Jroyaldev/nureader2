@@ -55,7 +55,7 @@ const TocItemComponent: React.FC<{
     const regex = new RegExp(`(${searchQuery})`, 'gi');
     const parts = text.split(regex);
     return parts.map((part, i) => 
-      regex.test(part) ? <mark key={i} className="bg-blue-500/20 text-blue-500 rounded px-0.5">{part}</mark> : part
+      regex.test(part) ? <mark key={i} className="bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))] rounded px-0.5">{part}</mark> : part
     );
   };
 
@@ -73,8 +73,8 @@ const TocItemComponent: React.FC<{
           w-full text-left transition-all duration-200 rounded-lg group
           ${level === 0 ? 'py-3 px-4' : level === 1 ? 'py-2.5 px-4 pl-8' : 'py-2 px-4 pl-12'}
           ${isActive 
-            ? 'bg-blue-500/10 text-blue-500'
-        : 'hover:bg-[rgba(var(--muted),0.08)] text-foreground hover:text-blue-500'
+            ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))]'
+        : 'hover:bg-[rgba(var(--muted),0.08)] text-foreground hover:text-[rgb(var(--accent))]'
           }
         `}
       >
@@ -97,7 +97,7 @@ const TocItemComponent: React.FC<{
             )}
             
             {!hasChildren && level === 0 && (
-              <DocumentTextIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-500' : 'text-muted'}`} />
+              <DocumentTextIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[rgb(var(--accent))]' : 'text-muted'}`} />
             )}
             
             <span className={`
@@ -111,7 +111,7 @@ const TocItemComponent: React.FC<{
           
           {isActive && (
             <div className="shrink-0 flex items-center gap-2">
-              <CheckIcon className="w-4 h-4 text-blue-500" />
+              <CheckIcon className="w-4 h-4 text-[rgb(var(--accent))]" />
             </div>
           )}
           
@@ -297,8 +297,8 @@ export default function TableOfContents({
           <div className="px-6 pb-4 border-b border-gray-200/30 dark:border-gray-700/30">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center backdrop-blur-sm">
-            <BookOpenSolidIcon className="w-5 h-5 text-blue-500" />
+                <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center backdrop-blur-sm shadow-md">
+            <BookOpenSolidIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Contents</h2>
@@ -316,11 +316,11 @@ export default function TableOfContents({
             {/* Enhanced Stats */}
             <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-200/20 dark:border-gray-700/20">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <div className="w-2 h-2 rounded-full bg-[rgb(var(--accent))]" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{chaptersRead} of {totalChapters} chapters</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="text-xs px-2 py-1 bg-blue-500/10 text-blue-500 rounded-full font-medium">
+                <div className="text-xs px-2 py-1 bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] rounded-full font-medium">
                   {progress}% complete
                 </div>
               </div>
@@ -335,7 +335,7 @@ export default function TableOfContents({
                 placeholder="Search chapters..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200 font-inter"
+                className="w-full pl-11 pr-4 py-3 bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/20 focus:border-[rgb(var(--accent))]/30 transition-all duration-200 font-inter"
               />
               {searchQuery && (
                 <button
@@ -361,7 +361,7 @@ export default function TableOfContents({
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">No chapters found</p>
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="text-xs text-blue-500 hover:text-blue-400 font-medium font-inter transition-colors duration-200"
+                  className="text-xs text-[rgb(var(--accent))] hover:text-[rgb(var(--accent))]/80 font-medium font-inter transition-colors duration-200"
                 >
                   Clear search
                 </button>
@@ -400,8 +400,8 @@ export default function TableOfContents({
         <div className="px-6 py-5 shrink-0 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center">
-                <BookOpenIcon className="w-5 h-5 text-blue-500" />
+              <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center shadow-md">
+                <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
               </div>
               <div>
                 <h3 className="text-base font-semibold font-inter text-gray-900 dark:text-white">Table of Contents</h3>
@@ -426,7 +426,7 @@ export default function TableOfContents({
             </div>
             <div className="h-1.5 bg-[rgba(var(--muted),0.1)] rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-[rgb(var(--accent))] to-[rgb(var(--accent))]/80 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -442,7 +442,7 @@ export default function TableOfContents({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-9 py-2 bg-white/50 dark:bg-gray-800/50 border border-white/20 dark:border-gray-700/20 rounded-lg text-sm placeholder-gray-500 dark:placeholder-gray-400 font-inter text-gray-900 dark:text-white backdrop-blur-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 focus:bg-white/70 dark:focus:bg-gray-800/70
+                       focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/20 focus:border-[rgb(var(--accent))]/30 focus:bg-white/70 dark:focus:bg-gray-800/70
                        transition-all duration-200"
             />
             {searchQuery && (
@@ -508,7 +508,7 @@ export default function TableOfContents({
               <p className="text-sm text-muted">No chapters found</p>
               <button
                 onClick={() => setSearchQuery('')}
-                className="mt-2 text-xs text-blue-500 hover:text-blue-400 font-inter transition-colors duration-200"
+                className="mt-2 text-xs text-[rgb(var(--accent))] hover:text-[rgb(var(--accent))]/80 font-inter transition-colors duration-200"
               >
                 Clear search
               </button>

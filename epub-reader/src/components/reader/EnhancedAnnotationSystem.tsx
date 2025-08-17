@@ -323,7 +323,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
               placeholder="Search annotations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-white/20 dark:border-gray-700/20 backdrop-blur-sm focus:border-blue-500/30 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-inter text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-white/20 dark:border-gray-700/20 backdrop-blur-sm focus:border-[#228b22]/30 focus:ring-2 focus:ring-[#228b22]/20 transition-all text-sm font-inter text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
           
@@ -337,7 +337,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                   onClick={() => setFilterType(type)}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all touch-manipulation font-inter ${
                     filterType === type
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-[#228b22] text-white'
                       : 'active:bg-black/5 dark:active:bg-white/10'
                   }`}
                 >
@@ -382,7 +382,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                   }}
                   className={`px-2 py-1 rounded-full text-xs transition-all touch-manipulation font-inter ${
                     selectedTags.includes(tag)
-                      ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                      ? 'bg-[#228b22]/20 text-[#228b22] border border-[#228b22]/30'
                       : 'bg-black/5 dark:bg-white/5 active:bg-black/10 dark:active:bg-white/10'
                   }`}
                 >
@@ -422,7 +422,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                             <ChatBubbleBottomCenterTextIcon className="w-4 h-4 text-muted" />
                           )}
                           {annotation.type === 'bookmark' && (
-                            <BookmarkSolidIcon className="w-4 h-4 text-blue-500" />
+                            <BookmarkSolidIcon className="w-4 h-4 text-[#228b22]" />
                           )}
                           <span className="text-xs text-muted">
                             {formatDate(annotation.createdAt)}
@@ -516,7 +516,7 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
                 }}
                 className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-colors flex items-center justify-between touch-manipulation font-inter ${
                   sortBy === sort
-                    ? 'bg-blue-500/10 text-blue-500'
+                    ? 'bg-[#228b22]/10 text-[#228b22]'
                     : 'active:bg-black/5 dark:active:bg-white/10'
                 }`}
               >

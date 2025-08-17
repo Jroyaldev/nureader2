@@ -122,7 +122,7 @@ const TouchNavigationZones = ({
       <div 
         className={cn(
           "absolute left-0 top-0 w-1/4 h-full pointer-events-auto",
-          showVisualZones && "bg-blue-500/10 border-r border-blue-500/30",
+          showVisualZones && "bg-[#228b22]/10 border-r border-[#228b22]/30",
           disabled && "pointer-events-none"
         )}
         onClick={() => handleZoneTap('left')}
@@ -132,7 +132,7 @@ const TouchNavigationZones = ({
       >
         {showVisualZones && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-blue-500 font-mono text-xs bg-white/80 px-2 py-1 rounded">
+            <div className="text-[#228b22] font-mono text-xs bg-white/80 px-2 py-1 rounded">
               ← Prev
             </div>
           </div>

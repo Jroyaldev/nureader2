@@ -6,7 +6,7 @@ export const SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'j
 export const ANNOTATION_COLORS = {
   yellow: '#fef3c7',
   green: '#d1fae5',
-  blue: '#dbeafe',
+  forest: '#228b22',
   purple: '#e9d5ff',
   pink: '#fce7f3',
   red: '#fee2e2',

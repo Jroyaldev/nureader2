@@ -3,8 +3,8 @@
 
 :root {
   /* Unified Panel Design Tokens */
-  --panel-bg: var(--bg);
-  --panel-bg-opacity: 0.95;
+  --panel-bg: 250 250 250;
+  --panel-bg-opacity: 0.98;
   --panel-surface: var(--surface);
   --panel-border: var(--border);
   --panel-border-opacity: 0.12;
@@ -63,11 +63,38 @@
 
 /* Dark Mode Overrides */
 .dark .unified-panel {
-  background: rgba(var(--panel-surface), var(--panel-bg-opacity));
-  border: 1px solid rgba(255, 255, 255, var(--panel-border-opacity));
+  background: rgba(18, 18, 18, var(--panel-bg-opacity));
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 
     var(--panel-shadow-dark),
     var(--panel-inset-dark);
+}
+
+/* Reader Floating Style Override - Matches TableOfContents */
+.unified-panel.reader-floating {
+  background: rgba(var(--surface-glass), var(--glass-opacity-high));
+  border: 1px solid rgba(var(--border-glass), 0.2);
+  color: rgb(var(--text-primary));
+  backdrop-filter: blur(28px) saturate(220%);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(var(--border-glass), 0.3);
+}
+
+.unified-panel.reader-floating.no-top-glint {
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.dark .unified-panel.reader-floating {
+  box-shadow: 
+    0 30px 90px rgba(0, 0, 0, 0.5),
+    0 12px 40px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(var(--border-glass), 0.08);
 }
 
 /* === PANEL VARIANTS === */

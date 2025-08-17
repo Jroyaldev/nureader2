@@ -1,13 +1,22 @@
 "use client";
 
-import { XMarkIcon, SparklesIcon, PaperAirplaneIcon, DocumentTextIcon, HashtagIcon, LightBulbIcon, AcademicCapIcon, PlusIcon, BookmarkIcon, PencilIcon } from '@heroicons/react/24/outline';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-
-import { mockChatCompletionStream } from '@/lib/mock-ai-api';
+import {
+  XMarkIcon,
+  PaperAirplaneIcon,
+  SparklesIcon,
+  PlusIcon,
+  BookmarkIcon,
+  HashtagIcon,
+  LightBulbIcon,
+  ChatBubbleBottomCenterTextIcon,
+  DocumentTextIcon,
+  MapPinIcon
+} from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  type: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   context?: ContextItem[];
@@ -15,21 +24,20 @@ interface Message {
 
 interface ContextItem {
   id: string;
-  type: 'location' | 'selection' | 'highlight' | 'note' | 'bookmark';
+  type: 'highlight' | 'note' | 'bookmark' | 'location';
   label: string;
   content: string;
   metadata?: {
     chapter?: string;
-    location?: string;
-    color?: string;
-    createdAt?: Date;
+    page?: number;
+    cfiRange?: string;
   };
 }
 
 interface AIChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  bookTitle?: string | undefined;
+  bookTitle?: string;
   currentChapter?: string;
   currentLocation?: string;
   selectedText?: string;
@@ -39,39 +47,40 @@ interface AIChatPanelProps {
   theme?: 'light' | 'dark';
 }
 
-// Sophisticated muted colors matching highlight palette
+const getContextIcon = (type: ContextItem['type']) => {
+  switch (type) {
+    case 'highlight': return HashtagIcon;
+    case 'note': return ChatBubbleBottomCenterTextIcon;
+    case 'bookmark': return BookmarkIcon;
+    case 'location': return MapPinIcon;
+    default: return DocumentTextIcon;
+  }
+};
+
 const QUICK_ACTIONS = [
   { 
     id: 'summarize', 
     label: 'Summarize', 
     icon: DocumentTextIcon, 
-    prompt: 'Please summarize this section',
-    color: 'rgba(251, 191, 36, 0.15)', // Muted amber
-    borderColor: 'rgba(251, 191, 36, 0.3)'
+    prompt: 'Summarize the key points from this text',
+    color: 'rgba(34, 139, 34, 0.15)', // Forest green
+    borderColor: 'rgba(34, 139, 34, 0.3)'
   },
   { 
-    id: 'explain', 
-    label: 'Explain', 
+    id: 'analyze', 
+    label: 'Analyze', 
     icon: LightBulbIcon, 
-    prompt: 'Explain this passage in simple terms',
-    color: 'rgba(34, 197, 94, 0.15)', // Muted green
-    borderColor: 'rgba(34, 197, 94, 0.3)'
-  },
-  { 
-    id: 'insights', 
-    label: 'Insights', 
-    icon: AcademicCapIcon, 
-    prompt: 'What are the key insights here?',
-    color: 'rgba(96, 165, 250, 0.15)', // Muted blue
-    borderColor: 'rgba(96, 165, 250, 0.3)'
+    prompt: 'Analyze the themes and literary devices',
+    color: 'rgba(34, 139, 34, 0.15)', // Forest green
+    borderColor: 'rgba(34, 139, 34, 0.3)'
   },
   { 
     id: 'define', 
     label: 'Define', 
     icon: HashtagIcon, 
     prompt: 'Define the key terms and concepts',
-    color: 'rgba(239, 68, 68, 0.15)', // Muted red
-    borderColor: 'rgba(239, 68, 68, 0.3)'
+    color: 'rgba(34, 139, 34, 0.15)', // Forest green
+    borderColor: 'rgba(34, 139, 34, 0.3)'
   }
 ];
 
@@ -102,69 +111,65 @@ export default function AIChatPanel({
   useEffect(() => {
     if (isOpen && bookTitle && currentChapter) {
       const locationContext: ContextItem = {
-        id: 'location',
+        id: 'current-location',
         type: 'location',
         label: currentChapter,
-        content: `${bookTitle} - ${currentChapter}`,
+        content: `Currently reading: ${currentChapter}`,
         metadata: {
-          chapter: currentChapter,
-          ...(currentLocation ? { location: currentLocation } : {})
+          chapter: currentChapter
         }
       };
       setContextItems([locationContext]);
+    }
+  }, [isOpen, bookTitle, currentChapter]);
+
+  // Add selected text as context when available
+  useEffect(() => {
+    if (selectedText && selectedText.length > 10) {
+      const textContext: ContextItem = {
+        id: 'selected-text',
+        type: 'highlight',
+        label: selectedText.substring(0, 50) + (selectedText.length > 50 ? '...' : ''),
+        content: selectedText,
+        metadata: {
+          chapter: currentChapter
+        }
+      };
       
-      // Initialize available context with mock data
-      const mockAvailableContext: ContextItem[] = [
+      // Add to available context
+      setAvailableContext(prev => {
+        const exists = prev.find(item => item.id === 'selected-text');
+        if (!exists) {
+          return [textContext, ...prev];
+        }
+        return prev;
+      });
+    }
+  }, [selectedText, currentChapter]);
+
+  // Mock available context - in real app, this would come from annotations API
+  useEffect(() => {
+    if (isOpen) {
+      const mockContext: ContextItem[] = [
         {
           id: 'highlight-1',
           type: 'highlight',
-          label: 'Key Concept',
-          content: 'The fundamental principle of quantum mechanics states that...',
-          metadata: {
-            chapter: 'Chapter 3',
-            color: 'yellow',
-            createdAt: new Date(Date.now() - 86400000)
-          }
+          label: 'Key passage about character development',
+          content: 'The protagonist undergoes significant transformation...',
+          metadata: { chapter: 'Chapter 3', page: 45 }
         },
         {
           id: 'note-1',
           type: 'note',
-          label: 'Personal Insight',
-          content: 'This reminds me of the discussion about consciousness in...',
-          metadata: {
-            chapter: 'Chapter 2',
-            createdAt: new Date(Date.now() - 172800000)
-          }
-        },
-        {
-          id: 'bookmark-1',
-          type: 'bookmark',
-          label: 'Important Section',
-          content: 'The author\'s main argument about artificial intelligence...',
-          metadata: {
-            chapter: 'Chapter 1',
-            createdAt: new Date(Date.now() - 259200000)
-          }
+          label: 'Important theme observation',
+          content: 'This section explores the central theme of identity...',
+          metadata: { chapter: 'Chapter 2', page: 23 }
         }
       ];
-      setAvailableContext(mockAvailableContext);
+      setAvailableContext(prev => [...prev, ...mockContext]);
     }
-  }, [isOpen, bookTitle, currentChapter, currentLocation]);
-  
-  // Add selected text as context
-  useEffect(() => {
-    if (selectedText && isOpen) {
-      const selectionContext: ContextItem = {
-        id: 'selection-' + Date.now(),
-        type: 'selection',
-        label: 'Selected',
-        content: selectedText.substring(0, 100) + (selectedText.length > 100 ? '...' : ''),
-        metadata: {}
-      };
-      setContextItems(prev => [...prev.filter(c => c.type !== 'selection'), selectionContext]);
-    }
-  }, [selectedText, isOpen]);
-  
+  }, [isOpen]);
+
   // (Optional) Load reader context if needed in the future
   
   // Auto-scroll to new messages
@@ -178,6 +183,34 @@ export default function AIChatPanel({
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [isOpen, isMobile]);
+
+  // Prevent body scroll on mobile when panel is open
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      // Store original overflow and position
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const scrollY = window.scrollY;
+      
+      // Lock body scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      
+      return () => {
+        // Restore body scroll
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = '';
+        
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isMobile, isOpen]);
   
   // Keyboard shortcut (Cmd/Ctrl+J)
   useEffect(() => {
@@ -193,129 +226,114 @@ export default function AIChatPanel({
     }
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-  
-  const removeContextItem = useCallback((id: string) => {
-    setContextItems(prev => prev.filter(item => item.id !== id));
-  }, []);
-  
-  // addContextItem helper removed until needed to avoid unused/any lints
-  
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  };
-  
+
   const addContextItem = (item: ContextItem) => {
-    if (!contextItems.find(existing => existing.id === item.id)) {
-      setContextItems(prev => [...prev, item]);
-    }
+    setContextItems(prev => {
+      const exists = prev.find(existing => existing.id === item.id);
+      if (!exists) {
+        return [...prev, item];
+      }
+      return prev;
+    });
     setShowContextSelector(false);
   };
 
-  const getContextIcon = (type: string) => {
-    switch (type) {
-      case 'highlight': return PencilIcon;
-      case 'note': return DocumentTextIcon;
-      case 'bookmark': return BookmarkIcon;
-      case 'location': return HashtagIcon;
-      default: return DocumentTextIcon;
-    }
+  const removeContextItem = (itemId: string) => {
+    setContextItems(prev => prev.filter(item => item.id !== itemId));
   };
-  
-  // Send message
+
   const handleSend = async () => {
     if (!inputValue.trim() || isStreaming) return;
-    
+
     const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
+      id: `user-${Date.now()}`,
+      type: 'user',
       content: inputValue,
       timestamp: new Date(),
-      context: contextItems
+      context: contextItems.length > 0 ? contextItems : undefined
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsStreaming(true);
-    
-    // Create assistant message
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: '',
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, assistantMessage]);
-    
-    // Stream response
-    try {
-      let fullContent = '';
-      const stream = mockChatCompletionStream({
-        messages: [...messages, userMessage].map(m => ({
-          role: m.role,
-          content: m.content
-        })),
-        context: contextItems
-      });
-      
-      for await (const chunk of stream) {
-        fullContent += chunk;
-        setMessages(prev => prev.map(m => 
-          m.id === assistantMessage.id 
-            ? { ...m, content: fullContent }
-            : m
-        ));
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-    } finally {
+
+    // Mock AI response - replace with actual AI integration
+    setTimeout(() => {
+      const aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        type: 'assistant',
+        content: `I understand you're asking about "${inputValue}". Based on the context you've provided, I can help analyze this further. This is a mock response that would be replaced with actual AI integration.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
       setIsStreaming(false);
-    }
+    }, 1500);
   };
-  
+
+  const handleQuickAction = (action: typeof QUICK_ACTIONS[0]) => {
+    if (isStreaming) return;
+    
+    const contextPrompt = contextItems.length > 0 
+      ? `Context: ${contextItems.map(item => item.content).join('; ')}\n\n${action.prompt}`
+      : action.prompt;
+    
+    setInputValue(contextPrompt);
+    setTimeout(() => handleSend(), 100);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
-
-
-
   // Mobile full-screen design - elegant and minimal
   if (isMobile) {
     return (
-      <div className={`fixed inset-0 z-50 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        {/* Backdrop */}
+      <div className={`fixed inset-0 z-[90] transition-all duration-500 ${isOpen ? 'visible' : 'invisible'}`}>
+        {/* Enhanced Backdrop - Cleaner, less gray */}
         <div 
-          className="absolute inset-0 bg-black/30 backdrop-blur-md"
+          className={`absolute inset-0 bg-black/20 backdrop-blur-sm transition-all duration-500 ${
+            isOpen ? 'opacity-100' : 'opacity-0'
+          }`}
           onClick={onClose}
         />
         
-        {/* Panel */}
-        <div className={`absolute inset-0 modal-glass transition-transform duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-full'} border-t`}>
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 modal-header">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20">
-                <SparklesIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 font-inter">AI Assistant</h2>
-                <p className="text-sm text-gray-600 font-inter">Ask questions about your reading</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl bg-white/20 active:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation"
-            >
-              <XMarkIcon className="w-5 h-5 text-gray-700" />
-            </button>
+        {/* Enhanced Bottom Sheet with Glassmorphism - Matches TableOfContents */}
+        <div className={`
+          absolute bottom-0 left-0 right-0 
+          glass-primary backdrop-blur-xl
+          border border-white/20 dark:border-gray-700/30
+          shadow-2xl shadow-black/20
+          rounded-t-3xl transition-all duration-500 ease-out 
+          max-h-[85vh] flex flex-col
+          ${isOpen ? 'translate-y-0' : 'translate-y-full'}
+          safe-area-pb
+        `}>
+          {/* Enhanced Handle */}
+          <div className="flex justify-center pt-4 pb-3">
+            <div className="w-12 h-1.5 bg-gray-300/60 dark:bg-gray-600/60 rounded-full" />
           </div>
+          
+          {/* Enhanced Header */}
+          <div className="px-6 pb-4 border-b border-gray-200/30 dark:border-gray-700/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center backdrop-blur-sm shadow-md">
+                  <SparklesIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Assistant</h2>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Ask questions about your reading</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2.5 -mr-2 rounded-xl bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-all duration-200 backdrop-blur-sm"
+              >
+                <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
 
             {/* Context bar */}
             <div className="shrink-0 px-6 py-3 border-b border-[rgba(var(--border),0.08)]">
@@ -323,29 +341,30 @@ export default function AIChatPanel({
                 <span className="text-sm font-medium text-gray-700 font-inter">Context</span>
                 <button
                   onClick={() => setShowContextSelector(true)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/20 active:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation"
+                  className="px-3 py-1.5 text-xs font-medium bg-white/30 active:bg-white/40 rounded-lg transition-all duration-200 backdrop-blur-sm border border-white/20 touch-manipulation font-inter"
                 >
-                  <PlusIcon className="w-4 h-4 text-gray-600" />
-                  <span className="text-xs text-gray-600 font-inter">Add</span>
+                  + Add
                 </button>
               </div>
               {contextItems.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {contextItems.map((item) => {
+                  {contextItems.map(item => {
                     const IconComponent = getContextIcon(item.type);
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 rounded-xl text-sm"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-[#228b22] text-white backdrop-blur-sm border border-[#228b22]/20 rounded-xl text-sm shadow-sm"
                       >
-                        <IconComponent className="w-3 h-3 text-blue-600" />
-                        <span className="truncate max-w-[120px] text-gray-700 font-inter">{item.label}</span>
-                        <button
-                          onClick={() => removeContextItem(item.id)}
-                          className="p-1.5 rounded-full active:bg-white/30 transition-all duration-200 touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
-                        >
-                          <XMarkIcon className="w-4 h-4 text-gray-500" />
-                        </button>
+                        <IconComponent className="w-3 h-3" />
+                        <span className="max-w-[120px] truncate font-inter">{item.label}</span>
+                        {item.type !== 'location' && (
+                          <button
+                            onClick={() => removeContextItem(item.id)}
+                            className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -356,67 +375,80 @@ export default function AIChatPanel({
             </div>
             
             {/* Messages / Quick actions */}
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
+            <div 
+              ref={scrollContainerRef} 
+              className="flex-1 overflow-y-auto p-4"
+              style={{
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full py-8">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-6">
-                    <SparklesIcon className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 rounded-xl bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center mb-6 shadow-md">
+                    <SparklesIcon className="w-8 h-8 text-[#228b22]" />
                   </div>
                   <h4 className="text-lg font-semibold mb-2 font-inter">How can I help?</h4>
                   <p className="text-sm text-gray-600 text-center mb-6 max-w-[280px] font-inter">
                     Ask questions about the text or request analysis.
                   </p>
-                  <div className="w-full max-w-sm space-y-3">
-                    {QUICK_ACTIONS.map(action => (
-                      <button
-                        key={action.id}
-                        onClick={() => setInputValue(action.prompt)}
-                        className="w-full flex items-center gap-3 p-4 bg-white/20 active:bg-white/30 rounded-2xl transition-all duration-200 text-left backdrop-blur-sm border border-white/20 touch-manipulation"
-                      >
-                        <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-                          <action.icon className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm font-inter">{action.label}</div>
-                          <div className="text-xs text-gray-600 font-inter">{action.prompt}</div>
-                        </div>
-                      </button>
-                    ))}
+                  
+                  {/* Quick action buttons for mobile */}
+                  <div className="grid grid-cols-1 gap-3 w-full max-w-[280px]">
+                    {QUICK_ACTIONS.map((action) => {
+                      const IconComponent = action.icon;
+                      return (
+                        <button
+                          key={action.id}
+                          onClick={() => handleQuickAction(action)}
+                          disabled={isStreaming}
+                          className="flex items-center gap-3 p-4 rounded-xl bg-white/30 active:bg-white/40 border border-white/20 backdrop-blur-sm transition-all duration-200 disabled:opacity-50 touch-manipulation font-inter"
+                        >
+                          <div className="p-2 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0 shadow-sm">
+                            <IconComponent className="w-4 h-4 text-[#228b22]" />
+                          </div>
+                          <div className="text-left">
+                            <span className="text-sm font-medium text-gray-900 block font-inter">{action.label}</span>
+                            <span className="text-xs text-gray-600 font-inter">{action.prompt}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map(message => (
+                  {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[85%] ${message.role === 'user' ? 'order-1' : ''}`}>
-                        <div className={`
-                          px-4 py-3 rounded-2xl text-sm backdrop-blur-sm border
-                          ${message.role === 'user'
-                            ? 'bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white border-blue-400/30'
-                            : 'bg-white/30 text-gray-900 border-white/20'
-                          }
-                        `}>
-                          <p className="whitespace-pre-wrap font-inter">{message.content}</p>
-                        </div>
-                        <p className={`
-                          text-[10px] text-gray-600 mt-2 px-1 opacity-70 font-inter
-                          ${message.role === 'user' ? 'text-right' : ''}
-                        `}>
-                          {formatTime(message.timestamp)}
-                        </p>
+                      <div
+                        className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+                          message.type === 'user'
+                            ? 'bg-[#228b22] text-white'
+                            : 'bg-white/40 backdrop-blur-sm border border-white/20 text-gray-900'
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed font-inter">{message.content}</p>
+                        {message.context && (
+                          <div className="mt-2 pt-2 border-t border-white/20">
+                            <span className="text-xs opacity-75 font-inter">
+                              With context: {message.context.map(c => c.label).join(', ')}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
                   {isStreaming && (
                     <div className="flex justify-start">
-                      <div className="px-4 py-2.5 bg-white/30 rounded-2xl backdrop-blur-sm border border-white/20">
-                        <div className="flex gap-1">
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                      <div className="bg-white/40 backdrop-blur-sm border border-white/20 px-4 py-3 rounded-2xl">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                         </div>
                       </div>
                     </div>
@@ -426,42 +458,17 @@ export default function AIChatPanel({
               )}
             </div>
             
-            {/* Input area */}
-            <div className="shrink-0 p-4 border-t border-gray-200/20 bg-white/10 backdrop-blur-sm">
-              <div className="flex gap-3">
-                <div className="flex-1 relative">
-                  <textarea
-                    ref={inputRef}
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Ask a question about your reading..."
-                    className="w-full px-4 py-3 modal-input rounded-2xl resize-none focus:outline-none text-sm placeholder-gray-500 font-inter"
-                    rows={1}
-                    style={{ minHeight: '44px', maxHeight: '120px' }}
-                  />
-                </div>
-                <button
-                  onClick={handleSend}
-                  disabled={!inputValue.trim() || isStreaming}
-                  className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 active:from-blue-600 active:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white rounded-2xl transition-all duration-200 shrink-0 backdrop-blur-sm border border-blue-400/30 disabled:border-gray-400/30 touch-manipulation"
-                >
-                  <PaperAirplaneIcon className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            
             {/* Context Selector Modal */}
             {showContextSelector && (
               <div className="absolute inset-0 z-10 bg-black/30 backdrop-blur-md flex items-end">
                 <div className="w-full bg-white/95 backdrop-blur-xl rounded-t-3xl border-t border-white/20 shadow-2xl max-h-[70vh] flex flex-col">
                  {/* Handle */}
-                 <div className="flex justify-center py-3">
-                   <div className="w-12 h-1 bg-gray-300 rounded-full" />
+                 <div className="flex justify-center pt-3 pb-2">
+                   <div className="w-10 h-1 bg-black/20 dark:bg-white/30 rounded-full" />
                  </div>
                  
                  {/* Header */}
-                 <div className="flex items-center justify-between px-4 pb-4">
+                 <div className="flex items-center justify-between px-6 py-4 border-b border-white/20">
                    <h3 className="text-lg font-semibold text-gray-900 font-inter">Add Context</h3>
                    <button
                      onClick={() => setShowContextSelector(false)}
@@ -472,7 +479,14 @@ export default function AIChatPanel({
                  </div>
                  
                  {/* Available Context */}
-                 <div className="flex-1 overflow-y-auto px-4 pb-4">
+                 <div 
+                   className="flex-1 overflow-y-auto px-4 pb-4"
+                   style={{
+                     overscrollBehavior: 'contain',
+                     touchAction: 'pan-y',
+                     WebkitOverflowScrolling: 'touch'
+                   }}
+                 >
                    <div className="space-y-3">
                      {availableContext.map((item) => {
                        const IconComponent = getContextIcon(item.type);
@@ -482,43 +496,76 @@ export default function AIChatPanel({
                            key={item.id}
                            onClick={() => addContextItem(item)}
                            disabled={isSelected}
-                           className={`w-full flex items-start gap-3 p-4 rounded-2xl text-left transition-all duration-200 backdrop-blur-sm border touch-manipulation ${
+                           className={`w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all duration-200 backdrop-blur-sm border touch-manipulation ${
                              isSelected 
                                ? 'bg-gray-100/50 border-gray-200/50 opacity-50 cursor-not-allowed'
                                : 'bg-white/20 active:bg-white/30 border-white/20'
                            }`}
-                         >
-                           <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 shrink-0">
-                             <IconComponent className="w-4 h-4 text-blue-600" />
+                       >
+                         <div className="p-2 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0 shadow-sm">
+                           <IconComponent className="w-4 h-4 text-[#228b22]" />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <div className="flex items-center gap-2 mb-1">
+                             <span className="font-medium text-gray-900 text-sm font-inter">{item.label}</span>
+                             <span className="text-xs text-gray-500 font-inter capitalize">{item.type}</span>
                            </div>
-                           <div className="flex-1 min-w-0">
-                             <div className="flex items-center gap-2 mb-1">
-                               <span className="font-medium text-gray-900 text-sm font-inter">{item.label}</span>
-                               <span className="text-xs text-gray-500 font-inter capitalize">{item.type}</span>
-                             </div>
-                             <p className="text-sm text-gray-600 line-clamp-2 font-inter">{item.content}</p>
-                             {item.metadata?.chapter && (
-                               <p className="text-xs text-gray-500 mt-1 font-inter">{item.metadata.chapter}</p>
-                             )}
-                           </div>
-                           {isSelected && (
-                             <div className="text-green-600 shrink-0">
-                               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                               </svg>
-                             </div>
+                           <p className="text-sm text-gray-600 line-clamp-2 font-inter">{item.content}</p>
+                           {item.metadata?.chapter && (
+                             <p className="text-xs text-gray-500 mt-1 font-inter">{item.metadata.chapter}</p>
                            )}
-                         </button>
-                       );
-                     })}
-                   </div>
+                         </div>
+                         {isSelected && (
+                           <div className="text-green-600 shrink-0">
+                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                             </svg>
+                           </div>
+                         )}
+                       </button>
+                     );
+                   })}
                  </div>
                </div>
-               </div>
-              )}
+             </div>
+           </div>
+         )}
+        </div>
+          
+          {/* Enhanced Input Area */}
+          <div className="shrink-0 border-t border-gray-200/30 dark:border-gray-700/30 p-4">
+            <div className="relative">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask about this text..."
+                disabled={isStreaming}
+                className="w-full px-4 py-3 pr-12 bg-white/50 dark:bg-gray-800/50 border border-gray-200/30 dark:border-gray-700/30 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#228b22]/20 focus:border-[#228b22]/30 text-sm placeholder:text-gray-500"
+                rows={2}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!inputValue.trim() || isStreaming}
+                className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 ${
+                  inputValue.trim() && !isStreaming
+                    ? 'bg-[#228b22] hover:bg-[#1e7a1e] text-white touch-manipulation'
+                    : 'bg-gray-400/20 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <PaperAirplaneIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-center mt-3 text-xs text-gray-500 opacity-50">
+              <span>⌘J to close</span>
+              <span className="mx-2">·</span>
+              <span>Enter to send</span>
+            </div>
           </div>
         </div>
-      );
+      </div>
+    );
   }
   
   // Desktop elegant sidebar - matching homepage aesthetic
@@ -558,8 +605,8 @@ export default function AIChatPanel({
           {contextItems.length > 0 && (
             <div className="px-6 pb-4">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20">
-                  <BookmarkIcon className="w-3 h-3 text-blue-600" />
+                <div className="p-1.5 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] backdrop-blur-sm shadow-sm">
+                  <BookmarkIcon className="w-3 h-3 text-[#228b22]" />
                 </div>
                 <span className="text-sm font-medium text-muted font-inter">Context</span>
                 <button
@@ -584,12 +631,12 @@ export default function AIChatPanel({
                         transition-colors
                       `}
                     >
-                      <IconComponent className="w-3 h-3 text-blue-600" />
+                      <IconComponent className="w-3 h-3 text-[#228b22]" />
                       <span className="max-w-[120px] truncate font-inter">{item.label}</span>
                       {item.type !== 'location' && (
                         <button
                           onClick={() => removeContextItem(item.id)}
-                          className="p-1 rounded-full active:bg-white/30 transition-all duration-200 touch-manipulation min-w-[28px] min-h-[28px] flex items-center justify-center"
+                          className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
                         >
                           <XMarkIcon className="w-3 h-3" />
                         </button>
@@ -603,7 +650,15 @@ export default function AIChatPanel({
         </div>
         
         {/* Messages area - clean and minimal */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 py-6">
+        <div 
+          ref={scrollContainerRef} 
+          className="flex-1 overflow-y-auto px-6 py-6"
+          style={{
+            overscrollBehavior: 'contain',
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
               {/* Simple icon */}
@@ -616,65 +671,62 @@ export default function AIChatPanel({
                 Ask questions about the text or request analysis.
               </p>
               
-              {/* Elegant quick actions with muted colors */}
-              <div className="grid grid-cols-2 gap-2 w-full">
-                {QUICK_ACTIONS.map(action => (
-                  <button
-                    key={action.id}
-                    onClick={() => setInputValue(action.prompt)}
-                    className="group relative p-3 rounded-xl border transition-all active:scale-[1.02] touch-manipulation"
-                    style={{
-                      backgroundColor: action.color,
-                      borderColor: action.borderColor
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <action.icon className="w-4 h-4 text-[rgb(var(--fg))]" />
-                      <span className="text-xs font-medium">{action.label}</span>
-                    </div>
-                  </button>
-                ))}
+              {/* Compact action buttons */}
+              <div className="flex flex-col gap-2 w-full">
+                {QUICK_ACTIONS.map((action) => {
+                  const IconComponent = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      onClick={() => handleQuickAction(action)}
+                      disabled={isStreaming}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all duration-200 disabled:opacity-50 text-left font-inter"
+                    >
+                      <div className="p-1.5 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0">
+                        <IconComponent className="w-3.5 h-3.5 text-[#228b22]" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{action.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map(message => (
+              {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] ${message.role === 'user' ? 'order-1' : ''}`}>
-                    <div className={`
-                      px-4 py-2.5 rounded-2xl text-sm
-                      ${message.role === 'user'
-                        ? 'bg-[rgb(var(--fg))] dark:bg-white text-[rgb(var(--bg))] dark:text-black'
-                        : 'bg-[rgba(var(--muted),0.08)] text-foreground'
-                      }
-                    `}>
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                    <p className={`
-                      text-[10px] text-muted mt-1 px-1 opacity-50
-                      ${message.role === 'user' ? 'text-right' : ''}
-                    `}>
-                      {formatTime(message.timestamp)}
-                    </p>
+                  <div
+                    className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+                      message.type === 'user'
+                        ? 'bg-[#228b22] text-white'
+                        : 'bg-white/40 backdrop-blur-sm border border-white/20 text-foreground'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed font-inter">{message.content}</p>
+                    {message.context && (
+                      <div className="mt-2 pt-2 border-t border-white/20">
+                        <span className="text-xs opacity-75 font-inter">
+                          With context: {message.context.map(c => c.label).join(', ')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
-              
               {isStreaming && (
                 <div className="flex justify-start">
-                  <div className="px-4 py-2.5 bg-[rgba(var(--muted),0.08)] rounded-2xl">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-pulse" />
-                      <span className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <span className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                  <div className="bg-white/40 backdrop-blur-sm border border-white/20 px-4 py-3 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-muted rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-muted rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-muted rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 </div>
               )}
-              
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -699,7 +751,7 @@ export default function AIChatPanel({
               className={`
                 absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 backdrop-blur-sm border
                 ${inputValue.trim() && !isStreaming
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 active:from-blue-600 active:to-blue-700 text-white border-blue-400/30 touch-manipulation'
+                  ? 'bg-[#228b22] hover:bg-[#1e7a1e] active:bg-[#1a6b1a] text-white border-[#228b22]/30 touch-manipulation'
                   : 'bg-gray-400/20 text-gray-400 cursor-not-allowed border-gray-400/20'
                 }
               `}
@@ -730,7 +782,14 @@ export default function AIChatPanel({
                </div>
                
                {/* Available Context */}
-               <div className="flex-1 overflow-y-auto p-4">
+               <div 
+                 className="flex-1 overflow-y-auto p-4"
+                 style={{
+                   overscrollBehavior: 'contain',
+                   touchAction: 'pan-y',
+                   WebkitOverflowScrolling: 'touch'
+                 }}
+               >
                  <div className="space-y-3">
                    {availableContext.map((item) => {
                      const IconComponent = getContextIcon(item.type);
@@ -746,8 +805,8 @@ export default function AIChatPanel({
                                : 'bg-white/20 active:bg-white/30 border-white/20'
                            }`}
                        >
-                         <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 shrink-0">
-                           <IconComponent className="w-4 h-4 text-blue-600" />
+                         <div className="p-2 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0 shadow-sm">
+                           <IconComponent className="w-4 h-4 text-[#228b22]" />
                          </div>
                          <div className="flex-1 min-w-0">
                            <div className="flex items-center gap-2 mb-1">
@@ -772,9 +831,9 @@ export default function AIChatPanel({
                  </div>
                </div>
              </div>
-               </div>
-             )}
-          </div>
-        </div>
-      );
+           </div>
+         )}
+      </div>
+    </div>
+  );
 }

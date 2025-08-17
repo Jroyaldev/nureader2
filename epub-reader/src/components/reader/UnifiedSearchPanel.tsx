@@ -154,12 +154,18 @@ const UnifiedSearchPanel: React.FC<UnifiedSearchPanelProps> = ({
       onClose={onClose}
       closeOnEscape
       ariaLabel="Search book content"
+      className="reader-floating no-top-glint"
     >
       <PanelHeader>
-        <PanelTitle className="flex items-center gap-2">
-          <MagnifyingGlassIcon className="w-5 h-5" />
-          Search Book
-        </PanelTitle>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center shadow-md">
+            <MagnifyingGlassIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+          </div>
+          <div>
+            <PanelTitle className="text-base font-semibold text-foreground">Search Book</PanelTitle>
+            <p className="text-xs text-muted mt-0.5">Find text in chapters</p>
+          </div>
+        </div>
       </PanelHeader>
 
       <PanelContent>
@@ -174,19 +180,19 @@ const UnifiedSearchPanel: React.FC<UnifiedSearchPanelProps> = ({
               onKeyDown={handleKeyDown}
               placeholder="Search for text..."
               className="w-full px-4 py-3 pr-32 rounded-xl bg-white/60 dark:bg-black/60 backdrop-blur-md 
-                       border border-black/10 dark:border-white/10 focus:border-blue-500/30 
+                       border border-black/10 dark:border-white/10 focus:border-[rgb(var(--accent))]/30 
                        focus:bg-white/80 dark:focus:bg-black/80 transition-all shadow-sm
                        placeholder:text-muted text-foreground font-inter touch-manipulation
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                       focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/20"
             />
             <button
               onClick={handleSearch}
               disabled={isSearching || !searchQuery.trim()}
               className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 
-                       bg-blue-500/90 backdrop-blur-md text-white rounded-lg font-medium text-sm
-                       disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600/90 active:bg-blue-700/90 
-                       transition-all touch-manipulation font-inter shadow-sm border border-blue-500/20
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                       bg-[rgb(var(--accent))]/90 backdrop-blur-md text-white rounded-lg font-medium text-sm
+                       disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[rgb(var(--accent))]/100 active:bg-[rgb(var(--accent))]/80 
+                       transition-all touch-manipulation font-inter shadow-sm border border-[rgb(var(--accent))]/20
+                       focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))]/30"
             >
               {isSearching ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -246,7 +252,7 @@ const UnifiedSearchPanel: React.FC<UnifiedSearchPanelProps> = ({
               onClick={() => handleResultClick(result, index)}
               className={`w-full text-left p-4 rounded-xl transition-all touch-manipulation font-inter ${
                 selectedResultIndex === index
-                  ? 'bg-blue-500/10 backdrop-blur-md border border-blue-500/20 shadow-sm'
+                  ? 'bg-[rgb(var(--accent))]/10 backdrop-blur-md border border-[rgb(var(--accent))]/20 shadow-sm'
                   : 'bg-white/40 dark:bg-black/40 backdrop-blur-md hover:bg-white/60 dark:hover:bg-black/60 border border-black/5 dark:border-white/5'
               }`}
             >
@@ -255,7 +261,7 @@ const UnifiedSearchPanel: React.FC<UnifiedSearchPanelProps> = ({
                   {result.chapter}
                 </span>
                 {result.chapter === currentChapter && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))]">
                     Current
                   </span>
                 )}
