@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ThemeScript } from "./theme-script";
+import { MobileOptimizations } from "@/components/MobileOptimizations";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fcfcfd" },
     { media: "(prefers-color-scheme: dark)", color: "#101215" },
@@ -33,7 +39,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeScript />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <MobileOptimizations />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

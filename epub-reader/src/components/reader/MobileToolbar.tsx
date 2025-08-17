@@ -18,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import React, { useState, useEffect, useRef } from 'react';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface MobileToolbarProps {
   // Navigation
@@ -90,6 +91,7 @@ export default function MobileToolbar({
   onToggleBookmark,
   isVisible = true
 }: MobileToolbarProps) {
+  const { isMobile } = useBreakpoint();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const lastScrollY = useRef(0);
@@ -138,7 +140,7 @@ export default function MobileToolbar({
     onThemeChange(currentTheme === 'light' ? 'dark' : 'light');
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !isMobile) return null;
 
   return (
     <>
@@ -182,7 +184,7 @@ export default function MobileToolbar({
           <div className="flex items-center gap-1">
             <button
               onClick={onNavigateHome}
-              className="mobile-btn p-2.5 rounded-xl bg-white/10 active:bg-white/30 transition-all duration-200 touch-manipulation font-inter"
+              className="mobile-btn touch-target rounded-xl bg-white/10 active:bg-white/30 transition-all duration-200 touch-manipulation font-inter no-tap-highlight"
               aria-label="Library"
             >
               <HomeIcon className="w-5 h-5" />
@@ -190,7 +192,7 @@ export default function MobileToolbar({
             <button
               onClick={onNavigatePrev}
               disabled={!canGoPrev}
-              className="mobile-btn p-2.5 rounded-xl bg-white/10 active:bg-white/30 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 touch-manipulation font-inter"
+              className="mobile-btn touch-target rounded-xl bg-white/10 active:bg-white/30 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 touch-manipulation font-inter no-tap-highlight"
               aria-label="Previous"
             >
               <ChevronLeftIcon className="w-5 h-5" />

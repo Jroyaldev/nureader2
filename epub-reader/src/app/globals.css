@@ -696,6 +696,97 @@
 .text-2xl { font-size: var(--text-2xl); }
 .text-3xl { font-size: var(--text-3xl); }
 
+/* Mobile optimization utilities */
+
+/* Touch targets - minimum 44px for accessibility */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  @apply flex items-center justify-center;
+}
+
+/* Touch feedback */
+.touch-target:active {
+  @apply scale-95 transition-transform duration-100;
+}
+
+/* Safe area support for mobile devices */
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-pl {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-pr {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Smooth scrolling for mobile */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Disable tap highlight on mobile */
+.no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove hover states on touch devices */
+@media (hover: none) {
+  .hover\:bg-accent:hover {
+    background-color: transparent;
+  }
+  .hover\:scale-105:hover {
+    transform: none;
+  }
+  .hover\:shadow-lg:hover {
+    box-shadow: inherit;
+  }
+}
+
+/* Prevent input zoom on iOS */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Reduce animations on low-end devices */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-slide-up {
+    animation: none;
+  }
+  
+  .transition-all,
+  .transition-transform,
+  .transition-opacity {
+    transition: none;
+  }
+}
+
+/* Mobile-specific glassmorphism - less intensive */
+@media (max-width: 768px) {
+  .glass, .glass-primary, .glass-strong {
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  
+  /* Reduce blur on very low-end devices */
+  .reduce-blur .glass,
+  .reduce-blur .glass-primary,
+  .reduce-blur .glass-strong {
+    backdrop-filter: blur(8px) saturate(150%);
+  }
+}
+
 /* Font weights */
 .font-normal { font-weight: 400; }
 .font-medium { font-weight: 500; }
