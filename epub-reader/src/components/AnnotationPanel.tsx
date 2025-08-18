@@ -87,10 +87,33 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
 
   const deleteAnnotation = async (annotationId: string) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      // Find the annotation to verify ownership
+      const annotation = annotations.find(a => a.id === annotationId);
+      if (!annotation) {
+        console.error('Annotation not found');
+        return;
+      }
+
+      // Verify the annotation belongs to the current user and book
+      if (annotation.user_id !== user.id || annotation.book_id !== bookId) {
+        console.error('Unauthorized: Cannot delete annotation');
+        return;
+      }
+
+      // Delete with user_id and book_id constraints for extra security
       const { error } = await supabase
         .from('annotations')
         .delete()
-        .eq('id', annotationId);
+        .eq('id', annotationId)
+        .eq('user_id', user.id)
+        .eq('book_id', bookId);
 
       if (error) throw error;
       setAnnotations(prev => prev.filter(a => a.id !== annotationId));
