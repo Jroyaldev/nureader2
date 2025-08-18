@@ -9,7 +9,7 @@ import {
   PencilIcon,
   MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { createClient } from "@/utils/supabase/client";
 
@@ -53,7 +53,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchAnnotations = useCallback(async () => {
     if (!bookId) return;
@@ -129,13 +129,18 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
 
   const updateAnnotationNote = async (annotationId: string, note: string) => {
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('Authentication required');
+
       const { error } = await supabase
         .from('annotations')
         .update({ 
           note: note || null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', annotationId);
+        .eq('id', annotationId)
+        .eq('user_id', user.id)
+        .eq('book_id', bookId);
 
       if (error) throw error;
       
@@ -188,7 +193,12 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
 
   if (isMobile) {
     return (
-      <div className={`
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="annotation-panel-title"
+        tabIndex={-1}
+        className={`
         fixed inset-0 z-[90] transition-all duration-500
         ${isOpen ? 'visible' : 'invisible'}
       `}>
@@ -220,13 +230,14 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                   <PaintBrushIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Annotations</h2>
+                  <h2 id="annotation-panel-title" className="text-lg font-semibold text-gray-900 dark:text-white">Annotations</h2>
                   <p className="text-xs text-gray-600 dark:text-gray-400">{filteredAnnotations.length} items</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
                 className="p-2.5 -mr-2 rounded-xl bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-all duration-200 backdrop-blur-sm"
+                aria-label="Close annotations panel"
               >
                 <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
@@ -340,6 +351,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                               deleteAnnotation(annotation.id);
                             }}
                             className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                            aria-label="Delete annotation"
                           >
                             <TrashIcon className="w-3 h-3" />
                           </button>
@@ -399,6 +411,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 dark:hover:bg-gray-800/20 rounded transition-colors font-inter"
+                  aria-label="Clear search"
                 >
                   <XMarkIcon className="w-3 h-3 text-muted-foreground" />
                 </button>
