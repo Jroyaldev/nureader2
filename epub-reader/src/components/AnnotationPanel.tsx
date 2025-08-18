@@ -33,6 +33,7 @@ interface AnnotationPanelProps {
   onClose: () => void;
   onJumpToAnnotation: (location: string, annotationId: string) => void;
   onDeleteAnnotation?: (annotationId: string) => void;
+  isMobile?: boolean;
 }
 
 const HIGHLIGHT_COLORS = [
@@ -43,7 +44,7 @@ const HIGHLIGHT_COLORS = [
   { name: 'Purple', value: 'rgba(139, 92, 246, 0.5)', bg: 'bg-violet-500' }
 ];
 
-export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnotation, onDeleteAnnotation }: AnnotationPanelProps) {
+export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnotation, onDeleteAnnotation, isMobile = false }: AnnotationPanelProps) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'highlight' | 'note' | 'bookmark'>('all');
@@ -162,13 +163,183 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
     });
   };
 
+  if (isMobile) {
+    return (
+      <div className={`
+        fixed inset-0 z-[90] transition-all duration-500
+        ${isOpen ? 'visible' : 'invisible'}
+      `}>
+        {/* Enhanced Backdrop */}
+        <div 
+          className={`absolute inset-0 bg-black/40 backdrop-blur-md transition-all duration-500 ${
+            isOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={onClose}
+        />
+        
+        {/* Enhanced Bottom Sheet with Glassmorphism */}
+        <div className={`
+          unified-panel unified-panel--bottomSheet
+          absolute bottom-0 left-0 right-0 transition-all duration-500 ease-out
+          max-h-[85vh] flex flex-col safe-area-pb
+          ${isOpen ? 'translate-y-0' : 'translate-y-full'}
+        `}>
+          {/* Enhanced Handle */}
+          <div className="flex justify-center pt-4 pb-3">
+            <div className="w-12 h-1.5 bg-gray-300/60 dark:bg-gray-600/60 rounded-full" />
+          </div>
+          
+          {/* Enhanced Header */}
+          <div className="px-6 pb-4 border-b border-gray-200/30 dark:border-gray-700/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center backdrop-blur-sm shadow-md">
+                  <PaintBrushIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Annotations</h2>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{filteredAnnotations.length} items</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2.5 -mr-2 rounded-xl bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-all duration-200 backdrop-blur-sm"
+              >
+                <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Search */}
+            <div className="relative mb-3">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <input
+                type="text"
+                placeholder="Search annotations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-white/20 dark:border-gray-700/20 backdrop-blur-sm focus:border-[#87a96b]/30 focus:ring-2 focus:ring-[#87a96b]/20 transition-all text-sm font-inter text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+              />
+            </div>
+            
+            {/* Filters */}
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-lg">
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'highlight', label: 'Highlights' },
+                  { key: 'note', label: 'Notes' },
+                  { key: 'bookmark', label: 'Bookmarks' }
+                ].map(({ key, label }) => {
+                  const active = filter === (key as 'all' | 'highlight' | 'note' | 'bookmark');
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setFilter(key as 'all' | 'highlight' | 'note' | 'bookmark')}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all touch-manipulation font-inter ${
+                        active
+                          ? 'bg-[#87a96b] text-white'
+                          : 'active:bg-black/5 dark:active:bg-white/10'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div 
+            className="flex-1 overflow-y-auto px-6 py-4 scrollbar-thin scrollbar-thumb-gray-300/50 dark:scrollbar-thumb-gray-600/50 scrollbar-track-transparent"
+            style={{
+              overscrollBehavior: 'contain',
+              touchAction: 'pan-y',
+              WebkitOverflowScrolling: 'touch'
+            }}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-[3px] border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+              </div>
+            ) : filteredAnnotations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-16 h-16 rounded-2xl bg-[rgba(var(--muted),0.08)] flex items-center justify-center mb-4">
+                  <PaintBrushIcon className="w-8 h-8 text-[rgb(var(--muted))]" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No annotations yet</h3>
+                <p className="text-sm text-muted text-center max-w-[280px]">
+                  Start highlighting text or adding notes to see them here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredAnnotations.map((annotation) => (
+                  <div
+                    key={annotation.id}
+                    className="p-4 rounded-xl bg-white/50 dark:bg-black/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/20 hover:bg-white/70 dark:hover:bg-black/70 transition-all cursor-pointer touch-manipulation font-inter"
+                    onClick={() => onJumpToAnnotation(annotation.location, annotation.id)}
+                  >
+                    {/* Color stripe for highlights */}
+                    {annotation.annotation_type === 'highlight' && (
+                      <div
+                        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+                        style={{ backgroundColor: annotation.color }}
+                      />
+                    )}
+                    
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          {annotation.annotation_type === 'highlight' && <PaintBrushIcon className="w-4 h-4 text-muted" />}
+                          {annotation.annotation_type === 'note' && <ChatBubbleLeftIcon className="w-4 h-4 text-muted" />}
+                          {annotation.annotation_type === 'bookmark' && <BookmarkIcon className="w-4 h-4 text-muted" />}
+                          <span className="text-xs text-muted font-medium capitalize">{annotation.annotation_type}</span>
+                        </div>
+                        
+                        <p className="text-sm text-foreground line-clamp-3 mb-2">
+                          &ldquo;{annotation.content}&rdquo;
+                        </p>
+                        
+                        {annotation.note && (
+                          <p className="text-xs text-muted mb-2">
+                            {annotation.note}
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted">
+                            {new Date(annotation.created_at).toLocaleDateString()}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteAnnotation(annotation.id);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                          >
+                            <TrashIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className={`
       fixed right-6 top-1/2 -translate-y-1/2 z-[85] w-[380px] h-[min(700px,90vh)]
       transition-all duration-500 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}
     `}>
       {/* Panel surface - glassmorphism styling */}
-      <div className="modal-glass rounded-2xl flex flex-col h-full font-inter">
+      <div className="unified-panel reader-floating flex flex-col h-full font-inter">
         {/* Header - Refined */}
         <div className="shrink-0 modal-header">
           <div className="flex items-center justify-between px-6 py-5">

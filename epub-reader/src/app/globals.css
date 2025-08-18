@@ -19,11 +19,11 @@
     --muted: 110 118 126; /* Sophisticated gray */
     --border: 0 0 0; /* Black for hairlines */
     --border-opacity: 0.08; /* Subtle borders */
-    --accent: 34 139 34; /* Dark muted forest green */
+    --accent: 135 169 107; /* Sage green */
     --surface: 255 255 255;
     --surface-hover: 250 250 251;
     --shadow: 0 0 0;
-    --ring: 34 139 34;
+    --ring: 135 169 107;
     
     /* Apple-inspired radii */
     --radius-sm: 8px;
@@ -58,11 +58,11 @@
     --muted: 160 160 160; /* Muted gray */
     --border: 255 255 255;
     --border-opacity: 0.08;
-    --accent: 34 139 34; /* Dark muted forest green */
+    --accent: 135 169 107; /* Sage green */
     --surface: 8 8 8; /* True black surface */
     --surface-hover: 16 16 16; /* Subtle hover */
     --shadow: 0 0 0;
-    --ring: 34 139 34;
+    --ring: 135 169 107;
   }
   /* Removed sepia and night modes - only light/dark supported */
   html, body, #__next { height: 100%; }

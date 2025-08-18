@@ -187,14 +187,10 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
         
         {/* Enhanced Bottom Sheet with Glassmorphism - Matches TableOfContents */}
         <div className={`
-          absolute bottom-0 left-0 right-0 
-          glass-primary backdrop-blur-xl
-          border border-white/20 dark:border-gray-700/30
-          shadow-2xl shadow-black/20
-          rounded-t-3xl transition-all duration-500 ease-out 
-          max-h-[85vh] flex flex-col
+          unified-panel unified-panel--bottomSheet
+          absolute bottom-0 left-0 right-0 transition-all duration-500 ease-out
+          max-h-[85vh] flex flex-col safe-area-pb
           ${visible ? 'translate-y-0' : 'translate-y-full'}
-          safe-area-pb
         `}>
           {/* Enhanced Handle */}
           <div className="flex justify-center pt-4 pb-3">
@@ -245,7 +241,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium transition-all relative touch-manipulation font-inter ${
                   activeTab === tab
-                    ? 'text-[#228b22]'
+                    ? 'text-[#87a96b]'
                     : 'text-muted hover:text-foreground'
                 }`}
               >
@@ -256,7 +252,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                 )}
                 <span className="capitalize">{tab}</span>
                 {activeTab === tab && (
-                  <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#228b22] rounded-full" />
+                  <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#87a96b] rounded-full" />
                 )}
               </button>
             ))}
@@ -308,11 +304,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                     onChange={(e) => handleSliderChange('fontSize', Number(e.target.value))}
                     className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                              [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                              [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                             [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                             focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                             [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                             focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                   />
                 </div>
                 
@@ -326,7 +322,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                         onClick={() => handleSelectChange('fontFamily', font.value)}
                         className={`p-3 rounded-xl border transition-all active:scale-95 touch-manipulation font-inter ${
                           localSettings.fontFamily === font.value
-                            ? 'border-[#228b22] bg-[#228b22]/10 backdrop-blur-sm'
+                            ? 'border-[#87a96b] bg-[#87a96b]/10 backdrop-blur-sm'
                             : 'border-white/30 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-gray-800/70'
                         }`}
                       >
@@ -362,11 +358,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                     onChange={(e) => handleSliderChange('lineHeight', Number(e.target.value))}
                     className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                              [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                              [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                             [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                             focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                             [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                             focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                   />
                 </div>
                 
@@ -380,7 +376,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                         onClick={() => handleSelectChange('textAlign', align)}
                         className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 touch-manipulation font-inter ${
                           localSettings.textAlign === align
-                            ? 'bg-[#228b22] text-white shadow-md backdrop-blur-sm'
+                            ? 'bg-[#87a96b] text-white shadow-md backdrop-blur-sm'
                             : 'bg-white/50 dark:bg-black/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-black/70 text-foreground'
                         }`}
                       >
@@ -407,11 +403,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                     onChange={(e) => handleSliderChange('marginHorizontal', Number(e.target.value))}
                     className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                              [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                              [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                             [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                             focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                             [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                             focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                   />
                 </div>
               </>
@@ -430,15 +426,15 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
               </button>
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-[#228b22]/90 backdrop-blur-sm hover:bg-[#228b22] text-white text-sm font-medium transition-all active:scale-95 touch-manipulation font-inter"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[#87a96b]/90 backdrop-blur-sm hover:bg-[#87a96b] text-white text-sm font-medium transition-all active:scale-95 touch-manipulation font-inter"
               >
                 Done
               </button>
             </div>
             <div className="space-y-1 pb-8">
               {hasChanges && (
-                <div className="flex items-center justify-center gap-2 text-xs text-[#228b22] mt-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#228b22] animate-pulse" />
+                <div className="flex items-center justify-center gap-2 text-xs text-[#87a96b] mt-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#87a96b] animate-pulse" />
                   <span>Settings saved automatically</span>
                 </div>
               )}
@@ -455,13 +451,13 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
       transition-all duration-500 ${visible ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'}
     `}>
       {/* Enhanced glass panel matching TOC/Annotations style */}
-      <div className="bg-white/95 dark:bg-black/95 backdrop-blur-xl border border-black/10 dark:border-white/20 rounded-2xl flex flex-col h-full font-inter shadow-2xl">
+      <div className="unified-panel reader-floating flex flex-col h-full font-inter">
         {/* Header */}
         <div className="shrink-0 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] backdrop-blur-sm flex items-center justify-center shadow-md">
-                <AdjustmentsVerticalIcon className="w-5 h-5 text-[#228b22]" />
+                <AdjustmentsVerticalIcon className="w-5 h-5 text-[#87a96b]" />
               </div>
               <div>
                 <h2 className="text-base font-semibold text-foreground tracking-tight font-inter">Reading Settings</h2>
@@ -504,7 +500,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       {preset.name}
                     </span>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#228b22]/0 to-[#228b22]/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#87a96b]/0 to-[#87a96b]/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               ))}
             </div>
@@ -559,13 +555,13 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('fontSize', Number(e.target.value))}
                       className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                                [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                                [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                               [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                               focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                               [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                               focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                       style={{
-                        background: `linear-gradient(to right, #228b22 0%, #228b22 ${((localSettings.fontSize - 12) / 16) * 100}%, rgba(var(--muted), 0.2) ${((localSettings.fontSize - 12) / 16) * 100}%, rgba(var(--muted), 0.2) 100%)`
+                        background: `linear-gradient(to right, #87a96b 0%, #87a96b ${((localSettings.fontSize - 12) / 16) * 100}%, rgba(var(--muted), 0.2) ${((localSettings.fontSize - 12) / 16) * 100}%, rgba(var(--muted), 0.2) 100%)`
                       }}
                     />
                   </div>
@@ -586,8 +582,8 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                         onClick={() => handleSelectChange('fontFamily', font.value)}
                         className={`group relative p-3 rounded-xl border transition-all duration-300 active:scale-95 touch-manipulation ${
                           localSettings.fontFamily === font.value
-                            ? 'border-[#228b22] bg-[#228b22]/10 backdrop-blur-sm'
-                            : 'border-white/30 dark:border-white/20 bg-white/50 dark:bg-black/50 backdrop-blur-sm hover:border-[#228b22]/50 hover:bg-[#228b22]/10'
+                            ? 'border-[#87a96b] bg-[#87a96b]/10 backdrop-blur-sm'
+                            : 'border-white/30 dark:border-white/20 bg-white/50 dark:bg-black/50 backdrop-blur-sm hover:border-[#87a96b]/50 hover:bg-[#87a96b]/10'
                         }`}
                       >
                         <div className="text-2xl leading-none mb-2" style={{ fontFamily: font.value }}>
@@ -619,11 +615,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('brightness', Number(e.target.value))}
                       className="w-full h-1.5 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                                [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                                [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full 
-                               [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                               focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                               [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                               focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                   </div>
                   
@@ -641,11 +637,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('contrast', Number(e.target.value))}
                       className="w-full h-1.5 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                                [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                                [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full 
-                               [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                               focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                               [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                               focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                   </div>
                 </div>
@@ -675,11 +671,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('lineHeight', Number(e.target.value))}
                       className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                              [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                              [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                             [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                             focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                             [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                             focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                     <div className="flex justify-between text-xs text-muted font-inter">
                       <span>Tight</span>
@@ -705,11 +701,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('letterSpacing', Number(e.target.value))}
                       className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                              [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                              [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                             [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                             focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                             [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                             focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                   </div>
                   
@@ -723,7 +719,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                           onClick={() => handleSelectChange('textAlign', align)}
                           className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 touch-manipulation font-inter ${
                             localSettings.textAlign === align
-                              ? 'bg-[#228b22] text-white shadow-md backdrop-blur-sm'
+                              ? 'bg-[#87a96b] text-white shadow-md backdrop-blur-sm'
                               : 'bg-white/50 dark:bg-black/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-black/70 text-foreground'
                           }`}
                         >
@@ -753,11 +749,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('marginHorizontal', Number(e.target.value))}
                       className="w-full h-1.5 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                                [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                                [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full 
-                               [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                               focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                               [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                               focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                   </div>
                   
@@ -778,11 +774,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('maxWidth', Number(e.target.value))}
                       className="w-full h-1.5 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                                [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                                [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full 
-                               [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                               focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                               [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                               focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                   </div>
                 </div>
@@ -808,11 +804,11 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onChange={(e) => handleSliderChange('readingSpeed', Number(e.target.value))}
                       className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                              [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                              [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                             [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
-                             focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                             [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                             focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
                     />
                     <p className="text-xs text-muted font-inter">Affects time remaining estimates</p>
                   </div>
@@ -827,7 +823,7 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
                       onClick={() => handleSelectChange('autoHideToolbar', !localSettings.autoHideToolbar)}
                       className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
                         localSettings.autoHideToolbar 
-                          ? 'bg-[#228b22]' 
+                          ? 'bg-[#87a96b]' 
                           : 'bg-white/30 dark:bg-white/20'
                       }`}
                     >
@@ -845,8 +841,8 @@ export const EnhancedSettingsPanel: React.FC<EnhancedSettingsPanelProps> = ({
         {/* Footer Status */}
         {hasChanges && (
           <div className="shrink-0 px-4 py-2 border-t border-black/5 dark:border-white/5">
-            <div className="flex items-center gap-2 text-xs text-[#228b22] font-inter">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#228b22] animate-pulse" />
+            <div className="flex items-center gap-2 text-xs text-[#87a96b] font-inter">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#87a96b] animate-pulse" />
               <span>Settings saved automatically</span>
             </div>
           </div>

@@ -1087,7 +1087,7 @@ export class EpubRenderer {
       .epub-continuous-content pre {
         font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
         background-color: ${theme === 'dark' ? '#1f2937' : '#f3f4f6'};
-        color: ${theme === 'dark' ? '#e5e7eb' : '#374151'};
+        color: ${theme === 'dark' ? '#e5e7eb' : '#5a7349'};
       }
 
       .epub-continuous-content code {

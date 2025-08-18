@@ -65,7 +65,7 @@ export default function CollectionsPage() {
     { value: '#f59e0b', name: 'Amber' },
     { value: '#10b981', name: 'Emerald' },
     { value: '#06b6d4', name: 'Cyan' },
-    { value: '#6b7280', name: 'Gray' },
+    { value: '#87a96b', name: 'Gray' },
     { value: '#3b82f6', name: 'Blue' },
     { value: '#a855f7', name: 'Purple' }
   ];

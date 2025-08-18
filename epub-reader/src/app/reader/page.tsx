@@ -1385,6 +1385,7 @@ function ReaderPageContent() {
             epubRendererRef.current.removeAnnotation(annotationId);
           }
         }}
+        isMobile={isMobile}
       />
 
       {/* Annotation Toolbar */}

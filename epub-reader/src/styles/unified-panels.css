@@ -35,19 +35,22 @@
 
 /* === CORE UNIFIED PANEL === */
 .unified-panel {
-  /* Background Treatment - Single Source of Truth */
-  background: rgba(var(--panel-bg), var(--panel-bg-opacity));
-  backdrop-filter: var(--panel-blur);
-  -webkit-backdrop-filter: var(--panel-blur);
+  /* Premium White Glass Background - Light Mode */
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(32px) saturate(250%);
+  -webkit-backdrop-filter: blur(32px) saturate(250%);
   
-  /* Border System */
-  border: 1px solid rgba(var(--panel-border), var(--panel-border-opacity));
+  /* Premium Border System */
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: var(--panel-radius);
   
-  /* Shadow System - Light Mode */
+  /* Premium Shadow System - Enhanced for Glass Effect */
   box-shadow: 
-    var(--panel-shadow-light),
-    var(--panel-inset-light);
+    0 32px 64px rgba(0, 0, 0, 0.08),
+    0 16px 32px rgba(0, 0, 0, 0.05),
+    0 8px 16px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03);
   
   /* Typography */
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -63,38 +66,23 @@
 
 /* Dark Mode Overrides */
 .dark .unified-panel {
-  background: rgba(18, 18, 18, var(--panel-bg-opacity));
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.75);
+  backdrop-filter: blur(32px) saturate(250%);
+  -webkit-backdrop-filter: blur(32px) saturate(250%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 
-    var(--panel-shadow-dark),
-    var(--panel-inset-dark);
+    0 32px 64px rgba(0, 0, 0, 0.3),
+    0 16px 32px rgba(0, 0, 0, 0.2),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
 }
 
-/* Reader Floating Style Override - Matches TableOfContents */
-.unified-panel.reader-floating {
-  background: rgba(var(--surface-glass), var(--glass-opacity-high));
-  border: 1px solid rgba(var(--border-glass), 0.2);
-  color: rgb(var(--text-primary));
-  backdrop-filter: blur(28px) saturate(220%);
-  box-shadow: 
-    0 20px 60px rgba(0, 0, 0, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(var(--border-glass), 0.3);
-}
-
+/* Reader Floating Style Override - Remove old overrides, use base premium glass */
 .unified-panel.reader-floating.no-top-glint {
   box-shadow: 
     0 16px 48px rgba(0, 0, 0, 0.08),
     0 4px 16px rgba(0, 0, 0, 0.04);
-}
-
-.dark .unified-panel.reader-floating {
-  box-shadow: 
-    0 30px 90px rgba(0, 0, 0, 0.5),
-    0 12px 40px rgba(0, 0, 0, 0.3),
-    0 4px 16px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(var(--border-glass), 0.08);
 }
 
 /* === PANEL VARIANTS === */
@@ -145,6 +133,9 @@
 
 /* Bottom Sheet (Mobile) */
 .unified-panel--bottomSheet {
+  /* Slightly more opaque for better readability on mobile light mode */
+  background: rgba(var(--panel-bg), 1);
+
   position: fixed;
   left: 0;
   right: 0;
@@ -226,6 +217,12 @@
 /* === MOBILE ADAPTATIONS === */
 
 @media (max-width: 768px) {
+  /* Mobile needs higher opacity in light mode to reduce background visibility */
+  .unified-panel {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(32px) saturate(250%);
+    -webkit-backdrop-filter: blur(32px) saturate(250%);
+  }
   .unified-panel--sidebar {
     /* Transform to bottom sheet on mobile */
     position: fixed;

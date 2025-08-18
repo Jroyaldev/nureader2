@@ -100,7 +100,7 @@ export default function AnnotationToolbar({
             fontWeight: '500',
             marginBottom: '8px',
             paddingLeft: '4px',
-            color: document.documentElement.classList.contains('dark') ? '#a1a1aa' : '#6b7280'
+            color: document.documentElement.classList.contains('dark') ? '#a1a1aa' : '#87a96b'
           }}>
             Choose highlight color
           </div>
@@ -147,14 +147,14 @@ export default function AnnotationToolbar({
                 width: '100%',
                 padding: '4px',
                 fontSize: '11px',
-                color: document.documentElement.classList.contains('dark') ? '#a1a1aa' : '#6b7280',
+                color: document.documentElement.classList.contains('dark') ? '#a1a1aa' : '#87a96b',
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'color 0.2s'
               }}
               onMouseEnter={(e) => e.currentTarget.style.color = document.documentElement.classList.contains('dark') ? '#f5f5f7' : '#1c2024'}
-              onMouseLeave={(e) => e.currentTarget.style.color = document.documentElement.classList.contains('dark') ? '#a1a1aa' : '#6b7280'}
+              onMouseLeave={(e) => e.currentTarget.style.color = document.documentElement.classList.contains('dark') ? '#a1a1aa' : '#87a96b'}
             >
               Quick highlight (Yellow)
             </button>

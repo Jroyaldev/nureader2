@@ -301,14 +301,10 @@ export default function AIChatPanel({
         
         {/* Enhanced Bottom Sheet with Glassmorphism - Matches TableOfContents */}
         <div className={`
-          absolute bottom-0 left-0 right-0 
-          glass-primary backdrop-blur-xl
-          border border-white/20 dark:border-gray-700/30
-          shadow-2xl shadow-black/20
-          rounded-t-3xl transition-all duration-500 ease-out 
-          max-h-[85vh] flex flex-col
+          unified-panel unified-panel--bottomSheet
+          absolute bottom-0 left-0 right-0 transition-all duration-500 ease-out
+          max-h-[85vh] flex flex-col safe-area-pb
           ${isOpen ? 'translate-y-0' : 'translate-y-full'}
-          safe-area-pb
         `}>
           {/* Enhanced Handle */}
           <div className="flex justify-center pt-4 pb-3">
@@ -353,7 +349,7 @@ export default function AIChatPanel({
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-[#228b22] text-white backdrop-blur-sm border border-[#228b22]/20 rounded-xl text-sm shadow-sm"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-[#87a96b] text-white backdrop-blur-sm border border-[#87a96b]/20 rounded-xl text-sm shadow-sm"
                       >
                         <IconComponent className="w-3 h-3" />
                         <span className="max-w-[120px] truncate font-inter">{item.label}</span>
@@ -387,7 +383,7 @@ export default function AIChatPanel({
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full py-8">
                   <div className="w-16 h-16 rounded-xl bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] flex items-center justify-center mb-6 shadow-md">
-                    <SparklesIcon className="w-8 h-8 text-[#228b22]" />
+                    <SparklesIcon className="w-8 h-8 text-[#87a96b]" />
                   </div>
                   <h4 className="text-lg font-semibold mb-2 font-inter">How can I help?</h4>
                   <p className="text-sm text-gray-600 text-center mb-6 max-w-[280px] font-inter">
@@ -406,7 +402,7 @@ export default function AIChatPanel({
                           className="flex items-center gap-3 p-4 rounded-xl bg-white/30 active:bg-white/40 border border-white/20 backdrop-blur-sm transition-all duration-200 disabled:opacity-50 touch-manipulation font-inter"
                         >
                           <div className="p-2 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0 shadow-sm">
-                            <IconComponent className="w-4 h-4 text-[#228b22]" />
+                            <IconComponent className="w-4 h-4 text-[#87a96b]" />
                           </div>
                           <div className="text-left">
                             <span className="text-sm font-medium text-gray-900 block font-inter">{action.label}</span>
@@ -427,7 +423,7 @@ export default function AIChatPanel({
                       <div
                         className={`max-w-[85%] px-4 py-3 rounded-2xl ${
                           message.type === 'user'
-                            ? 'bg-[#228b22] text-white'
+                            ? 'bg-[#87a96b] text-white'
                             : 'bg-white/40 backdrop-blur-sm border border-white/20 text-gray-900'
                         }`}
                       >
@@ -503,7 +499,7 @@ export default function AIChatPanel({
                            }`}
                        >
                          <div className="p-2 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0 shadow-sm">
-                           <IconComponent className="w-4 h-4 text-[#228b22]" />
+                           <IconComponent className="w-4 h-4 text-[#87a96b]" />
                          </div>
                          <div className="flex-1 min-w-0">
                            <div className="flex items-center gap-2 mb-1">
@@ -542,7 +538,7 @@ export default function AIChatPanel({
                 onKeyPress={handleKeyPress}
                 placeholder="Ask about this text..."
                 disabled={isStreaming}
-                className="w-full px-4 py-3 pr-12 bg-white/50 dark:bg-gray-800/50 border border-gray-200/30 dark:border-gray-700/30 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#228b22]/20 focus:border-[#228b22]/30 text-sm placeholder:text-gray-500"
+                className="w-full px-4 py-3 pr-12 bg-white/50 dark:bg-gray-800/50 border border-gray-200/30 dark:border-gray-700/30 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20 focus:border-[#87a96b]/30 text-sm placeholder:text-gray-500"
                 rows={2}
               />
               <button
@@ -550,7 +546,7 @@ export default function AIChatPanel({
                 disabled={!inputValue.trim() || isStreaming}
                 className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 ${
                   inputValue.trim() && !isStreaming
-                    ? 'bg-[#228b22] hover:bg-[#1e7a1e] text-white touch-manipulation'
+                    ? 'bg-[#87a96b] hover:bg-[##6b8e5a] text-white touch-manipulation'
                     : 'bg-gray-400/20 text-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -575,7 +571,7 @@ export default function AIChatPanel({
       transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'}
     `}>
       {/* Elegant glass panel matching homepage */}
-      <div className="modal-glass rounded-2xl flex flex-col h-full">
+      <div className="unified-panel reader-floating flex flex-col h-full">
         {/* Enhanced header with glassmorphism */}
         <div className="shrink-0 modal-header">
           <div className="flex items-center justify-between px-6 py-5">
@@ -606,7 +602,7 @@ export default function AIChatPanel({
             <div className="px-6 pb-4">
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] backdrop-blur-sm shadow-sm">
-                  <BookmarkIcon className="w-3 h-3 text-[#228b22]" />
+                  <BookmarkIcon className="w-3 h-3 text-[#87a96b]" />
                 </div>
                 <span className="text-sm font-medium text-muted font-inter">Context</span>
                 <button
@@ -631,7 +627,7 @@ export default function AIChatPanel({
                         transition-colors
                       `}
                     >
-                      <IconComponent className="w-3 h-3 text-[#228b22]" />
+                      <IconComponent className="w-3 h-3 text-[#87a96b]" />
                       <span className="max-w-[120px] truncate font-inter">{item.label}</span>
                       {item.type !== 'location' && (
                         <button
@@ -683,7 +679,7 @@ export default function AIChatPanel({
                       className="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all duration-200 disabled:opacity-50 text-left font-inter"
                     >
                       <div className="p-1.5 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0">
-                        <IconComponent className="w-3.5 h-3.5 text-[#228b22]" />
+                        <IconComponent className="w-3.5 h-3.5 text-[#87a96b]" />
                       </div>
                       <span className="text-sm font-medium text-foreground">{action.label}</span>
                     </button>
@@ -701,7 +697,7 @@ export default function AIChatPanel({
                   <div
                     className={`max-w-[85%] px-4 py-3 rounded-2xl ${
                       message.type === 'user'
-                        ? 'bg-[#228b22] text-white'
+                        ? 'bg-[#87a96b] text-white'
                         : 'bg-white/40 backdrop-blur-sm border border-white/20 text-foreground'
                     }`}
                   >
@@ -751,7 +747,7 @@ export default function AIChatPanel({
               className={`
                 absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 backdrop-blur-sm border
                 ${inputValue.trim() && !isStreaming
-                  ? 'bg-[#228b22] hover:bg-[#1e7a1e] active:bg-[#1a6b1a] text-white border-[#228b22]/30 touch-manipulation'
+                  ? 'bg-[#87a96b] hover:bg-[##6b8e5a] active:bg-[##5a7349] text-white border-[#87a96b]/30 touch-manipulation'
                   : 'bg-gray-400/20 text-gray-400 cursor-not-allowed border-gray-400/20'
                 }
               `}
@@ -806,7 +802,7 @@ export default function AIChatPanel({
                            }`}
                        >
                          <div className="p-2 rounded-lg bg-[rgba(var(--muted),0.1)] dark:bg-[rgba(255,255,255,0.05)] shrink-0 shadow-sm">
-                           <IconComponent className="w-4 h-4 text-[#228b22]" />
+                           <IconComponent className="w-4 h-4 text-[#87a96b]" />
                          </div>
                          <div className="flex-1 min-w-0">
                            <div className="flex items-center gap-2 mb-1">
