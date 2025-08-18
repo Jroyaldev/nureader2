@@ -279,12 +279,8 @@ export default function TableOfContents({
         
         {/* Enhanced Bottom Sheet with Glassmorphism */}
         <div className={`
-          absolute bottom-0 left-0 right-0 
-          glass-primary backdrop-blur-xl
-          border border-white/20 dark:border-gray-700/30
-          shadow-2xl shadow-black/20
-          rounded-t-3xl transition-all duration-500 ease-out 
-          max-h-[85vh] flex flex-col
+          unified-panel unified-panel--bottomSheet flex flex-col transition-all duration-500 ease-out
+          max-h-[85vh]
           ${isOpen ? 'translate-y-0' : 'translate-y-full'}
           safe-area-pb
         `}>
@@ -395,7 +391,7 @@ export default function TableOfContents({
       fixed left-6 top-1/2 -translate-y-1/2 z-[75] w-[380px] h-[min(700px,90vh)]
       transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0 pointer-events-none'}
     `}>
-      <div className="reader-floating no-top-glint rounded-2xl flex flex-col h-full">
+      <div className="unified-panel reader-floating no-top-glint flex flex-col h-full">
         {/* Header (static; content below scrolls) */}
         <div className="px-6 py-5 shrink-0 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-4">

@@ -1352,23 +1352,32 @@ function ReaderPageContent() {
         </div>
       )}
 
-      {/* Loading Overlay */}
+      {/* Enhanced Loading Overlay - Clean transition */}
       {showLoadingOverlay && (
-        <div className="fixed inset-0 glass-overlay loading-overlay flex items-center justify-center z-50">
-          <div className="floating rounded-[var(--radius-2xl)] p-12 animate-scale-in" style={{
-            boxShadow: "0 30px 90px -20px rgba(0, 0, 0, 0.3), 0 0 0 var(--space-hairline) rgba(var(--border), var(--border-opacity))"
-          }}>
-            <div className="text-center space-y-6">
-              <div className="w-16 h-16 mx-auto rounded-[var(--radius-lg)] bg-[rgba(var(--accent),0.1)] flex items-center justify-center">
-                <svg className="w-8 h-8 text-[rgb(var(--accent))]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <div className="space-y-2">
-                <div className="w-12 h-12 mx-auto border-[3px] border-[rgba(var(--accent),0.2)] border-t-[rgb(var(--accent))] rounded-full animate-spin" />
-                <p className="text-lg font-semibold tracking-tight text-foreground">Loading your book</p>
-                <p className="text-sm text-muted font-medium">Preparing your reading experience...</p>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in" 
+             style={{
+               background: `rgb(var(--bg))`,
+               backdropFilter: 'none'
+             }}>
+          <div className="text-center space-y-8 animate-scale-in">
+            {/* Book icon with subtle glow */}
+            <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-[rgb(var(--accent))]/10 to-[rgb(var(--accent))]/5 flex items-center justify-center relative">
+              <svg className="w-10 h-10 text-[rgb(var(--accent))]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              {/* Subtle pulse animation */}
+              <div className="absolute inset-0 rounded-2xl bg-[rgb(var(--accent))]/5 animate-pulse" />
+            </div>
+            
+            {/* Elegant spinner */}
+            <div className="relative">
+              <div className="w-8 h-8 mx-auto border-2 border-[rgb(var(--accent))]/20 border-t-[rgb(var(--accent))] rounded-full animate-spin" />
+            </div>
+            
+            {/* Text with better hierarchy */}
+            <div className="space-y-2">
+              <p className="text-xl font-semibold text-[rgb(var(--fg))]">Opening your book</p>
+              <p className="text-sm text-[rgb(var(--muted))]">This will just take a moment...</p>
             </div>
           </div>
         </div>
@@ -1385,6 +1394,7 @@ function ReaderPageContent() {
             epubRendererRef.current.removeAnnotation(annotationId);
           }
         }}
+        isMobile={isMobile}
       />
 
       {/* Annotation Toolbar */}

@@ -124,14 +124,14 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full h-2 bg-[rgba(var(--muted),0.2)] rounded-full appearance-none cursor-pointer touch-manipulation
                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
-                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#228b22] [&::-webkit-slider-thumb]:cursor-pointer
+                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#87a96b] [&::-webkit-slider-thumb]:cursor-pointer
                    [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-black/20
                    [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
                    [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
-                   [&::-moz-range-thumb]:bg-[#228b22] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
+                   [&::-moz-range-thumb]:bg-[#87a96b] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none
                    [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:shadow-black/20
                    [&::-moz-range-thumb]:transition-transform [&::-moz-range-thumb]:hover:scale-110
-                   focus:outline-none focus:ring-2 focus:ring-[#228b22]/20"
+                   focus:outline-none focus:ring-2 focus:ring-[#87a96b]/20"
       />
     </div>
   );
@@ -308,7 +308,7 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
                     onClick={() => handleSettingChange('theme', theme.value)}
                     className={`w-full p-4 rounded-lg transition-all touch-manipulation text-left group ${
                       settings.theme === theme.value
-                        ? 'bg-[#228b22]/10 border-2 border-[#228b22]/30 shadow-sm'
+                        ? 'bg-[#87a96b]/10 border-2 border-[#87a96b]/30 shadow-sm'
                         : 'bg-[rgba(var(--muted),0.05)] hover:bg-[rgba(var(--muted),0.08)] border border-[rgba(var(--border),var(--border-opacity))]'
                     }`}
                   >
