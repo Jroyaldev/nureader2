@@ -1,10 +1,53 @@
-import Link from "next/link";
-import { createClient } from '@/utils/supabase/server';
-import { logout } from '@/app/logout/actions';
+'use client'
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+import Link from "next/link";
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { logout } from '@/app/logout/actions';
+import AuthModal from '@/components/AuthModal';
+import type { User } from '@supabase/supabase-js';
+
+export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const supabase = createClient();
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setIsLoading(false);
+    };
+
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN') {
+        setIsAuthModalOpen(false);
+        // Redirect to library after successful auth
+        window.location.href = '/library';
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh bg-[rgb(var(--bg))] flex items-center justify-center">
+        <div className="reader-glass rounded-2xl p-8">
+          <div className="animate-pulse flex items-center gap-3">
+            <div className="w-6 h-6 bg-[rgb(var(--muted))]/20 rounded"></div>
+            <div className="text-[rgb(var(--muted))]">Loading...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-dvh bg-[rgb(var(--bg))] relative">
       {/* Subtle gradient overlay instead of bubble shapes */}
@@ -31,12 +74,12 @@ export default async function Home() {
                   </form>
                 </div>
               ) : (
-                <Link
-                  href="/login"
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
                   className="px-5 py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg active:opacity-90 transition-all shadow-lg touch-manipulation"
                 >
                   Sign in
-                </Link>
+                </button>
               )}
             </div>
           </div>
@@ -63,39 +106,44 @@ export default async function Home() {
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4">
-              <Link 
-                href="/library" 
-                className="group px-8 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-                </svg>
-                Open Library
-                <svg className="w-4 h-4 group-active:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-              
-              <Link 
-                href="/reader" 
-                className="px-8 py-4 bg-[rgb(var(--bg))] border-2 border-[rgb(var(--fg))] text-[rgb(var(--fg))] font-semibold rounded-xl active:bg-[rgb(var(--fg))] active:text-[rgb(var(--bg))] transition-all inline-flex items-center gap-3 shadow-sm touch-manipulation"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                Start Reading
-              </Link>
-
-              {!user && (
-                <Link
-                  href="/login"
-                  className="px-8 py-4 text-[rgb(var(--muted))] font-semibold active:text-[rgb(var(--fg))] transition-colors inline-flex items-center gap-2 touch-manipulation"
+              {user ? (
+                <Link 
+                  href="/library" 
+                  className="group px-8 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
                 >
-                  Create Account
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                  </svg>
+                  Enter Your Library
+                  <svg className="w-4 h-4 group-active:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
+              ) : (
+                <button 
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="group px-8 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  Begin Reading
+                  <svg className="w-4 h-4 group-active:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+              
+              {!user && (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-8 py-4 bg-[rgb(var(--bg))] border-2 border-[rgb(var(--fg))] text-[rgb(var(--fg))] font-semibold rounded-xl active:bg-[rgb(var(--fg))] active:text-[rgb(var(--bg))] transition-all inline-flex items-center gap-3 shadow-sm touch-manipulation"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Create Account
+                </button>
               )}
             </div>
           </div>
@@ -188,18 +236,36 @@ export default async function Home() {
             <p className="text-lg text-[rgb(var(--muted))] mb-8 max-w-2xl mx-auto">
               Join thousands of readers who've made Arcadia their digital reading home.
             </p>
-            <Link 
-              href={user ? "/library" : "/login"}
-              className="inline-flex items-center gap-3 px-10 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
-            >
-              {user ? "Open Your Library" : "Get Started Free"}
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
+{user ? (
+              <Link 
+                href="/library"
+                className="inline-flex items-center gap-3 px-10 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
+              >
+                Open Your Library
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+            ) : (
+              <button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="inline-flex items-center gap-3 px-10 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
+              >
+                Start Reading Today
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* Authentication Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </main>
   );
 }

@@ -39,12 +39,20 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
+    request.nextUrl.pathname !== '/' &&
     !request.nextUrl.pathname.startsWith('/supabase-test') &&
     !request.nextUrl.pathname.startsWith('/supabase/health')
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Smart routing: send authenticated users from home to library
+  if (user && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/library'
     return NextResponse.redirect(url)
   }
 

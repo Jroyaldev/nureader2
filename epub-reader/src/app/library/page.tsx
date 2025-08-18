@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { logout } from '@/app/logout/actions';
 import UploadModal from "@/components/UploadModal";
 import BookDetailsEditor from "@/components/BookDetailsEditor";
 import { 
@@ -21,7 +22,8 @@ import {
   CheckIcon,
   ClockIcon,
   XMarkIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ChevronDownIcon
 } from "@heroicons/react/24/outline";
 
 interface Book {
@@ -52,6 +54,7 @@ export default function LibraryPage() {
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [user, setUser] = useState<any>(null);
   
   // New UI states
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,7 +62,9 @@ export default function LibraryPage() {
   const [sortBy, setSortBy] = useState<SortBy>('recent');
   const [showFilters, setShowFilters] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
 
   // Persisted preferences: initialize from localStorage
@@ -122,17 +127,22 @@ export default function LibraryPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Close sort menu on outside click or Escape
+  // Close menus on outside click or Escape
   useEffect(() => {
-    if (!showSortMenu) return;
+    if (!showSortMenu && !showUserMenu) return;
     const onClick = (e: MouseEvent) => {
-      if (!sortMenuRef.current) return;
-      if (!sortMenuRef.current.contains(e.target as Node)) {
+      if (showSortMenu && sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
         setShowSortMenu(false);
+      }
+      if (showUserMenu && userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
       }
     };
     const onEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowSortMenu(false);
+      if (e.key === 'Escape') {
+        setShowSortMenu(false);
+        setShowUserMenu(false);
+      }
     };
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onEsc);
@@ -140,7 +150,7 @@ export default function LibraryPage() {
       document.removeEventListener('mousedown', onClick);
       document.removeEventListener('keydown', onEsc);
     };
-  }, [showSortMenu]);
+  }, [showSortMenu, showUserMenu]);
   
   const supabase = createClient();
 
@@ -152,6 +162,8 @@ export default function LibraryPage() {
         router.push('/login');
         return;
       }
+
+      setUser(user);
 
       const { data, error } = await supabase
         .from('books')
@@ -319,13 +331,7 @@ export default function LibraryPage() {
                 >
                   <FolderIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
                 </Link>
-                <Link
-                  href="/profile"
-                  className="p-2.5 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
-                  title="Profile"
-                >
-                  <UserIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
-                </Link>
+                
                 <button
                   onClick={() => setIsUploadModalOpen(true)}
                   className="px-5 py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg hover:opacity-90 transition-all shadow-lg inline-flex items-center gap-2"
@@ -334,6 +340,64 @@ export default function LibraryPage() {
                   <PlusIcon className="w-4 h-4" />
                   Add Book
                 </button>
+
+                {/* User Menu */}
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                    aria-haspopup="menu"
+                    aria-expanded={showUserMenu}
+                    aria-label="User menu"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent))]/80 flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {user?.email?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                    <ChevronDownIcon className="w-4 h-4 text-[rgb(var(--muted))]" />
+                  </button>
+
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-64 reader-glass rounded-xl shadow-2xl py-2 z-20 animate-fade-in" role="menu">
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-[rgb(var(--border))]/[var(--border-opacity)]">
+                        <p className="font-medium text-[rgb(var(--fg))] text-sm">
+                          {user?.user_metadata?.full_name || 'Reader'}
+                        </p>
+                        <p className="text-[rgb(var(--muted))] text-xs truncate">
+                          {user?.email}
+                        </p>
+                      </div>
+
+                      {/* Menu Items */}
+                      <Link
+                        href="/profile"
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-[rgb(var(--muted))]/10 transition-colors"
+                        onClick={() => setShowUserMenu(false)}
+                        role="menuitem"
+                      >
+                        <UserIcon className="w-4 h-4 text-[rgb(var(--muted))]" />
+                        <span className="text-sm text-[rgb(var(--fg))]">Profile</span>
+                      </Link>
+
+                      <div className="border-t border-[rgb(var(--border))]/[var(--border-opacity)] mt-2 pt-2">
+                        <form action={logout}>
+                          <button
+                            type="submit"
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-red-600 dark:text-red-400 w-full text-left"
+                            role="menuitem"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span className="text-sm">Sign out</span>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
