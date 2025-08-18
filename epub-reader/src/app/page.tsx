@@ -59,26 +59,27 @@ export default function Home() {
       
       <div className="relative z-10">
         {/* Navigation Bar with glassmorphism */}
-        <nav className="w-full px-8 lg:px-12 py-6">
+        <nav className="w-full px-4 sm:px-8 lg:px-12 py-4 sm:py-6">
           <div className="max-w-7xl mx-auto">
-            <div className="reader-glass rounded-2xl px-8 py-4 flex items-center justify-between">
+            <div className="reader-glass rounded-2xl px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between">
               <div className="font-bold text-xl tracking-tight text-[rgb(var(--fg))]">Arcadia</div>
               {user ? (
-                <div className="flex items-center gap-6">
-                  <span className="text-sm text-[rgb(var(--muted))]">{user.email}</span>
+                <div className="flex items-center gap-2 sm:gap-6">
+                  <span className="text-sm text-[rgb(var(--muted))] hidden xs:inline truncate max-w-[120px] sm:max-w-none">{user.email}</span>
                   <form action={logout}>
                     <button
                       type="submit"
-                      className="text-sm font-medium text-[rgb(var(--fg))] active:text-red-600 dark:active:text-red-400 transition-colors px-4 py-2 rounded-lg active:bg-white/10 dark:active:bg-white/5 touch-manipulation"
+                      className="text-sm font-medium text-[rgb(var(--fg))] active:text-red-600 dark:active:text-red-400 transition-colors px-3 sm:px-4 py-2 rounded-lg active:bg-white/10 dark:active:bg-white/5 touch-target"
                     >
-                      Sign out
+                      <span className="hidden xs:inline">Sign out</span>
+                      <span className="xs:hidden">Out</span>
                     </button>
                   </form>
                 </div>
               ) : (
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="px-5 py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg active:opacity-90 transition-all shadow-lg touch-manipulation"
+                  className="px-4 sm:px-5 py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg active:opacity-90 transition-all shadow-lg touch-target"
                 >
                   Sign in
                 </button>
@@ -88,9 +89,9 @@ export default function Home() {
         </nav>
 
         {/* Hero Section */}
-        <div className="max-w-7xl mx-auto px-8 lg:px-12 pt-24 pb-32 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-16 sm:pt-24 pb-24 sm:pb-32 relative z-10">
           <div className="max-w-4xl">
-            <h1 className="text-[clamp(3rem,8vw,6rem)] font-bold leading-[0.9] tracking-[-0.03em] mb-8">
+            <h1 className="text-[clamp(2.5rem,8vw,6rem)] font-bold leading-[0.9] tracking-[-0.03em] mb-6 sm:mb-8">
               <span className="accent-underline text-[rgb(var(--fg))]">Read</span>
               <span className="text-[rgb(var(--muted))]/40">.</span>
               <br />
@@ -101,58 +102,58 @@ export default function Home() {
               <span className="text-[rgb(var(--muted))]/40">.</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-[rgb(var(--muted))] max-w-2xl mb-12 leading-relaxed">
+            <p className="text-lg sm:text-xl md:text-2xl text-[rgb(var(--muted))] max-w-2xl mb-8 sm:mb-12 leading-relaxed">
               A professional EPUB reader designed for focus and productivity. 
               Built for readers who value their time and attention.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col xs:flex-row flex-wrap gap-3 sm:gap-4">
               {user ? (
                 <Link 
                   href="/library" 
-                  className="group px-8 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
+                  className="group px-6 sm:px-8 py-3 sm:py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-target"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
                   </svg>
-                  Enter Your Library
+                  <span className="whitespace-nowrap">Enter Your Library</span>
                   <svg className="w-4 h-4 group-active:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
               ) : (
-                <button 
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="group px-8 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Begin Reading
-                  <svg className="w-4 h-4 group-active:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              )}
-              
-              {!user && (
-                <button
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="px-8 py-4 bg-[rgb(var(--bg))] border-2 border-[rgb(var(--fg))] text-[rgb(var(--fg))] font-semibold rounded-xl active:bg-[rgb(var(--fg))] active:text-[rgb(var(--bg))] transition-all inline-flex items-center gap-3 shadow-sm touch-manipulation"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Create Account
-                </button>
+                <>
+                  <button 
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="group px-6 sm:px-8 py-3 sm:py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl active:opacity-90 active:scale-[1.02] transition-all inline-flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-black/10 dark:shadow-white/5 touch-target"
+                  >
+                    <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    <span className="whitespace-nowrap">Begin Reading</span>
+                    <svg className="w-4 h-4 group-active:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="px-6 sm:px-8 py-3 sm:py-4 bg-[rgb(var(--bg))] border-2 border-[rgb(var(--fg))] text-[rgb(var(--fg))] font-semibold rounded-xl active:bg-[rgb(var(--fg))] active:text-[rgb(var(--bg))] transition-all inline-flex items-center justify-center gap-2 sm:gap-3 shadow-sm touch-target"
+                  >
+                    <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="whitespace-nowrap">Create Account</span>
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
 
         {/* Features Grid with Glassmorphism */}
-        <div className="max-w-7xl mx-auto px-8 lg:px-12 pb-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pb-24 sm:pb-32">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="reader-floating no-top-glint rounded-2xl p-12 group hover-lift transition-all duration-300 touch-manipulation">
               <div className="mb-5 flex items-center gap-3">
@@ -224,30 +225,30 @@ export default function Home() {
 
         {/* Bottom CTA */}
         <div className="border-t border-[rgb(var(--border))]/[var(--border-opacity)]">
-          <div className="max-w-7xl mx-auto px-8 lg:px-12 py-24 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-[rgb(var(--fg))]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-16 sm:py-24 text-center">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 text-[rgb(var(--fg))]">
               Start reading today
             </h2>
-            <p className="text-lg text-[rgb(var(--muted))] mb-8 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-[rgb(var(--muted))] mb-6 sm:mb-8 max-w-2xl mx-auto">
               Join thousands of readers who&#39;ve made Arcadia their digital reading home.
             </p>
-{user ? (
+            {user ? (
               <Link 
                 href="/library"
-                className="inline-flex items-center gap-3 px-10 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
+                className="inline-flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-3 sm:py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-base sm:text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-target"
               >
-                Open Your Library
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <span className="whitespace-nowrap">Open Your Library</span>
+                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </Link>
             ) : (
               <button 
                 onClick={() => setIsAuthModalOpen(true)}
-                className="inline-flex items-center gap-3 px-10 py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-manipulation"
+                className="inline-flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-3 sm:py-4 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold text-base sm:text-lg rounded-xl active:opacity-90 active:scale-[1.02] transition-all shadow-lg shadow-black/10 dark:shadow-white/5 touch-target"
               >
-                Start Reading Today
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <span className="whitespace-nowrap">Start Reading Today</span>
+                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </button>

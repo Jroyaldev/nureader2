@@ -258,60 +258,61 @@ export default function CollectionsPage() {
         <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/5 via-transparent to-transparent animate-gradient" />
       </div>
 
-      <div className="container-px py-8 md:py-12">
+      <div className="container-px py-4 sm:py-8 md:py-12">
         {/* Header */}
-        <div className="mb-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="mb-6 sm:mb-8 space-y-4 sm:space-y-6">
+          <div className="flex items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
               <button
                 onClick={() => router.push('/library')}
-                className="p-2.5 hover:bg-[rgb(var(--muted))]/10 rounded-xl transition-all hover:scale-105"
+                className="p-2 sm:p-2.5 hover:bg-[rgb(var(--muted))]/10 rounded-xl transition-all hover:scale-105 touch-target shrink-0"
                 aria-label="Back to library"
               >
                 <ArrowLeftIcon className="w-5 h-5" />
               </button>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight entrance-fade">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight entrance-fade">
                   Collections
                 </h1>
-                <p className="text-muted mt-1">
+                <p className="text-muted mt-1 text-sm sm:text-base">
                   Organize your library into themed collections
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn-primary inline-flex items-center gap-2 entrance-scale"
+              className="btn-primary inline-flex items-center gap-2 entrance-scale shrink-0 touch-target"
             >
-              <PlusIcon className="w-5 h-5" />
-              <span className="hidden sm:inline">New Collection</span>
+              <PlusIcon className="w-4 sm:w-5 h-4 sm:h-5" />
+              <span className="hidden xs:inline">New Collection</span>
+              <span className="xs:hidden">New</span>
             </button>
           </div>
 
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted pointer-events-none" />
+            <div className="relative flex-1 max-w-full sm:max-w-md">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-muted pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search collections..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 focus:border-[rgb(var(--accent))] focus:ring-2 focus:ring-[rgb(var(--accent))]/20 transition-all"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 focus:border-[rgb(var(--accent))] focus:ring-2 focus:ring-[rgb(var(--accent))]/20 transition-all text-sm sm:text-base"
               />
             </div>
 
             {/* View Controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between sm:justify-end gap-2">
               {/* Sort Menu */}
               <div className="relative">
                 <button
                   onClick={() => setShowSortMenu(!showSortMenu)}
-                  className="px-4 py-2.5 rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 transition-all inline-flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 transition-all inline-flex items-center gap-2 touch-target"
                 >
                   <FunnelIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium">
+                  <span className="text-xs sm:text-sm font-medium">
                     {sortBy === 'recent' ? 'Recent' : 
                      sortBy === 'oldest' ? 'Oldest' :
                      sortBy === 'name' ? 'Name' : 'Books'}
@@ -352,36 +353,36 @@ export default function CollectionsPage() {
                 <button
                   onClick={() => setViewMode('grid')}
                   aria-pressed={viewMode === 'grid'}
-                  className="inline-flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 touch-target"
                 >
                   <Squares2X2Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Grid</span>
+                  <span className="hidden xs:inline text-xs sm:text-sm">Grid</span>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
                   aria-pressed={viewMode === 'list'}
-                  className="inline-flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 touch-target"
                 >
                   <ListBulletIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">List</span>
+                  <span className="hidden xs:inline text-xs sm:text-sm">List</span>
                 </button>
               </div>
             </div>
           </div>
 
           {/* Stats Bar */}
-          <div className="flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <FolderIcon className="w-4 h-4 text-muted" />
+          <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <FolderIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted" />
               <span className="font-medium">{processedCollections.length}</span>
-              <span className="text-muted">collections</span>
+              <span className="text-muted hidden xs:inline">collections</span>
             </div>
-            <div className="flex items-center gap-2">
-              <BookmarkIcon className="w-4 h-4 text-muted" />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <BookmarkIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted" />
               <span className="font-medium">
                 {collections.reduce((acc, c) => acc + (c.book_count || 0), 0)}
               </span>
-              <span className="text-muted">total books</span>
+              <span className="text-muted hidden xs:inline">total books</span>
             </div>
           </div>
         </div>

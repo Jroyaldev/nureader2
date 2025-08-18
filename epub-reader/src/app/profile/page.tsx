@@ -176,13 +176,13 @@ export default function ProfilePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-[rgb(var(--accent))]/5 via-transparent to-[rgb(var(--accent))]/3 opacity-20" />
       </div>
       
-      <div className="relative z-10 py-8">
+      <div className="relative z-10 py-4 sm:py-8">
         {/* Top navigation */}
-        <nav className="px-8 mb-8">
+        <nav className="px-4 sm:px-8 mb-6 sm:mb-8">
           <div className="max-w-3xl mx-auto">
             <button
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors touch-target"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -193,37 +193,37 @@ export default function ProfilePage() {
         </nav>
 
         {/* Header */}
-        <header className="px-8 mb-12">
+        <header className="px-4 sm:px-8 mb-8 sm:mb-12">
           <div className="max-w-3xl mx-auto">
-            <h1 className="text-[32px] font-semibold tracking-[-0.02em] text-foreground animate-fade-in">
+            <h1 className="text-2xl sm:text-[32px] font-semibold tracking-[-0.02em] text-foreground animate-fade-in">
               Profile
             </h1>
-            <p className="text-base text-muted mt-1">Manage your reading preferences</p>
+            <p className="text-sm sm:text-base text-muted mt-1">Manage your reading preferences</p>
           </div>
         </header>
 
         {/* Main Content */}
-        <div className="px-8">
+        <div className="px-4 sm:px-8">
           <div className="max-w-3xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
               {/* Sidebar - User Info */}
               <div className="lg:col-span-1">
-                <div className="card rounded-[var(--radius-xl)] p-6 text-center lg:text-left animate-slide-up">
-                  <div className="w-24 h-24 mx-auto lg:mx-0 mb-4 rounded-full bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent))]/80 flex items-center justify-center">
-                    <UserIcon className="w-12 h-12 text-white" />
+                <div className="card rounded-[var(--radius-xl)] p-4 sm:p-6 text-center lg:text-left animate-slide-up">
+                  <div className="w-20 sm:w-24 h-20 sm:h-24 mx-auto lg:mx-0 mb-3 sm:mb-4 rounded-full bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent))]/80 flex items-center justify-center">
+                    <UserIcon className="w-10 sm:w-12 h-10 sm:h-12 text-white" />
                   </div>
-                  <h2 className="text-xl font-semibold mb-1 tracking-tight">
+                  <h2 className="text-lg sm:text-xl font-semibold mb-1 tracking-tight">
                     {formData.full_name || formData.username || 'Reader'}
                   </h2>
-                  <p className="text-sm text-muted">Member since {new Date().getFullYear()}</p>
+                  <p className="text-xs sm:text-sm text-muted">Member since {new Date().getFullYear()}</p>
                 </div>
               </div>
 
               {/* Main Form */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 {/* Account Information */}
-                <div className="card rounded-[var(--radius-xl)] p-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                  <h3 className="text-lg font-semibold mb-6 tracking-tight">Account Information</h3>
+                <div className="card rounded-[var(--radius-xl)] p-4 sm:p-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                  <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 tracking-tight">Account Information</h3>
                   
                   <div className="space-y-5">
                     {/* Username */}
@@ -259,8 +259,8 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Reading Preferences */}
-                <div className="card rounded-[var(--radius-xl)] p-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                  <h3 className="text-lg font-semibold mb-6 tracking-tight">Reading Preferences</h3>
+                <div className="card rounded-[var(--radius-xl)] p-4 sm:p-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                  <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 tracking-tight">Reading Preferences</h3>
                   
                   <div className="space-y-6">
                     {/* Theme Selection */}
@@ -337,17 +337,17 @@ export default function ProfilePage() {
             </div>
 
             {/* Actions */}
-            <div className="mt-8 flex items-center justify-end gap-3">
+            <div className="mt-6 sm:mt-8 flex flex-col xs:flex-row items-stretch xs:items-center justify-end gap-3">
               <button
                 onClick={() => router.back()}
-                className="btn-secondary px-5 py-2.5"
+                className="btn-secondary px-4 sm:px-5 py-2.5 touch-target"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="btn-primary px-5 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-4 sm:px-5 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>

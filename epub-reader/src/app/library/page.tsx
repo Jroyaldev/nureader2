@@ -306,27 +306,27 @@ export default function LibraryPage() {
       
       <div className="relative z-10">
         {/* Navigation Bar with glassmorphism */}
-        <nav className="w-full px-8 lg:px-12 py-6">
+        <nav className="w-full px-4 sm:px-8 lg:px-12 py-4 sm:py-6">
           <div className="max-w-7xl mx-auto">
-            <div className="reader-glass rounded-2xl px-8 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-8">
+            <div className="reader-glass rounded-xl sm:rounded-2xl px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-8 min-w-0">
                 <Link 
                   href="/" 
-                  className="flex items-center gap-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5"
+                  className="flex items-center gap-1 sm:gap-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors px-2 sm:px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5"
                 >
                   <ArrowLeftIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium">Home</span>
+                  <span className="text-sm font-medium hidden xs:inline">Home</span>
                 </Link>
-                <div className="flex items-center gap-3">
-                  <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))]" />
-                  <h1 className="text-xl font-bold text-[rgb(var(--fg))]">Library</h1>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <BookOpenIcon className="w-5 h-5 text-[rgb(var(--accent))] flex-shrink-0" />
+                  <h1 className="text-lg sm:text-xl font-bold text-[rgb(var(--fg))] truncate">Library</h1>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
                 <Link
                   href="/collections"
-                  className="p-2.5 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                  className="p-2 sm:p-2.5 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
                   title="Collections"
                 >
                   <FolderIcon className="w-5 h-5 text-[rgb(var(--muted))]" />
@@ -334,28 +334,28 @@ export default function LibraryPage() {
                 
                 <button
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="px-5 py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg hover:opacity-90 transition-all shadow-lg inline-flex items-center gap-2"
+                  className="px-3 sm:px-5 py-2 sm:py-2.5 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-medium rounded-lg hover:opacity-90 transition-all shadow-lg inline-flex items-center gap-1 sm:gap-2"
                   aria-label="Add book"
                 >
                   <PlusIcon className="w-4 h-4" />
-                  Add Book
+                  <span className="hidden xs:inline">Add Book</span>
                 </button>
 
                 {/* User Menu */}
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
                     aria-haspopup="menu"
                     aria-expanded={showUserMenu}
                     aria-label="User menu"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent))]/80 flex items-center justify-center">
-                      <span className="text-white font-semibold text-sm">
+                    <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-full bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent))]/80 flex items-center justify-center">
+                      <span className="text-white font-semibold text-xs sm:text-sm">
                         {user?.email?.charAt(0).toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <ChevronDownIcon className="w-4 h-4 text-[rgb(var(--muted))]" />
+                    <ChevronDownIcon className="w-4 h-4 text-[rgb(var(--muted))] hidden sm:block" />
                   </button>
 
                   {showUserMenu && (
@@ -404,30 +404,33 @@ export default function LibraryPage() {
         </nav>
 
         {/* Header Section */}
-        <header className="px-8 lg:px-12 py-8">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Stats and Search */}
-            <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold text-[rgb(var(--fg))]">
-                  {!isLoading && books.length} {!isLoading && (books.length === 1 ? 'Book' : 'Books')}
-                  {isLoading && 'Loading...'}
-                </h2>
-                {!isLoading && (
-                  <p className="text-[rgb(var(--muted))] mt-1">
-                    {searchQuery && `Showing ${processedBooks.length} result${processedBooks.length !== 1 ? 's' : ''} for "${searchQuery}"`}
-                    {selectedLanguage !== 'all' && ` in ${selectedLanguage}`}
-                    {!searchQuery && selectedLanguage === 'all' && 'Your digital library'}
-                  </p>
-                )}
+        <header className="px-4 sm:px-8 lg:px-12 py-4 sm:py-8">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+            {/* Stats and Search - Stack on mobile */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Stats Row */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-[rgb(var(--fg))]">
+                    {!isLoading && books.length} {!isLoading && (books.length === 1 ? 'Book' : 'Books')}
+                    {isLoading && 'Loading...'}
+                  </h2>
+                  {!isLoading && (
+                    <p className="text-[rgb(var(--muted))] mt-1 text-sm sm:text-base">
+                      {searchQuery && `${processedBooks.length} result${processedBooks.length !== 1 ? 's' : ''} for "${searchQuery}"`}
+                      {selectedLanguage !== 'all' && ` in ${selectedLanguage}`}
+                      {!searchQuery && selectedLanguage === 'all' && 'Your digital library'}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {/* Search Bar */}
-              <div className="w-full lg:w-96 relative">
+              {/* Search Bar - Full width on mobile */}
+              <div className="w-full sm:max-w-md relative">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[rgb(var(--muted))] pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search by title or author… (Press /)"
+                  placeholder="Search by title or author…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   id="library-search-input"
@@ -446,46 +449,46 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* Controls Bar */}
-            <div className="glass rounded-2xl border px-4 py-3 md:px-5 md:py-4 flex flex-wrap items-center gap-3 md:gap-4">
-              {/* View Mode Toggle (segmented control) */}
-              <div className="segmented-control" role="group" aria-label="View mode">
+            {/* Controls Bar - Optimized for mobile */}
+            <div className="glass rounded-xl sm:rounded-2xl border px-3 sm:px-4 md:px-5 py-3 md:py-4 flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
+              {/* View Mode Toggle (segmented control) - Touch optimized */}
+              <div className="segmented-control min-w-0" role="group" aria-label="View mode">
                 <button
                   onClick={() => setViewMode('grid')}
                   aria-pressed={viewMode === 'grid'}
-                  className="inline-flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 touch-target min-w-0"
                   title="Grid view"
                   aria-label="Grid view"
                 >
-                  <Squares2X2Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Grid</span>
+                  <Squares2X2Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xs:inline text-xs sm:text-sm">Grid</span>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
                   aria-pressed={viewMode === 'list'}
-                  className="inline-flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 touch-target min-w-0"
                   title="List view"
                   aria-label="List view"
                 >
-                  <ListBulletIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">List</span>
+                  <ListBulletIcon className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xs:inline text-xs sm:text-sm">List</span>
                 </button>
               </div>
 
-              {/* Sort Menu - styled to match segmented aesthetic */}
-              <div className="relative" ref={sortMenuRef}>
+              {/* Sort Menu - Mobile optimized */}
+              <div className="relative flex-shrink-0" ref={sortMenuRef}>
                 <button
                   onClick={() => setShowSortMenu(!showSortMenu)}
-                  className="px-4 py-2.5 rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 transition-all inline-flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 transition-all inline-flex items-center gap-1 sm:gap-2 touch-target"
                   aria-haspopup="menu"
                   aria-expanded={showSortMenu}
                   aria-label="Sort books"
                 >
-                  <ArrowsUpDownIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    {sortBy === 'recent' ? 'Recently Added' :
-                     sortBy === 'oldest' ? 'Oldest First' :
-                     sortBy === 'title' ? 'Title A-Z' : 'Author A-Z'}
+                  <ArrowsUpDownIcon className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium hidden xs:inline truncate">
+                    {sortBy === 'recent' ? 'Recent' :
+                     sortBy === 'oldest' ? 'Oldest' :
+                     sortBy === 'title' ? 'A-Z' : 'Author'}
                   </span>
                 </button>
                 {showSortMenu && (
@@ -519,11 +522,11 @@ export default function LibraryPage() {
                 )}
               </div>
 
-              {/* Filter Button - only show if we have multiple languages */}
+              {/* Filter Button - Mobile optimized */}
               {availableLanguages.length > 1 && (
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`px-4 py-2.5 rounded-xl border transition-all inline-flex items-center gap-2 ${
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border transition-all inline-flex items-center gap-1 sm:gap-2 touch-target flex-shrink-0 ${
                     showFilters
                       ? 'bg-[rgb(var(--muted))]/12 border-[rgb(var(--accent))]/40 text-[rgb(var(--fg))]'
                       : 'bg-[rgb(var(--muted))]/5 border border-[rgb(var(--border))]/10 hover:bg-[rgb(var(--muted))]/10 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]'
@@ -531,36 +534,36 @@ export default function LibraryPage() {
                   aria-pressed={showFilters}
                   aria-label="Toggle filters"
                 >
-                  <FunnelIcon className="w-4 h-4" />
-                  Filters
+                  <FunnelIcon className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium hidden xs:inline">Filters</span>
                   {selectedLanguage !== 'all' && (
-                    <span className="px-2 py-0.5 bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))] rounded text-xs font-medium">1</span>
+                    <span className="px-1.5 sm:px-2 py-0.5 bg-[rgb(var(--accent))]/20 text-[rgb(var(--accent))] rounded text-xs font-medium">1</span>
                   )}
                 </button>
               )}
             </div>
 
-            {/* Filter Panel */}
+            {/* Filter Panel - Mobile optimized */}
             {showFilters && availableLanguages.length > 1 && (
-              <div className="p-4 glass rounded-xl">
-                <div className="flex items-center gap-4">
+              <div className="p-3 sm:p-4 glass rounded-xl">
+                <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
                   <span className="text-sm text-[rgb(var(--muted))] font-medium">Language:</span>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => setSelectedLanguage('all')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all touch-target ${
                         selectedLanguage === 'all'
                           ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]'
                           : 'bg-[rgb(var(--bg))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] border border-[rgb(var(--border))]/[var(--border-opacity)]'
                       }`}
                     >
-                      All Languages
+                      All
                     </button>
                     {availableLanguages.map(lang => (
                       <button
                         key={lang}
                         onClick={() => setSelectedLanguage(lang)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all touch-target ${
                           selectedLanguage === lang
                             ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]'
                             : 'bg-[rgb(var(--bg))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] border border-[rgb(var(--border))]/[var(--border-opacity)]'

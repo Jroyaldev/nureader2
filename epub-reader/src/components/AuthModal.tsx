@@ -52,7 +52,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Glassmorphism backdrop */}
       <div 
         className="absolute inset-0 bg-black/20 backdrop-blur-md transition-opacity duration-300"
@@ -60,11 +60,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       />
       
       {/* Modal content */}
-      <div className="relative reader-glass rounded-2xl p-8 max-w-md w-full animate-zoom-in">
+      <div className="relative reader-glass rounded-2xl p-6 sm:p-8 max-w-md w-full animate-zoom-in">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors touch-target"
           aria-label="Close modal"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,11 +73,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </button>
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="font-bold text-2xl mb-2 text-[rgb(var(--fg))]">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="font-bold text-xl sm:text-2xl mb-2 text-[rgb(var(--fg))]">
             {isSignUp ? 'Join Arcadia' : 'Welcome back'}
           </div>
-          <p className="text-[rgb(var(--muted))]">
+          <p className="text-sm sm:text-base text-[rgb(var(--muted))] leading-relaxed">
             {isSignUp 
               ? 'Start your reading journey with beautiful, distraction-free EPUB reading'
               : 'Continue your reading journey where you left off'
@@ -86,7 +86,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
 
         {/* Form */}
-        <form action={handleAuth} className="space-y-4">
+        <form action={handleAuth} className="space-y-3 sm:space-y-4">
           {/* Email field */}
           <div>
             <input
@@ -94,7 +94,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               type="email"
               placeholder="Email address"
               required
-              className="w-full px-4 py-3 bg-[rgb(var(--bg))]/50 border border-[rgb(var(--border))]/[var(--border-opacity)] rounded-xl text-[rgb(var(--fg))] placeholder-[rgb(var(--muted))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))] focus:border-transparent transition-all"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-[rgb(var(--bg))]/50 border border-[rgb(var(--border))]/[var(--border-opacity)] rounded-xl text-[rgb(var(--fg))] placeholder-[rgb(var(--muted))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))] focus:border-transparent transition-all text-base"
             />
           </div>
 
@@ -105,13 +105,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               type="password"
               placeholder="Password"
               required
-              className="w-full px-4 py-3 bg-[rgb(var(--bg))]/50 border border-[rgb(var(--border))]/[var(--border-opacity)] rounded-xl text-[rgb(var(--fg))] placeholder-[rgb(var(--muted))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))] focus:border-transparent transition-all"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-[rgb(var(--bg))]/50 border border-[rgb(var(--border))]/[var(--border-opacity)] rounded-xl text-[rgb(var(--fg))] placeholder-[rgb(var(--muted))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent))] focus:border-transparent transition-all text-base"
             />
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="text-red-500 text-sm text-center bg-red-500/10 rounded-lg p-3">
+            <div className="text-red-500 text-xs sm:text-sm text-center bg-red-500/10 rounded-lg p-2.5 sm:p-3">
               {error}
             </div>
           )}
@@ -120,7 +120,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-2.5 sm:py-3 bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-target text-base"
           >
             {isLoading ? (
               <>
@@ -128,7 +128,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {isSignUp ? 'Creating account...' : 'Signing in...'}
+                <span>{isSignUp ? 'Creating account...' : 'Signing in...'}</span>
               </>
             ) : (
               isSignUp ? 'Create Account' : 'Sign In'
@@ -137,22 +137,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </form>
 
         {/* Toggle between sign in/up */}
-        <div className="mt-6 text-center">
+        <div className="mt-4 sm:mt-6 text-center">
           <button
             type="button"
             onClick={() => {
               setIsSignUp(!isSignUp)
               setError('')
             }}
-            className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors"
+            className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] transition-colors touch-target text-sm sm:text-base"
           >
             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </button>
         </div>
 
         {/* Subtle divider */}
-        <div className="mt-6 pt-6 border-t border-[rgb(var(--border))]/[var(--border-opacity)]">
-          <p className="text-xs text-center text-[rgb(var(--muted))]/70">
+        <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-[rgb(var(--border))]/[var(--border-opacity)]">
+          <p className="text-xs text-center text-[rgb(var(--muted))]/70 leading-relaxed">
             By continuing, you agree to our terms of service and privacy policy
           </p>
         </div>

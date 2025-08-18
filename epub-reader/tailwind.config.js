@@ -8,6 +8,9 @@ module.exports = {
   darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
+      screens: {
+        'xs': '480px',
+      },
       colors: {
         // Legacy colors (maintained for compatibility)
         background: 'rgb(var(--bg))',
