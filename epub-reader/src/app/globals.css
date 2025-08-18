@@ -211,13 +211,13 @@
   
   /* Essential custom utilities */
   .glass {
-    backdrop-filter: blur(30px) saturate(200%);
+    backdrop-filter: blur(30px) saturate(180%);
     background-color: rgba(var(--bg), 0.75);
     border: 1px solid rgba(var(--border), 0.15);
   }
   
   .glass-strong {
-    backdrop-filter: blur(40px) saturate(220%);
+    backdrop-filter: blur(40px) saturate(200%);
     background-color: rgba(var(--bg), 0.85);
     border: 1px solid rgba(var(--border), 0.2);
   }

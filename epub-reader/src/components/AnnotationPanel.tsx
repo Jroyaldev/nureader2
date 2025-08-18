@@ -277,7 +277,7 @@ export default function AnnotationPanel({ bookId, isOpen, onClose, onJumpToAnnot
                 {filteredAnnotations.map((annotation) => (
                   <div
                     key={annotation.id}
-                    className="p-4 rounded-xl bg-white/50 dark:bg-black/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/20 hover:bg-white/70 dark:hover:bg-black/70 transition-all cursor-pointer touch-manipulation font-inter"
+                    className="relative p-4 rounded-xl bg-white/50 dark:bg-black/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/20 hover:bg-white/70 dark:hover:bg-black/70 transition-all cursor-pointer touch-manipulation font-inter"
                     onClick={() => onJumpToAnnotation(annotation.location, annotation.id)}
                   >
                     {/* Color stripe for highlights */}

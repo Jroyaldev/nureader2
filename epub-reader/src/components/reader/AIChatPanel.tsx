@@ -546,7 +546,7 @@ export default function AIChatPanel({
                 disabled={!inputValue.trim() || isStreaming}
                 className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 ${
                   inputValue.trim() && !isStreaming
-                    ? 'bg-[#87a96b] hover:bg-[##6b8e5a] text-white touch-manipulation'
+                    ? 'bg-[#87a96b] hover:bg-[#6b8e5a] text-white touch-manipulation'
                     : 'bg-gray-400/20 text-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -747,7 +747,7 @@ export default function AIChatPanel({
               className={`
                 absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200 backdrop-blur-sm border
                 ${inputValue.trim() && !isStreaming
-                  ? 'bg-[#87a96b] hover:bg-[##6b8e5a] active:bg-[##5a7349] text-white border-[#87a96b]/30 touch-manipulation'
+                  ? 'bg-[#87a96b] hover:bg-[#6b8e5a] active:bg-[#5a7349] text-white border-[#87a96b]/30 touch-manipulation'
                   : 'bg-gray-400/20 text-gray-400 cursor-not-allowed border-gray-400/20'
                 }
               `}
