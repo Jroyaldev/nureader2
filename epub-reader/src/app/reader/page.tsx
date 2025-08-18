@@ -426,41 +426,93 @@ function ReaderPageContent() {
           return;
         }
 
+        // Hide container initially if we have saved progress to restore
+        const hasPositionToRestore = savedLocation || savedPercentage > 0;
+        if (hasPositionToRestore && containerRef.current) {
+          containerRef.current.style.opacity = '0';
+        }
+
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
 
         // After book is loaded, jump to saved position if available
         if (bookId && (savedLocation || savedPercentage > 0) && epubRendererRef.current) {
-          // Wait for DOM to be fully ready and measured
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              if (!epubRendererRef.current) return;
+          console.log('📍 Attempting to restore reading position...');
+          console.log('  Saved location:', savedLocation);
+          console.log('  Saved percentage:', savedPercentage + '%');
+          
+          // Calculate target scroll position for monitoring
+          if (savedLocation && !savedLocation.includes('undefined')) {
+            // For CFI, we'll need to calculate after restoration
+          } else if (savedPercentage > 0 && containerRef.current) {
+            // Calculate expected scroll position for percentage
+            const scrollHeight = containerRef.current.scrollHeight - containerRef.current.clientHeight;
+          }
+          
+          // Try CFI-based restoration first
+          let restored = false;
+          if (savedLocation && !savedLocation.includes('undefined')) {
+            console.log('  Trying CFI restoration...');
+            restored = epubRendererRef.current.displayCfi(savedLocation);
+          }
+          
+          // If CFI failed or wasn't available, use percentage
+          if (!restored && savedPercentage > 0) {
+            console.log('  Using percentage-based restoration...');
+            epubRendererRef.current.restoreToPercentage(savedPercentage);
+            restored = true;
+          }
+          
+          if (!restored) {
+            console.warn('⚠️ Could not restore reading position');
+            // Show container immediately if restoration failed
+            if (containerRef.current) {
+              containerRef.current.style.opacity = '1';
+            }
+          } else {
+            console.log('✅ Reading position restored successfully');
+            
+            // Wait for scroll to settle before showing container
+            const waitForScrollSettle = () => {
+              if (!containerRef.current) return;
               
-              console.log('📍 Attempting to restore reading position...');
-              console.log('  Saved location:', savedLocation);
-              console.log('  Saved percentage:', savedPercentage + '%');
+              let lastScrollTop = containerRef.current.scrollTop;
+              let stableCount = 0;
+              const requiredStableFrames = 3;
               
-              // Try CFI-based restoration first
-              let restored = false;
-              if (savedLocation && !savedLocation.includes('undefined')) {
-                console.log('  Trying CFI restoration...');
-                restored = epubRendererRef.current.displayCfi(savedLocation);
-              }
+              const checkScrollStable = () => {
+                if (!containerRef.current) return;
+                
+                const currentScrollTop = containerRef.current.scrollTop;
+                
+                if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
+                  stableCount++;
+                  if (stableCount >= requiredStableFrames) {
+                    // Scroll has settled, show container with smooth fade-in
+                    containerRef.current.style.transition = 'opacity 0.3s ease-out';
+                    containerRef.current.style.opacity = '1';
+                    console.log('📍 Container shown after scroll settled at position:', currentScrollTop);
+                    return;
+                  }
+                } else {
+                  stableCount = 0;
+                  lastScrollTop = currentScrollTop;
+                }
+                
+                requestAnimationFrame(checkScrollStable);
+              };
               
-              // If CFI failed or wasn't available, use percentage
-              if (!restored && savedPercentage > 0) {
-                console.log('  Using percentage-based restoration...');
-                epubRendererRef.current.restoreToPercentage(savedPercentage);
-                restored = true;
-              }
-              
-              if (!restored) {
-                console.warn('⚠️ Could not restore reading position');
-              } else {
-                console.log('✅ Reading position restored successfully');
-              }
-            }, 1000); // Give more time for complex books to fully render
-          });
+              requestAnimationFrame(checkScrollStable);
+            };
+            
+            // Start monitoring scroll stability
+            requestAnimationFrame(waitForScrollSettle);
+          }
+        } else {
+          // Ensure container is visible for books without saved progress
+          if (containerRef.current) {
+            containerRef.current.style.opacity = '1';
+          }
         }
 
         // Load annotations after book is loaded
