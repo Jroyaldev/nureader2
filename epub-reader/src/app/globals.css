@@ -52,15 +52,15 @@
     --space-3xl: 48px;
   }
   .dark {
-    /* Mature scholarly dark mode */
-    --bg: 0 0 0; /* Pure black */
-    --fg: 240 240 240; /* Clean white */
-    --muted: 160 160 160; /* Muted gray */
+    /* Unified dark mode - consistent across all components */
+    --bg: 16 18 21; /* Rich dark background (matches page) */
+    --fg: 245 245 247; /* Clean white text */
+    --muted: 155 160 170; /* Muted gray */
     --border: 255 255 255;
     --border-opacity: 0.08;
     --accent: 135 169 107; /* Sage green */
-    --surface: 8 8 8; /* True black surface */
-    --surface-hover: 16 16 16; /* Subtle hover */
+    --surface: 24 27 31; /* Panel/component background */
+    --surface-hover: 32 36 41; /* Hover state */
     --shadow: 0 0 0;
     --ring: 135 169 107;
   }
@@ -149,7 +149,7 @@
   html[data-theme="dark"] .epub-container iframe,
   html.night .epub-container iframe,
   html[data-theme="night"] .epub-container iframe {
-    background-color: #000000 !important;
+    background-color: rgb(16, 18, 21) !important;
   }
   
   html.light .epub-container iframe,
@@ -166,14 +166,14 @@
   html[data-theme="dark"],
   html.night,
   html[data-theme="night"] {
-    background-color: #000000 !important;
+    background-color: rgb(16, 18, 21) !important;
   }
   
   html.dark body,
   html[data-theme="dark"] body,
   html.night body,
   html[data-theme="night"] body {
-    background-color: #000000 !important;
+    background-color: rgb(16, 18, 21) !important;
   }
   
   /* Force light mode background */

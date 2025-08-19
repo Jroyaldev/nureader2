@@ -66,15 +66,15 @@
   --interactive-focus: 96 165 250;       /* Brighter blue for focus */
   --interactive-disabled: 75 85 99;      /* Dark disabled state */
   
-  /* Legacy compatibility - Update existing variables */
-  --bg: var(--surface-primary);
-  --fg: var(--text-primary);
-  --muted: var(--text-secondary);
-  --border: var(--border-primary);
+  /* Legacy compatibility - Matches globals.css exactly */
+  --bg: 16 18 21;                        /* Same as surface-primary */
+  --fg: 245 245 247;                     /* Same as text-primary */
+  --muted: 155 160 170;                  /* Same as text-secondary */
+  --border: 255 255 255;                 /* Same as border-primary */
   --border-opacity: 0.08;
-  --accent: 96 165 250;
-  --surface: var(--surface-secondary);
-  --surface-hover: var(--surface-elevated);
+  --accent: 135 169 107;                 /* Sage green - unified */
+  --surface: 24 27 31;                   /* Same as surface-secondary */
+  --surface-hover: 32 36 41;             /* Same as surface-elevated */
 }
 
 /* Theme transition management */
