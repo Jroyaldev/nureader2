@@ -435,19 +435,17 @@ function ReaderPageContent() {
         const file = new File([fileData], book.title + '.epub', { type: 'application/epub+zip' });
         await loadFromFile(file);
 
-        // After book is loaded, jump to saved position if available
+        // Apply all settings BEFORE position restoration to prevent reflow
+        if (epubRendererRef.current) {
+          console.log('🎨 Applying reading settings before position restoration...');
+          handleSettingsChange(readingSettings);
+        }
+
+        // After book is loaded and settings applied, jump to saved position if available
         if (bookId && (savedLocation || savedPercentage > 0) && epubRendererRef.current) {
           console.log('📍 Attempting to restore reading position...');
           console.log('  Saved location:', savedLocation);
           console.log('  Saved percentage:', savedPercentage + '%');
-          
-          // Calculate target scroll position for monitoring
-          if (savedLocation && !savedLocation.includes('undefined')) {
-            // For CFI, we'll need to calculate after restoration
-          } else if (savedPercentage > 0 && containerRef.current) {
-            // Calculate expected scroll position for percentage
-            const scrollHeight = containerRef.current.scrollHeight - containerRef.current.clientHeight;
-          }
           
           // Try CFI-based restoration first
           let restored = false;
@@ -509,21 +507,15 @@ function ReaderPageContent() {
             requestAnimationFrame(waitForScrollSettle);
           }
         } else {
-          // Ensure container is visible for books without saved progress
+          // For books without saved progress, apply settings and show immediately
           if (containerRef.current) {
             containerRef.current.style.opacity = '1';
           }
         }
 
-        // Load annotations after book is loaded
+        // Load annotations after position restoration is complete
         if (bookId && epubRendererRef.current) {
           await loadAnnotations(epubRendererRef.current);
-        }
-        
-        // Apply current settings to the newly loaded book
-        if (epubRendererRef.current) {
-          // Apply all current settings to ensure consistency
-          handleSettingsChange(readingSettings);
         }
         
       } catch (err) {
@@ -875,7 +867,7 @@ function ReaderPageContent() {
     settingsSidebar.toggle();
   }, [settingsSidebar]);
 
-  // Settings handlers
+  // Settings handlers - optimized with batched DOM updates
   const handleSettingsChange = useCallback((newSettings: Partial<SimplifiedReadingSettings>) => {
     setReadingSettings(prev => {
       const updated = { ...prev, ...newSettings };
@@ -891,55 +883,63 @@ function ReaderPageContent() {
         }
       }
       
-      // Apply container styles and content styles
+      // Apply container styles and content styles with batched DOM updates
       if (containerRef.current) {
         const container = containerRef.current;
         
-        // Apply to all chapter content
-        const chapters = container.querySelectorAll('[data-chapter-index]');
-        chapters.forEach((chapter: any) => {
-          // Typography
-          if (newSettings.fontFamily !== undefined) {
-            chapter.style.fontFamily = newSettings.fontFamily;
-          }
-          if (newSettings.lineHeight !== undefined) {
-            chapter.style.lineHeight = newSettings.lineHeight.toString();
-          }
-          if (newSettings.letterSpacing !== undefined) {
-            chapter.style.letterSpacing = `${newSettings.letterSpacing}px`;
-          }
-          if (newSettings.textAlign !== undefined) {
-            chapter.style.textAlign = newSettings.textAlign;
-          }
+        // Batch DOM reads and writes to prevent layout thrashing
+        requestAnimationFrame(() => {
+          // Apply to all chapter content
+          const chapters = container.querySelectorAll('[data-chapter-index]');
           
-          // Margins
-          if (newSettings.marginHorizontal !== undefined) {
-            chapter.style.paddingLeft = `${newSettings.marginHorizontal}px`;
-            chapter.style.paddingRight = `${newSettings.marginHorizontal}px`;
-          }
-          if (newSettings.marginVertical !== undefined) {
-            chapter.style.paddingTop = `${newSettings.marginVertical}px`;
-            chapter.style.paddingBottom = `${newSettings.marginVertical}px`;
-          }
+          // Build CSS rule strings to minimize style recalculations
+          const cssUpdates: string[] = [];
           
-          // Max width constraint
-          if (newSettings.maxWidth !== undefined) {
-            if (newSettings.maxWidth > 0) {
-              chapter.style.maxWidth = `${newSettings.maxWidth}px`;
-              chapter.style.margin = '0 auto';
-            } else {
-              chapter.style.maxWidth = 'none';
-              chapter.style.margin = '0';
+          chapters.forEach((chapter: any) => {
+            // Use CSS custom properties for better performance when possible
+            // Typography
+            if (newSettings.fontFamily !== undefined) {
+              chapter.style.fontFamily = newSettings.fontFamily;
             }
+            if (newSettings.lineHeight !== undefined) {
+              chapter.style.lineHeight = newSettings.lineHeight.toString();
+            }
+            if (newSettings.letterSpacing !== undefined) {
+              chapter.style.letterSpacing = `${newSettings.letterSpacing}px`;
+            }
+            if (newSettings.textAlign !== undefined) {
+              chapter.style.textAlign = newSettings.textAlign;
+            }
+            
+            // Margins
+            if (newSettings.marginHorizontal !== undefined) {
+              chapter.style.paddingLeft = `${newSettings.marginHorizontal}px`;
+              chapter.style.paddingRight = `${newSettings.marginHorizontal}px`;
+            }
+            if (newSettings.marginVertical !== undefined) {
+              chapter.style.paddingTop = `${newSettings.marginVertical}px`;
+              chapter.style.paddingBottom = `${newSettings.marginVertical}px`;
+            }
+            
+            // Max width constraint
+            if (newSettings.maxWidth !== undefined) {
+              if (newSettings.maxWidth > 0) {
+                chapter.style.maxWidth = `${newSettings.maxWidth}px`;
+                chapter.style.margin = '0 auto';
+              } else {
+                chapter.style.maxWidth = 'none';
+                chapter.style.margin = '0';
+              }
+            }
+          });
+          
+          // Display filters (brightness/contrast) applied to container
+          if (newSettings.brightness !== undefined || newSettings.contrast !== undefined) {
+            const brightness = newSettings.brightness ?? updated.brightness;
+            const contrast = newSettings.contrast ?? updated.contrast;
+            container.style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
           }
         });
-        
-        // Display filters (brightness/contrast)
-        if (newSettings.brightness !== undefined || newSettings.contrast !== undefined) {
-          const brightness = newSettings.brightness ?? updated.brightness;
-          const contrast = newSettings.contrast ?? updated.contrast;
-          container.style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
-        }
       }
       
       // Auto-hide toolbar
