@@ -152,17 +152,16 @@ export class ReadingServiceImpl implements ReadingService {
         this.activeSession.pagesRead = (this.activeSession.pagesRead || 0) + 1;
       }
 
-      // Upsert reading progress
+      // Upsert reading progress - Fixed field names to match database schema
       const { error } = await this.supabase
         .from('reading_progress')
         .upsert({
           user_id: user.id,
           book_id: bookId,
-          chapter_id: progress.chapterId,
-          position: progress.position,
-          percentage_complete: progress.percentageComplete,
-          total_time_minutes: progress.totalTimeMinutes || 0,
-          updated_at: new Date().toISOString(),
+          current_location: progress.position, // Fixed: was 'position'
+          progress_percentage: progress.percentageComplete, // Fixed: was 'percentage_complete'
+          reading_time_minutes: progress.totalTimeMinutes || 0, // Fixed: was 'total_time_minutes'
+          last_read_at: new Date().toISOString(), // Fixed: was 'updated_at'
         }, {
           onConflict: 'user_id,book_id',
         });
@@ -198,10 +197,10 @@ export class ReadingServiceImpl implements ReadingService {
       return data ? {
         bookId: data.book_id,
         chapterId: data.chapter_id,
-        position: data.position,
-        percentageComplete: data.percentage_complete,
-        totalTimeMinutes: data.total_time_minutes,
-        lastRead: data.updated_at,
+        position: data.current_location, // Fixed: was 'data.position'
+        percentageComplete: data.progress_percentage, // Fixed: was 'data.percentage_complete'
+        totalTimeMinutes: data.reading_time_minutes, // Fixed: was 'data.total_time_minutes'
+        lastRead: data.last_read_at, // Fixed: was 'data.updated_at'
       } : null;
     } catch (error) {
       console.error('Failed to get progress:', error);
@@ -215,14 +214,14 @@ export class ReadingServiceImpl implements ReadingService {
       if (authError || !user) throw new Error('Authentication required');
 
       // Check for conflicting annotations at the same position
-      if (annotation.cfiRange) {
+      if (annotation.location) {
         const { data: existing } = await this.supabase
           .from('annotations')
           .select('id')
           .eq('book_id', annotation.bookId)
           .eq('user_id', user.id)
-          .eq('cfi_range', annotation.cfiRange)
-          .eq('type', annotation.type)
+          .eq('location', annotation.location)
+          .eq('annotation_type', annotation.type)
           .single();
 
         if (existing) {
@@ -235,11 +234,10 @@ export class ReadingServiceImpl implements ReadingService {
         .insert({
           user_id: user.id,
           book_id: annotation.bookId,
-          type: annotation.type,
-          chapter_id: annotation.chapterId,
-          cfi_range: annotation.cfiRange,
-          selected_text: annotation.selectedText,
-          note_content: annotation.noteContent,
+          annotation_type: annotation.type,
+          content: annotation.content,
+          note: annotation.note,
+          location: annotation.location,
           color: annotation.color,
         })
         .select()
@@ -268,7 +266,7 @@ export class ReadingServiceImpl implements ReadingService {
       // Apply filters
       if (filters) {
         if (filters.type) {
-          query = query.eq('type', filters.type);
+          query = query.eq('annotation_type', filters.type);
         }
         if (filters.chapterId) {
           query = query.eq('chapter_id', filters.chapterId);
@@ -292,31 +290,8 @@ export class ReadingServiceImpl implements ReadingService {
       const { data: { user }, error: authError } = await this.supabase.auth.getUser();
       if (authError || !user) throw new Error('Authentication required');
 
-      // Check for conflicts if position is being updated
-      if (updates.cfiRange) {
-        const { data: existing } = await this.supabase
-          .from('annotations')
-          .select('id, book_id, type')
-          .eq('id', id)
-          .eq('user_id', user.id)
-          .single();
-
-        if (!existing) throw new Error('Annotation not found');
-
-        const { data: conflict } = await this.supabase
-          .from('annotations')
-          .select('id')
-          .eq('book_id', existing.book_id)
-          .eq('user_id', user.id)
-          .eq('cfi_range', updates.cfiRange)
-          .eq('type', existing.type)
-          .neq('id', id)
-          .single();
-
-        if (conflict) {
-          throw new Error('Another annotation exists at this position');
-        }
-      }
+      // Note: UpdateAnnotationRequest doesn't include location updates
+      // so no need to check for position conflicts
 
       const { data, error } = await this.supabase
         .from('annotations')

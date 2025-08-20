@@ -89,9 +89,8 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
         <span>{label}</span>
       </div>
     </button>
-    );
-  }
   );
+  };
 
   const Slider = ({ 
     label, 

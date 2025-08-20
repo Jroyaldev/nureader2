@@ -61,8 +61,9 @@ describe('EpubRenderer', () => {
         right: 800,
         x: 0,
         y: chapterTop - container.scrollTop,
+        width: 800,
         toJSON: () => ({}),
-      }));
+      } as DOMRect));
     });
   });
 
