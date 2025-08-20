@@ -607,6 +607,9 @@ function ReaderPageContent() {
         last_read_at: new Date().toISOString()
       };
       
+      // Note: chapter_id field not yet added to database schema
+      // TODO: Add chapter_id column to reading_progress table in future migration
+      
       // Enhanced position data is captured but not saved to database yet
       // The current database schema only supports basic progress tracking
       if (enhancedPosition) {

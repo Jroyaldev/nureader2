@@ -651,8 +651,11 @@ export class EnhancedTextFinder {
         return null;
       }
 
-      // Find the chapter element - use data-chapter-index selector
-      const chapterElement = this.document.querySelector(`[data-chapter-index="${chapterIndex}"]`);
+      // Find the chapter element - try both data-chapter-index and data-chapter selectors
+      let chapterElement = this.document.querySelector(`[data-chapter-index="${chapterIndex}"]`);
+      if (!chapterElement) {
+        chapterElement = this.document.querySelector(`[data-chapter="${chapterIndex}"]`);
+      }
       if (!chapterElement) return null;
 
       // For relative format, calculate character offset from relative position
@@ -735,20 +738,54 @@ export class EnhancedTextFinder {
     for (let i = 0; i < textNodes.length; i++) {
       let combinedText = '';
       let nodeRange: Text[] = [];
+      let indexMap: number[] = []; // Maps normalized index to original global index
+      let originalGlobalIndex = 0;
       
-      // Build combined text from consecutive nodes
+      // Build combined text from consecutive nodes with index mapping
       for (let j = i; j < Math.min(i + 10, textNodes.length); j++) {
         const currentNode = textNodes[j];
         if (!currentNode?.textContent) continue;
         
-        combinedText += currentNode.textContent.toLowerCase().replace(/\s+/g, ' ');
+        const originalNodeText = currentNode.textContent.toLowerCase();
+        const normalizedNodeText = originalNodeText.replace(/\s+/g, ' ');
+        
+        // Build index map for this node
+        let originalNodeIndex = 0;
+        for (let k = 0; k < normalizedNodeText.length; k++) {
+          while (originalNodeIndex < originalNodeText.length) {
+            const originalChar = originalNodeText[originalNodeIndex];
+            if (originalChar && /\s/.test(originalChar)) {
+              // Skip whitespace in original, but only advance if we haven't mapped this normalized space yet
+              if (normalizedNodeText[k] === ' ') {
+                indexMap.push(originalGlobalIndex + originalNodeIndex);
+                originalNodeIndex++;
+                break;
+              }
+              originalNodeIndex++;
+            } else {
+              // Non-whitespace character
+              indexMap.push(originalGlobalIndex + originalNodeIndex);
+              originalNodeIndex++;
+              break;
+            }
+          }
+        }
+        
+        combinedText += normalizedNodeText;
         nodeRange.push(currentNode);
+        originalGlobalIndex += originalNodeText.length;
         
         // Check if we found the text
         const searchIndex = combinedText.indexOf(cleanSearchText);
         if (searchIndex >= 0) {
           try {
-            const range = this.createCrossNodeRange(nodeRange, searchIndex, cleanSearchText.length, searchText);
+            // Convert normalized indices back to original indices
+            const originalStart = indexMap[searchIndex] || 0;
+            const originalEndIndex = searchIndex + cleanSearchText.length - 1;
+            const originalEnd = originalEndIndex < indexMap.length ? (indexMap[originalEndIndex] || originalGlobalIndex - 1) : originalGlobalIndex - 1;
+            const originalLength = originalEnd - originalStart + 1;
+            
+            const range = this.createCrossNodeRange(nodeRange, originalStart, originalLength, searchText);
             if (range) {
               const confidence = this.calculateCrossNodeConfidence(searchText, combinedText, searchIndex);
               return { range, confidence };

@@ -1536,7 +1536,9 @@ export class EpubRenderer {
         // Verify final position and adjust if needed
         requestAnimationFrame(() => {
           const actualScroll = this.container.scrollTop;
-          const actualPercentage = scrollHeight > 0 ? (actualScroll / scrollHeight) * 100 : 0;
+          // Re-read scrollHeight to account for any late micro-layout changes
+          const finalScrollHeight = this.container.scrollHeight - this.container.clientHeight;
+          const actualPercentage = finalScrollHeight > 0 ? (actualScroll / finalScrollHeight) * 100 : 0;
           
           console.log(`✅ Position restored: target=${percentage}%, actual=${actualPercentage.toFixed(1)}%`);
           
@@ -1550,10 +1552,48 @@ export class EpubRenderer {
     
     // Check if content is still loading
     const checkContentReady = () => {
-      const pendingImages = this.container.querySelectorAll('img:not([src^="blob:"]):not([src^="data:"])');
-      if (pendingImages.length > 0) {
-        console.log(`⏳ Waiting for ${pendingImages.length} images to load...`);
-        setTimeout(checkContentReady, 50);
+      const allImages = Array.from(this.container.querySelectorAll('img')) as HTMLImageElement[];
+      const incompleteImages = allImages.filter(img => !img.complete);
+      
+      if (incompleteImages.length > 0) {
+        console.log(`⏳ Waiting for ${incompleteImages.length} images to load...`);
+        
+        // Set up load/error listeners for incomplete images
+        const promises = incompleteImages.map(img => {
+          return new Promise<void>((resolve) => {
+            if (img.complete) {
+              resolve();
+              return;
+            }
+            
+            const onLoad = () => {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+              resolve();
+            };
+            
+            const onError = () => {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+              resolve(); // Still resolve to avoid hanging
+            };
+            
+            img.addEventListener('load', onLoad);
+            img.addEventListener('error', onError);
+            
+            // Fallback timeout in case listeners don't fire
+            setTimeout(() => {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+              resolve();
+            }, 5000);
+          });
+        });
+        
+        Promise.all(promises).then(() => {
+          // Re-check in case new images appeared
+          setTimeout(checkContentReady, 50);
+        });
       } else {
         performRestore();
       }

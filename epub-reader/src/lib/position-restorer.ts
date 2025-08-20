@@ -391,16 +391,19 @@ export class PositionRestorer {
     if (!paragraph) return null;
     
     const text = paragraph.textContent || '';
-    const words = text.split(/\s+/);
     
-    if (positionData.wordIndex >= words.length) return null;
+    // Use regex to find the nth word occurrence instead of simple indexOf
+    const wordMatches = Array.from(text.matchAll(/\S+/g));
     
-    const wordToFind = words[positionData.wordIndex];
-    if (!wordToFind) return null;
+    if (positionData.wordIndex >= wordMatches.length) return null;
     
-    const wordStart = text.indexOf(wordToFind);
+    const targetMatch = wordMatches[positionData.wordIndex];
+    if (!targetMatch) return null;
     
-    if (wordStart === -1) return null;
+    const wordToFind = targetMatch[0];
+    const wordStart = targetMatch.index;
+    
+    if (wordStart === undefined) return null;
     
     // Find the text node containing this word
     const walker = this.document.createTreeWalker(
@@ -436,8 +439,14 @@ export class PositionRestorer {
     
     // Calculate approximate position based on character offset
     const chapterText = chapterElement.textContent || '';
+    
+    // Guard against empty chapters
+    if (chapterText.length === 0) {
+      return null;
+    }
+    
     const percentage = positionData.characterOffset / chapterText.length;
-    const targetOffset = Math.floor(chapterText.length * percentage);
+    const targetOffset = Math.max(0, Math.min(chapterText.length, Math.floor(chapterText.length * percentage)));
     
     const walker = this.document.createTreeWalker(
       chapterElement,
@@ -470,27 +479,45 @@ export class PositionRestorer {
     const chapterElement = this.container.querySelector(`[data-chapter-index="${positionData.chapterIndex}"]`);
     if (!chapterElement) return null;
     
-    // Calculate position based on viewport information
+    // Calculate position based on chapter-relative percentage approach
     const chapterRect = chapterElement.getBoundingClientRect();
-    const targetY = chapterRect.top + (positionData.viewport.scrollTop * 0.1); // Rough approximation
+    const chapterText = chapterElement.textContent || '';
     
-    const elementAtY = this.document.elementFromPoint(chapterRect.left + chapterRect.width / 2, targetY);
-    if (!elementAtY) return null;
+    // Guard against empty chapters and invalid viewport data
+    if (chapterText.length === 0 || !positionData.viewport || chapterRect.height <= 0) {
+      return null;
+    }
     
+    // Calculate percentage position within the chapter
+    const percentage = Math.max(0, Math.min(1, positionData.viewport.scrollTop / chapterRect.height));
+    
+    // Get character index based on percentage
+    const characterIndex = Math.floor(chapterText.length * percentage);
+    
+    // Walk text nodes to find the corresponding position
     const walker = this.document.createTreeWalker(
-      elementAtY,
+      chapterElement,
       NodeFilter.SHOW_TEXT,
       null
     );
     
-    const textNode = walker.nextNode() as Text;
-    if (!textNode) return null;
+    let currentIndex = 0;
+    let node: Text | null;
     
-    const range = this.document.createRange();
-    range.setStart(textNode, 0);
-    range.setEnd(textNode, Math.min(10, textNode.textContent?.length || 0));
+    while ((node = walker.nextNode() as Text)) {
+      const nodeLength = node.textContent?.length || 0;
+      if (currentIndex + nodeLength >= characterIndex) {
+        const range = this.document.createRange();
+        const localOffset = Math.max(0, Math.min(nodeLength, characterIndex - currentIndex));
+        range.setStart(node, localOffset);
+        range.setEnd(node, localOffset);
+        return range;
+      }
+      currentIndex += nodeLength;
+    }
     
-    return range;
+    // Fallback: return null if no suitable text node found
+    return null;
   }
 
   /**

@@ -344,14 +344,44 @@ export class PositionManager {
     let offset = 0;
     let node: Text | null;
     
+    // Resolve range.startContainer to the nearest text node if it's an Element
+    let targetNode: Node = range.startContainer;
+    let targetOffset = range.startOffset;
+    
+    if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
+      // Find the text node at or after the child index indicated by range.startOffset
+      const element = range.startContainer as Element;
+      const childAtOffset = element.childNodes[range.startOffset];
+      
+      if (childAtOffset && childAtOffset.nodeType === Node.TEXT_NODE) {
+        targetNode = childAtOffset;
+        targetOffset = 0;
+      } else {
+        // Find the first descendant text node
+        const textWalker = this.document.createTreeWalker(
+          element,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        const firstTextNode = textWalker.nextNode() as Text;
+        if (firstTextNode) {
+          targetNode = firstTextNode;
+          targetOffset = 0;
+        } else {
+          // No text node found, return end-of-chapter
+          return chapterElement.textContent?.length || 0;
+        }
+      }
+    }
+    
     while ((node = walker.nextNode() as Text)) {
-      if (node === range.startContainer) {
-        return offset + range.startOffset;
+      if (node === targetNode) {
+        return offset + targetOffset;
       }
       offset += node.textContent?.length || 0;
     }
     
-    return offset;
+    return chapterElement.textContent?.length || 0;
   }
 
   /**
@@ -374,7 +404,8 @@ export class PositionManager {
     if (!chapterElement) return 0;
     
     const paragraphs = chapterElement.querySelectorAll('p, div, section');
-    return Array.from(paragraphs).indexOf(element);
+    const index = Array.from(paragraphs).indexOf(element);
+    return index < 0 ? 0 : index;
   }
 
   /**

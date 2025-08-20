@@ -146,7 +146,7 @@ export class ReadingServiceImpl implements ReadingService {
 
       // Update active session if exists
       if (this.activeSession?.bookId === bookId) {
-        this.activeSession.endChapterId = progress.chapterId || undefined;
+        // this.activeSession.endChapterId = progress.chapterId || undefined; // Removed: chapterId not in schema
         this.activeSession.endCfi = progress.position || undefined;
         this.activeSession.endPercentage = progress.percentageComplete;
         this.activeSession.pagesRead = (this.activeSession.pagesRead || 0) + 1;
@@ -165,6 +165,8 @@ export class ReadingServiceImpl implements ReadingService {
         }, {
           onConflict: 'user_id,book_id',
         });
+      
+      // Note: chapter_id removed as it doesn't exist in current database schema
 
       if (error) throw error;
 
@@ -196,7 +198,6 @@ export class ReadingServiceImpl implements ReadingService {
 
       return data ? {
         bookId: data.book_id,
-        chapterId: data.chapter_id,
         position: data.current_location, // Fixed: was 'data.position'
         percentageComplete: data.progress_percentage, // Fixed: was 'data.percentage_complete'
         totalTimeMinutes: data.reading_time_minutes, // Fixed: was 'data.total_time_minutes'
@@ -272,9 +273,9 @@ export class ReadingServiceImpl implements ReadingService {
         if (filters.type) {
           query = query.eq('annotation_type', filters.type);
         }
-        if (filters.chapterId) {
-          query = query.eq('chapter_id', filters.chapterId);
-        }
+        // if (filters.chapterId) {
+        //   query = query.eq('chapter_id', filters.chapterId);
+        // }  // Removed: chapterId not in schema
       }
 
       query = query.order('created_at', { ascending: false });
@@ -362,7 +363,6 @@ export class ReadingServiceImpl implements ReadingService {
             if (payload.new) {
               const progress: ReadingProgress = {
                 bookId: payload.new.book_id,
-                chapterId: payload.new.chapter_id,
                 position: payload.new.current_location,
                 percentageComplete: payload.new.progress_percentage,
                 totalTimeMinutes: payload.new.reading_time_minutes,
@@ -384,7 +384,6 @@ export class ReadingServiceImpl implements ReadingService {
             if (payload.new) {
               const progress: ReadingProgress = {
                 bookId: payload.new.book_id,
-                chapterId: payload.new.chapter_id,
                 position: payload.new.current_location,
                 percentageComplete: payload.new.progress_percentage,
                 totalTimeMinutes: payload.new.reading_time_minutes,
