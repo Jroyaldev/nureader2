@@ -632,16 +632,37 @@ export class EnhancedTextFinder {
 
   private getRangeFromCfi(cfi: string): Range | null {
     try {
-      // Parse custom CFI format: "chapter-X-Y" where X is chapter, Y is character offset
-      const match = cfi.match(/chapter-(\d+)-(\d+)/);
-      if (!match) return null;
+      // Support "chapter-X-Y" and "X/CHAPTER_ID@relative" formats
+      const dashMatch = cfi.match(/chapter-(\d+)-(\d+)/);
+      const slashRelMatch = cfi.match(/^(\d+)\/[^@]+@([0-9.]+)/);
+      
+      if (!dashMatch && !slashRelMatch) return null;
 
-      const chapterIndex = parseInt(match[1]!);
-      const charOffset = parseInt(match[2]!);
+      let chapterIndex: number;
+      let charOffset: number | null = null;
 
-      // Find the chapter element
-      const chapterElement = this.document.querySelector(`[data-chapter="${chapterIndex}"]`);
+      if (dashMatch) {
+        chapterIndex = parseInt(dashMatch[1]!, 10);
+        charOffset = parseInt(dashMatch[2]!, 10);
+      } else if (slashRelMatch) {
+        chapterIndex = parseInt(slashRelMatch[1]!, 10);
+        // Will calculate charOffset from relative position below
+      } else {
+        return null;
+      }
+
+      // Find the chapter element - use data-chapter-index selector
+      const chapterElement = this.document.querySelector(`[data-chapter-index="${chapterIndex}"]`);
       if (!chapterElement) return null;
+
+      // For relative format, calculate character offset from relative position
+      if (slashRelMatch && charOffset === null) {
+        const chapterText = chapterElement.textContent || '';
+        const rel = parseFloat(slashRelMatch[2] || '0');
+        charOffset = Math.max(0, Math.min(chapterText.length - 1, Math.floor(chapterText.length * rel)));
+      }
+
+      if (charOffset === null) return null;
 
       // Create range at the specified character offset
       const walker = this.document.createTreeWalker(
@@ -1438,7 +1459,8 @@ export class HighlightManager {
     // Add click handler
     span.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.handleHighlightClick(annotation);
+      const event = new CustomEvent('annotationClick', { detail: annotation, bubbles: true });
+      span.dispatchEvent(event);
     });
     
     return span;
@@ -1457,14 +1479,6 @@ export class HighlightManager {
     }
   }
 
-  private handleHighlightClick(annotation: SavedAnnotation): void {
-    // Emit custom event for highlight interaction
-    const event = new CustomEvent('highlightClick', {
-      detail: { annotation },
-      bubbles: true
-    });
-    this.document.dispatchEvent(event);
-  }
 
   /**
    * Load and apply multiple annotations
@@ -1648,10 +1662,10 @@ export class HighlightManager {
     if (successRate < 80) {
       recommendations.push('Consider improving text preprocessing or DOM structure');
     }
-    if (errorCounts.get(HighlightErrorType.CROSS_NODE_TEXT) || 0 > 0) {
+    if ((errorCounts.get(HighlightErrorType.CROSS_NODE_TEXT) || 0) > 0) {
       recommendations.push('Text spans multiple DOM elements - cross-node search is being used');
     }
-    if (errorCounts.get(HighlightErrorType.DOM_STRUCTURE_CHANGED) || 0 > 0) {
+    if ((errorCounts.get(HighlightErrorType.DOM_STRUCTURE_CHANGED) || 0) > 0) {
       recommendations.push('DOM structure is changing frequently - consider waiting for stability');
     }
     

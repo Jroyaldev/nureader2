@@ -114,7 +114,7 @@ export class PositionManager {
     beforeLength: 100,
     afterLength: 100,
     includePunctuation: true,
-    normalizeWhitespace: true
+    normalizeWhitespace: false
   };
 
   constructor(document: Document, container: Element) {
@@ -317,7 +317,8 @@ export class PositionManager {
       : range.startContainer.parentElement;
     
     while (element && element !== this.container) {
-      const chapterAttr = element.getAttribute('data-chapter');
+      const chapterAttr = element.getAttribute('data-chapter') ?? 
+                         element.getAttribute('data-chapter-index');
       if (chapterAttr) {
         return parseInt(chapterAttr, 10);
       }
@@ -476,7 +477,7 @@ export class PositionManager {
     for (let i = 0; i < settingsString.length; i++) {
       const char = settingsString.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash |= 0; // Convert to 32-bit integer
     }
     
     return hash.toString(36);
@@ -486,17 +487,16 @@ export class PositionManager {
    * Get visible range in the viewport
    */
   private getVisibleRange(): Range | null {
-    const containerRect = this.container.getBoundingClientRect();
-    const centerX = containerRect.left + containerRect.width / 2;
-    const centerY = containerRect.top + containerRect.height / 2;
-    
-    // Find element at center of viewport
-    const elementAtCenter = this.document.elementFromPoint(centerX, centerY);
-    if (!elementAtCenter) return null;
+    const rect = this.container.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    // Anchor near the top for viewport-consistent restoration
+    const y = rect.top + Math.min(40, rect.height * 0.1);
+    const elementAtAnchor = this.document.elementFromPoint(x, y);
+    if (!elementAtAnchor) return null;
     
     // Find the first text node in this element
     const walker = this.document.createTreeWalker(
-      elementAtCenter,
+      elementAtAnchor,
       NodeFilter.SHOW_TEXT,
       null
     );
@@ -586,12 +586,13 @@ export class PositionManager {
     
     if (wordIndex >= words.length) return null;
     
-    // Find the word in the text
-    const wordToFind = words[wordIndex];
-    if (!wordToFind) return null;
-    
-    const wordStart = text.indexOf(wordToFind);
-    if (wordStart === -1) return null;
+    // Find the start index of the nth word
+    const wordMatches = [...text.matchAll(/\S+/g)];
+    if (wordIndex >= wordMatches.length) return null;
+    const wordMatch = wordMatches[wordIndex];
+    if (!wordMatch || wordMatch.index === undefined) return null;
+    const wordStart = wordMatch.index;
+    const wordLength = wordMatch[0].length;
     
     // Find the text node containing this word
     const walker = this.document.createTreeWalker(
@@ -609,7 +610,7 @@ export class PositionManager {
         const range = this.document.createRange();
         const localOffset = wordStart - currentOffset;
         range.setStart(node, localOffset);
-        range.setEnd(node, localOffset + wordToFind.length);
+        range.setEnd(node, localOffset + wordLength);
         return range;
       }
       currentOffset += nodeLength;
@@ -646,7 +647,7 @@ export class PositionManager {
    * Get chapter element by index
    */
   private getChapterElement(chapterIndex: number): Element | null {
-    return this.container.querySelector(`[data-chapter="${chapterIndex}"]`);
+    return this.container.querySelector(`[data-chapter="${chapterIndex}"], [data-chapter-index="${chapterIndex}"]`);
   }
 
   /**
@@ -687,7 +688,7 @@ export class PositionManager {
   private getFullChapterText(textNode: Text): string {
     // Find chapter element by traversing up the DOM tree
     let element: Element | null = textNode.parentElement;
-    while (element && !element.hasAttribute('data-chapter')) {
+    while (element && !element.hasAttribute('data-chapter') && !element.hasAttribute('data-chapter-index')) {
       element = element.parentElement;
     }
     const chapterElement = element;
@@ -701,7 +702,7 @@ export class PositionManager {
   private getGlobalTextOffset(textNode: Text, localOffset: number): number {
     // Find chapter element by traversing up the DOM tree
     let element: Element | null = textNode.parentElement;
-    while (element && !element.hasAttribute('data-chapter')) {
+    while (element && !element.hasAttribute('data-chapter') && !element.hasAttribute('data-chapter-index')) {
       element = element.parentElement;
     }
     const chapterElement = element;

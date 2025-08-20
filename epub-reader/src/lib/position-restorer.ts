@@ -161,7 +161,7 @@ export class PositionRestorer {
    */
   private getRestorationStrategies(
     positionData: PositionData, 
-    validation: any
+    validation: ReturnType<PositionManager['validatePosition']>
   ): RestorationStrategy[] {
     const strategies: RestorationStrategy[] = [];
     
@@ -281,15 +281,31 @@ export class PositionRestorer {
    */
   private async restoreFromCFI(cfi: string): Promise<Range | null> {
     try {
-      // Parse CFI and create range
-      const match = cfi.match(/chapter-(\d+)-(\d+)/);
-      if (!match) return null;
+      // Support both "chapter-X-Y" and "X/CHAPTER_ID@relative" formats
+      const dashMatch = cfi.match(/chapter-(\d+)-(\d+)/);
+      const slashRelMatch = cfi.match(/^(\d+)\/[^@]+@([0-9.]+)/);
       
-      const chapterIndex = parseInt(match[1] || '0');
-      const characterOffset = parseInt(match[2] || '0');
+      let chapterIndex = 0;
+      let characterOffset: number | null = null;
+
+      if (dashMatch) {
+        chapterIndex = parseInt(dashMatch[1] || '0', 10);
+        characterOffset = parseInt(dashMatch[2] || '0', 10);
+      } else if (slashRelMatch) {
+        chapterIndex = parseInt(slashRelMatch[1] || '0', 10);
+      } else {
+        return null;
+      }
       
-      const chapterElement = this.container.querySelector(`[data-chapter="${chapterIndex}"]`);
+      const chapterElement = this.container.querySelector(`[data-chapter-index="${chapterIndex}"]`);
       if (!chapterElement) return null;
+
+      if (characterOffset == null) {
+        // Compute character offset from relative position across the chapter's text
+        const chapterText = chapterElement.textContent || '';
+        const rel = parseFloat(slashRelMatch![2] || '0');
+        characterOffset = Math.max(0, Math.min(chapterText.length - 1, Math.floor(chapterText.length * rel)));
+      }
       
       const walker = this.document.createTreeWalker(
         chapterElement,
@@ -367,7 +383,7 @@ export class PositionRestorer {
       return null;
     }
     
-    const chapterElement = this.container.querySelector(`[data-chapter="${positionData.chapterIndex}"]`);
+    const chapterElement = this.container.querySelector(`[data-chapter-index="${positionData.chapterIndex}"]`);
     if (!chapterElement) return null;
     
     const paragraphs = chapterElement.querySelectorAll('p, div, section');
@@ -415,7 +431,7 @@ export class PositionRestorer {
    * Restore position based on chapter percentage
    */
   private async restoreFromChapterPercentage(positionData: PositionData): Promise<Range | null> {
-    const chapterElement = this.container.querySelector(`[data-chapter="${positionData.chapterIndex}"]`);
+    const chapterElement = this.container.querySelector(`[data-chapter-index="${positionData.chapterIndex}"]`);
     if (!chapterElement) return null;
     
     // Calculate approximate position based on character offset
@@ -451,7 +467,7 @@ export class PositionRestorer {
    * Restore position relative to viewport
    */
   private async restoreFromViewportRelative(positionData: PositionData): Promise<Range | null> {
-    const chapterElement = this.container.querySelector(`[data-chapter="${positionData.chapterIndex}"]`);
+    const chapterElement = this.container.querySelector(`[data-chapter-index="${positionData.chapterIndex}"]`);
     if (!chapterElement) return null;
     
     // Calculate position based on viewport information
@@ -481,10 +497,10 @@ export class PositionRestorer {
    * Fallback to chapter top
    */
   private async restoreToChapterTop(chapterIndex: number): Promise<Range | null> {
-    const chapterElement = this.container.querySelector(`[data-chapter="${chapterIndex}"]`);
+    const chapterElement = this.container.querySelector(`[data-chapter-index="${chapterIndex}"]`);
     if (!chapterElement) {
       // Fallback to first available chapter
-      const firstChapter = this.container.querySelector('[data-chapter]');
+      const firstChapter = this.container.querySelector('[data-chapter-index]');
       if (!firstChapter) return null;
       return this.createRangeAtElementStart(firstChapter);
     }
@@ -535,8 +551,8 @@ export class PositionRestorer {
       const rect = range.getBoundingClientRect();
       const containerRect = this.container.getBoundingClientRect();
       
-      // Calculate scroll position to center the range in viewport
-      const targetScrollTop = this.container.scrollTop + rect.top - containerRect.top - (containerRect.height / 2);
+      // Align restored range to top of viewport for consistency
+      const targetScrollTop = this.container.scrollTop + rect.top - containerRect.top;
       
       if (this.config.enableSmoothing) {
         await this.smoothScrollTo(targetScrollTop);

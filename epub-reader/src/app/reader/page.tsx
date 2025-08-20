@@ -491,7 +491,7 @@ function ReaderPageContent() {
                 // First try CFI restoration with viewport alignment
                 if (savedLocation && !savedLocation.includes('undefined') && savedLocation.trim() && epubRendererRef.current) {
                   console.log('🎆 Expert CFI restoration with:', savedLocation.substring(0, 50) + '...');
-                  restored = epubRendererRef.current.displayCfi(savedLocation);
+                  restored = await epubRendererRef.current.displayCfi(savedLocation);
                   
                   if (restored) {
                     console.log('✅ Viewport-aligned position restored using CFI');
@@ -530,7 +530,7 @@ function ReaderPageContent() {
             };
             
             // Execute coordinated restoration
-            performCoordinatedRestoration();
+            await performCoordinatedRestoration();
           } catch (error) {
             console.error('❌ Error during position restoration:', error);
             // Show container immediately if restoration failed
@@ -845,7 +845,7 @@ function ReaderPageContent() {
   const jumpToAnnotation = useCallback(async (location: string, annotationId: string) => {
     if (!epubRendererRef.current || !location) return;
     
-    const jumped = epubRendererRef.current.navigateToAnnotation(annotationId);
+    const jumped = await epubRendererRef.current.navigateToAnnotation(annotationId);
     if (jumped) {
       setShowAnnotations(false);
     } else {

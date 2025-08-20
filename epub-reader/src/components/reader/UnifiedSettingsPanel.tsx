@@ -68,8 +68,9 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
     theme: SwatchIcon
   };
 
+  type TabKey = keyof typeof tabIcons;
   const TabButton = ({ tab, label, isActive, onClick }: {
-    tab: string;
+    tab: TabKey;
     label: string;
     isActive: boolean;
     onClick: () => void;
@@ -77,6 +78,9 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
     const Icon = tabIcons[tab as keyof typeof tabIcons];
     return (
     <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
       onClick={onClick}
       className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all touch-manipulation ${
         isActive
@@ -191,7 +195,12 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
 
       <PanelContent>
         {/* Tab Navigation */}
-        <div className="flex gap-1 p-1 bg-[rgba(var(--muted),0.08)] rounded-lg mb-6">
+        <div
+          role="tablist"
+          aria-label="Reading settings tabs"
+          aria-orientation="horizontal"
+          className="flex gap-1 p-1 bg-[rgba(var(--muted),0.08)] rounded-lg mb-6"
+        >
           <TabButton 
             tab="display" 
             label="Display" 

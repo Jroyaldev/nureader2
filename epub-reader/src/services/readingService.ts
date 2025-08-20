@@ -25,7 +25,7 @@ export class ReadingServiceImpl implements ReadingService {
   private supabase = createClient();
   private realtimeChannels: Map<string, RealtimeChannel> = new Map();
   private activeSession: ReadingSession | null = null;
-  private sessionTimer: NodeJS.Timeout | null = null;
+  private sessionTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Starts a new reading session
@@ -215,14 +215,18 @@ export class ReadingServiceImpl implements ReadingService {
 
       // Check for conflicting annotations at the same position
       if (annotation.location) {
-        const { data: existing } = await this.supabase
+        const { data: existing, error: existingErr } = await this.supabase
           .from('annotations')
           .select('id')
           .eq('book_id', annotation.bookId)
           .eq('user_id', user.id)
           .eq('location', annotation.location)
           .eq('annotation_type', annotation.type)
-          .single();
+          .maybeSingle();
+
+        if (existingErr && (existingErr as any).code !== 'PGRST116') {
+          throw existingErr;
+        }
 
         if (existing) {
           throw new Error('An annotation already exists at this position');
@@ -349,7 +353,7 @@ export class ReadingServiceImpl implements ReadingService {
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'reading_progress',
             filter: `book_id=eq.${bookId}`,
@@ -359,10 +363,32 @@ export class ReadingServiceImpl implements ReadingService {
               const progress: ReadingProgress = {
                 bookId: payload.new.book_id,
                 chapterId: payload.new.chapter_id,
-                position: payload.new.position,
-                percentageComplete: payload.new.percentage_complete,
-                totalTimeMinutes: payload.new.total_time_minutes,
-                lastRead: payload.new.updated_at,
+                position: payload.new.current_location,
+                percentageComplete: payload.new.progress_percentage,
+                totalTimeMinutes: payload.new.reading_time_minutes,
+                lastRead: payload.new.last_read_at,
+              };
+              onUpdate(progress);
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'reading_progress',
+            filter: `book_id=eq.${bookId}`,
+          },
+          (payload) => {
+            if (payload.new) {
+              const progress: ReadingProgress = {
+                bookId: payload.new.book_id,
+                chapterId: payload.new.chapter_id,
+                position: payload.new.current_location,
+                percentageComplete: payload.new.progress_percentage,
+                totalTimeMinutes: payload.new.reading_time_minutes,
+                lastRead: payload.new.last_read_at,
               };
               onUpdate(progress);
             }

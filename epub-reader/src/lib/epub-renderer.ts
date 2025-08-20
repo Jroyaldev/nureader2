@@ -1623,7 +1623,7 @@ export class EpubRenderer {
   }
 
   // Navigate to a CFI location with viewport-consistent positioning
-  displayCfi(cfi: string, highlightId?: string): boolean {
+  async displayCfi(cfi: string, highlightId?: string): Promise<boolean> {
     try {
       if (!cfi || cfi.includes('undefined')) {
         console.warn('⚠️ Attempted to display an invalid or undefined CFI:', cfi);
@@ -1705,25 +1705,17 @@ export class EpubRenderer {
         return false;
       };
       
+      
       // Wait for content to be ready before positioning
-      const checkContentReady = (): boolean => {
-        const pendingImages = this.container.querySelectorAll('img:not([src^="blob:"]):not([src^="data:"])');
-        if (pendingImages.length > 0) {
-          console.log(`⏳ CFI restore waiting for ${pendingImages.length} images...`);
-          setTimeout(checkContentReady, 50);
-          return false;
-        } else {
-          const result = performCfiRestore();
-          return result;
-        }
-      };
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Small delay to ensure DOM is settled
-      setTimeout(() => {
-        return checkContentReady();
-      }, 100);
+      const pendingImages = this.container.querySelectorAll('img:not([src^="blob:"]):not([src^="data:"])');
+      if (pendingImages.length > 0) {
+        console.log(`⏳ CFI restore waiting for ${pendingImages.length} images...`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Additional wait for images
+      }
       
-      return true; // Assume success, actual result handled in setTimeout
+      return performCfiRestore();
       
     } catch (error) {
       console.error('Error displaying CFI:', error);
@@ -1769,7 +1761,7 @@ export class EpubRenderer {
   }
 
   // Navigate to an annotation
-  navigateToAnnotation(annotationId: string): boolean {
+  async navigateToAnnotation(annotationId: string): Promise<boolean> {
     const annotation = this.savedAnnotations.find(a => a.id === annotationId);
     if (!annotation) return false;
     
@@ -1788,7 +1780,7 @@ export class EpubRenderer {
     }
     
     // Fallback to CFI navigation
-    return this.displayCfi(annotation.location, annotationId);
+    return await this.displayCfi(annotation.location, annotationId);
   }
 
   // Get node path for CFI generation
