@@ -1,17 +1,50 @@
 import { 
   Book, 
   BookMetadata, 
-  ReadingProgress, 
-  ReadingSession,
   Annotation, 
   BookFilters,
   AnnotationFilters,
   CreateAnnotationRequest,
-  UpdateAnnotationRequest,
-  SaveProgressRequest,
   PaginatedResponse,
   ApiResponse
 } from './index'
+
+// Service-level types
+export interface ServiceReadingProgress {
+  bookId: string;
+  position: string | null; // CFI location
+  progressPercentage: number;
+  lastReadAt: string;
+  readingTimeMinutes: number;
+  totalTimeMinutes: number;
+  percentageComplete: number;
+  viewport?: { width: number; height: number };
+}
+
+export interface ServiceReadingSession {
+  id?: string;
+  bookId: string;
+  userId: string;
+  startTime: string;
+  endTime?: string;
+  pagesRead: number;
+  timeSpent: number; // in minutes
+  initialPosition?: string;
+  finalPosition?: string;
+  viewport?: { width: number; height: number };
+}
+
+export interface ExportDTO {
+  exportDate: Date;
+  userId: string;
+  // Either use nested structure per book
+  books?: {
+    bookId: string;
+    progress: ServiceReadingProgress | null;
+    annotations: Annotation[];
+  }[];
+  // OR use flat arrays (not both)
+}
 
 // Enhanced service interface definitions
 export interface ValidationResult {
@@ -172,31 +205,25 @@ export interface BookService {
 }
 
 export interface ReadingService {
-  // Progress tracking
-  saveProgress(request: SaveProgressRequest): Promise<ApiResponse<void>>
-  getProgress(bookId: string): Promise<ApiResponse<ReadingProgress | null>>
-  getReadingHistory(userId: string, limit?: number): Promise<ApiResponse<ReadingProgress[]>>
-  getReadingStats(userId: string, dateRange?: {start: Date, end: Date}): Promise<ApiResponse<ReadingStats>>
-  
   // Session management
-  startReadingSession(bookId: string): Promise<ApiResponse<ReadingSession>>
-  endReadingSession(sessionId: string): Promise<ApiResponse<ReadingSession>>
-  getActiveSessions(userId: string): Promise<ApiResponse<ReadingSession[]>>
+  startReadingSession(bookId: string, session: Partial<ServiceReadingSession>): Promise<string>
+  endActiveSession(): Promise<void>
+  recordPageTurn(bookId: string): void
+  
+  // Progress tracking
+  saveProgress(bookId: string, progress: ServiceReadingProgress): Promise<void>
+  getProgress(bookId: string): Promise<ServiceReadingProgress | null>
   
   // Annotations
-  createAnnotation(annotation: CreateAnnotationRequest): Promise<ApiResponse<Annotation>>
-  getAnnotations(bookId: string, filters?: AnnotationFilters): Promise<PaginatedResponse<Annotation>>
-  updateAnnotation(id: string, updates: UpdateAnnotationRequest): Promise<ApiResponse<Annotation>>
-  deleteAnnotation(id: string): Promise<ApiResponse<void>>
+  createAnnotation(annotation: CreateAnnotationRequest): Promise<Annotation>
+  getAnnotations(bookId: string, filters?: AnnotationFilters): Promise<Annotation[]>
+  updateAnnotation(id: string, updates: Partial<Annotation>): Promise<Annotation>
+  deleteAnnotation(id: string): Promise<void>
   
-  // Annotation operations
-  searchAnnotations(query: string, filters?: AnnotationFilters): Promise<ApiResponse<Annotation[]>>
-  exportAnnotations(bookId: string, format: 'json' | 'csv' | 'markdown'): Promise<ApiResponse<Blob>>
-  importAnnotations(bookId: string, file: File): Promise<ApiResponse<Annotation[]>>
-  
-  // Bulk operations
-  deleteAnnotations(ids: string[]): Promise<ApiResponse<void>>
-  updateAnnotationTags(ids: string[], tags: string[]): Promise<ApiResponse<Annotation[]>>
+  // Data management
+  // Data management
+  exportUserData(bookId?: string): Promise<ExportDTO>
+  importUserData(data: ExportDTO): Promise<void>
 }
 
 export interface EpubService {

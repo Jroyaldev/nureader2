@@ -97,7 +97,6 @@ export function useReaderPersistence(state: EnhancedReaderState) {
           book_id: progressData.bookId,
           current_location: progressData.location,
           progress_percentage: Math.round(progressData.progress * 100),
-          reading_time_minutes: 0, // Will be tracked separately
           last_read_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,book_id'
@@ -169,9 +168,9 @@ export function useReaderPersistence(state: EnhancedReaderState) {
         if (dbProgress) {
           const dbProgressFormatted: PersistedProgress = {
             bookId: dbProgress.book_id,
-            location: dbProgress.position,
-            progress: dbProgress.progress_percentage / 100,
-            chapterTitle: dbProgress.metadata?.chapterTitle || '',
+            location: dbProgress.current_location ?? dbProgress.position ?? '',
+            progress: (dbProgress.progress_percentage ?? 0) / 100,
+            chapterTitle: dbProgress.metadata?.chapterTitle ?? '',
             lastRead: dbProgress.last_read_at
           };
 

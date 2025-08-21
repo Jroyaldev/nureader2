@@ -1,57 +1,25 @@
-import { Annotation } from '@/types'
-import { ReadingService, AnnotationFilters, CreateAnnotationRequest } from '@/types/services'
-import { createClient } from '@/utils/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
-// Service-level ReadingProgress type that matches the service implementation
-export interface ServiceReadingProgress {
-  bookId: string;
-  position: string | null; // CFI location
-  percentageComplete: number;
-  totalTimeMinutes: number;
-  lastRead?: string; // ISO string, optional to reduce friction for callers
-}
+import { Annotation, AnnotationFilters, CreateAnnotationRequest } from '@/types'
+import { 
+  ReadingService, 
+  ServiceReadingProgress, 
+  ServiceReadingSession,
+  ExportDTO 
+} from '@/types/services'
+import { createClient } from '@/utils/supabase/client'
 
-export interface ServiceReadingSession {
-  id?: string;
-  bookId: string;
-  userId?: string; // Add userId for defense-in-depth
-  startChapterId?: string;
-  endChapterId?: string;
-  startCfi?: string;
-  endCfi?: string;
-  startPercentage?: number;
-  endPercentage?: number;
-  pagesRead?: number;
-  deviceInfo?: {
-    type: 'desktop' | 'tablet' | 'mobile' | 'unknown';
-    browser?: string;
-    os?: string;
-    viewport?: { width: number; height: number };
-  };
-}
-
-// Export DTO for consistent export format
-interface ExportDTO {
-  exportDate: string;
-  userId: string;
-  books?: {
-    bookId: string;
-    progress: ServiceReadingProgress | null;
-    annotations: Annotation[];
-  }[];
-  progress?: any[];
-  annotations?: any[];
-}
 
 // Helper function to map database rows to ServiceReadingProgress
 function mapDbProgressToService(row: any): ServiceReadingProgress {
   return {
     bookId: row.book_id,
     position: row.current_location,
-    percentageComplete: row.progress_percentage,
+    progressPercentage: row.progress_percentage,
+    lastReadAt: row.last_read_at,
+    readingTimeMinutes: row.reading_time_minutes,
     totalTimeMinutes: row.reading_time_minutes,
-    lastRead: row.last_read_at,
+    percentageComplete: row.progress_percentage,
   };
 }
 
@@ -96,14 +64,8 @@ export class ReadingServiceImpl implements ReadingService {
         .insert({
           user_id: user.id,
           book_id: bookId,
-          start_chapter_id: session.startChapterId,
-          start_cfi: session.startCfi,
-          start_percentage: session.startPercentage,
-          device_type: session.deviceInfo?.type,
-          browser: session.deviceInfo?.browser,
-          os: session.deviceInfo?.os,
-          viewport_width: session.deviceInfo?.viewport?.width,
-          viewport_height: session.deviceInfo?.viewport?.height,
+          viewport_width: session.viewport?.width,
+          viewport_height: session.viewport?.height,
           is_active: true,
         })
         .select()
@@ -111,7 +73,15 @@ export class ReadingServiceImpl implements ReadingService {
 
       if (error) throw error;
 
-      this.activeSession = { id: data.id, bookId, userId: user.id, ...session };
+      this.activeSession = { 
+        id: data.id, 
+        bookId, 
+        userId: user.id, 
+        startTime: new Date().toISOString(),
+        pagesRead: 0,
+        timeSpent: 0,
+        ...session 
+      };
       
       // Start session timer for periodic updates
       this.startSessionTimer();
@@ -133,9 +103,7 @@ export class ReadingServiceImpl implements ReadingService {
       await this.supabase
         .from('reading_sessions')
         .update({
-          end_chapter_id: this.activeSession.endChapterId,
-          end_cfi: this.activeSession.endCfi,
-          end_percentage: this.activeSession.endPercentage,
+          end_cfi: this.activeSession.finalPosition,
           pages_read: this.activeSession.pagesRead,
           updated_at: new Date().toISOString(),
         })
@@ -188,9 +156,7 @@ export class ReadingServiceImpl implements ReadingService {
         .update({
           is_active: false,
           ended_at: new Date().toISOString(),
-          end_chapter_id: this.activeSession.endChapterId,
-          end_cfi: this.activeSession.endCfi,
-          end_percentage: this.activeSession.endPercentage,
+          end_cfi: this.activeSession.finalPosition,
           pages_read: this.activeSession.pagesRead,
         })
         .eq('id', this.activeSession.id)
@@ -218,8 +184,9 @@ export class ReadingServiceImpl implements ReadingService {
 
       // Update active session if exists
       if (this.activeSession?.bookId === bookId) {
-        this.activeSession.endCfi = progress.position || undefined;
-        this.activeSession.endPercentage = progress.percentageComplete;
+        if (progress.position) {
+          this.activeSession.finalPosition = progress.position;
+        }
         // Note: pagesRead is updated separately via recordPageTurn() method
       }
 
@@ -270,9 +237,11 @@ export class ReadingServiceImpl implements ReadingService {
       return data ? {
         bookId: data.book_id,
         position: data.current_location,
-        percentageComplete: data.progress_percentage,
+        progressPercentage: data.progress_percentage,
+        lastReadAt: data.last_read_at,
+        readingTimeMinutes: data.reading_time_minutes,
         totalTimeMinutes: data.reading_time_minutes,
-        lastRead: data.last_read_at,
+        percentageComplete: data.progress_percentage,
       } : null;
     } catch (error) {
       console.error('Failed to get progress:', error);
@@ -548,7 +517,11 @@ export class ReadingServiceImpl implements ReadingService {
       user_id: userId,
       book_id: progress.book_id || progress.bookId,
       current_location: progress.current_location || progress.currentLocation || progress.position,
-      progress_percentage: progress.progress_percentage || progress.progressPercentage || 0,
+      progress_percentage:
+        progress.progress_percentage ??
+        progress.progressPercentage ??
+        progress.percentageComplete ??
+        0,
       reading_time_minutes: progress.reading_time_minutes || progress.readingTimeMinutes || progress.totalTimeMinutes || 0,
       last_read_at: progress.last_read_at || progress.lastReadAt || progress.lastRead || new Date().toISOString(),
     };
