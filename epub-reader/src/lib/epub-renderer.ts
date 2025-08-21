@@ -26,6 +26,12 @@ export interface SavedAnnotation {
   note?: string;
   searchText?: string;
   textContext?: string;
+  // Enhanced fields for edge case handling
+  normalizedText?: string; // Normalized version of content for better matching
+  confidence?: number; // Match confidence score (0-1)
+  strategy?: string; // Strategy used to find the text ('exact', 'fuzzy', 'context', etc.)
+  retryCount?: number; // Number of retry attempts for failed highlights
+  lastError?: string; // Last error message for debugging
 }
 
 // Import new highlight and position management classes
