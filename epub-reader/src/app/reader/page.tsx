@@ -518,6 +518,8 @@ function ReaderPageContent() {
                   } else {
                     console.warn('⚠️ Restoration failed, showing book from beginning');
                   }
+                } else {
+                  console.warn('⚠️ Container missing after restoration awaits; skip style application');
                 }
                 
               } catch (error) {
@@ -599,7 +601,13 @@ function ReaderPageContent() {
       }
       
       // Prepare data for database save - Use correct database field names
-      const saveData: any = {
+      const saveData: {
+        user_id: string;
+        book_id: string;
+        current_location: string;
+        progress_percentage: number;
+        last_read_at: string;
+      } = {
         user_id: userId,
         book_id: bookId,
         current_location: cfi,
@@ -709,6 +717,18 @@ function ReaderPageContent() {
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
+  }, [bookId, currentProgress, saveReadingProgress]);
+
+  // Add visibilitychange as fallback for unreliable beforeunload
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden' && bookId && currentProgress > 0) {
+        // Fire-and-forget; don't await
+        void saveReadingProgress(currentProgress, true);
+      }
+    };
+    document.addEventListener('visibilitychange', onHidden);
+    return () => document.removeEventListener('visibilitychange', onHidden);
   }, [bookId, currentProgress, saveReadingProgress]);
 
   const onPick = useCallback(() => {

@@ -56,7 +56,7 @@ export function useReaderPersistence(state: EnhancedReaderState) {
           .eq('id', user.id);
 
         if (error) {
-          console.warn('Failed to sync settings to profile:', error);
+          console.warn('Failed to sync settings to profile', { userId: user?.id, error });
         }
       }
     } catch (error) {
@@ -96,14 +96,14 @@ export function useReaderPersistence(state: EnhancedReaderState) {
           user_id: user.id,
           book_id: progressData.bookId,
           current_location: progressData.location,
-          progress_percentage: Math.round(progressData.progress * 100),
+          progress_percentage: Math.max(0, Math.min(1, progressData.progress)),
           last_read_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,book_id'
         });
 
       if (error) {
-        console.warn('Failed to sync progress to database:', error);
+        console.warn('Failed to sync progress to database', { userId: user?.id, bookId: progressData.bookId, error });
       }
     } catch (error) {
       console.error('Failed to persist progress:', error);
@@ -166,11 +166,13 @@ export function useReaderPersistence(state: EnhancedReaderState) {
           .single();
 
         if (dbProgress) {
+          const p = dbProgress.progress_percentage;
+          const normalized = (typeof p === 'number' && p > 1) ? p / 100 : p;
           const dbProgressFormatted: PersistedProgress = {
             bookId: dbProgress.book_id,
-            location: dbProgress.current_location ?? dbProgress.position ?? '',
-            progress: (dbProgress.progress_percentage ?? 0) / 100,
-            chapterTitle: dbProgress.metadata?.chapterTitle ?? '',
+            location: dbProgress.current_location,
+           progress: normalized,
+            chapterTitle: '',
             lastRead: dbProgress.last_read_at
           };
 
@@ -187,7 +189,7 @@ export function useReaderPersistence(state: EnhancedReaderState) {
 
       return progress;
     } catch (error) {
-      console.error('Failed to load book progress:', error);
+      console.error('Failed to load book progress', { bookId, error });
       return null;
     }
   }, []);

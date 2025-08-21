@@ -17,18 +17,8 @@ interface TocItem {
   subitems?: TocItem[];
 }
 
-export interface SavedAnnotation {
-  id: string;
-  location: string;
-  content: string;
-  color: string;
-  annotation_type: 'highlight' | 'note' | 'bookmark';
-  note?: string;
-  searchText?: string;
-  textContext?: string;
-}
-
-// Import new highlight and position management classes
+// Import shared types and highlight/position management classes
+import type { SavedAnnotation } from './types';
 import { HighlightManager } from './highlight-manager';
 import { PositionManager, PositionData } from './position-manager';
 import { PositionRestorer } from './position-restorer';
@@ -50,7 +40,7 @@ export class EpubRenderer {
   private _onScroll?: (e: Event) => void;
   
   // Debug flag for performance-sensitive logging
-  private static DEBUG_SCROLL_EVENTS = false;
+  private static DEBUG_SCROLL_EVENTS = process.env.NODE_ENV === 'development' && process.env.DEBUG_SCROLL_EVENTS === 'true';
 
   
   // New highlight and position management instances
@@ -688,17 +678,19 @@ export class EpubRenderer {
   private setupScrollListener(): void {
     let ticking = false;
     let lastScrollTop = 0;
-    console.log('🎯 Setting up scroll listener on container:', this.container);
-    console.log('📊 Container dimensions:', {
-      scrollHeight: this.container.scrollHeight,
-      clientHeight: this.container.clientHeight,
-      scrollTop: this.container.scrollTop,
-      offsetHeight: this.container.offsetHeight,
-      className: this.container.className,
-      id: this.container.id,
-      computedOverflow: window.getComputedStyle(this.container).overflow,
-      computedOverflowY: window.getComputedStyle(this.container).overflowY
-    });
+    if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+      console.log('🎯 Setting up scroll listener on container:', this.container);
+      console.log('📊 Container dimensions:', {
+        scrollHeight: this.container.scrollHeight,
+        clientHeight: this.container.clientHeight,
+        scrollTop: this.container.scrollTop,
+        offsetHeight: this.container.offsetHeight,
+        className: this.container.className,
+        id: this.container.id,
+        computedOverflow: window.getComputedStyle(this.container).overflow,
+        computedOverflowY: window.getComputedStyle(this.container).overflowY
+      });
+    }
     
     this._onScroll = () => {
       if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
@@ -730,14 +722,18 @@ export class EpubRenderer {
   }
 
   private updateProgress(): void {
-    console.log('📊 updateProgress called, callback exists?', !!this.onProgressCallback);
+    if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+      console.log('📊 updateProgress called, callback exists?', !!this.onProgressCallback);
+    }
     if (!this.onProgressCallback) return;
 
     const scrollTop = this.container.scrollTop;
     const scrollHeight = this.container.scrollHeight - this.container.clientHeight;
     const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
     
-    console.log('📈 Progress calculated:', Math.round(progress) + '%');
+    if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+      console.log('📈 Progress calculated:', Math.round(progress) + '%');
+    }
     this.onProgressCallback(Math.round(progress));
   }
 
@@ -1496,6 +1492,20 @@ export class EpubRenderer {
       }
       this._imageObjectUrls.clear();
     }
+
+    // Tear down managers and clear cached state
+    try {
+      this.highlightManager?.destroy();
+    } catch (error) {
+      console.error('Error destroying highlight manager:', error);
+    }
+    
+    // Clear references to help GC in SPA navigations
+    // Consider making these nullable in the type definitions
+    (this as any).highlightManager = null;
+    (this as any).positionRestorer = null;
+    (this as any).positionManager = null;
+    this.savedAnnotations = [];
   }
 
   // Adjust base font size without re-applying entire theme
@@ -1671,6 +1681,7 @@ export class EpubRenderer {
   // Navigate to a CFI location with viewport-consistent positioning
   async displayCfi(cfi: string, highlightId?: string): Promise<boolean> {
     try {
+      cfi = cfi.trim();
       if (!cfi || cfi.includes('undefined')) {
         console.warn('⚠️ Attempted to display an invalid or undefined CFI:', cfi);
         return false;

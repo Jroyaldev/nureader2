@@ -339,7 +339,7 @@ export function useEnhancedReaderState() {
   const derivedState = useMemo(() => ({
     hasOpenPanel: Object.values(panels).some(Boolean),
     isLightMode: resolvedTheme === 'light',
-    progressPercentage: Math.round(book.progress * 100),
+    progress: book.progress,
     currentTheme: resolvedTheme as 'light' | 'dark',
     hasSelectedText: annotation.selectedText.length > 0,
   }), [panels, resolvedTheme, book.progress, annotation.selectedText]);

@@ -107,7 +107,7 @@ interface TextContextOptions {
  */
 export class PositionManager {
   private document: Document;
-  private container: Element;
+  private container: HTMLElement;
   private currentPosition?: PositionData;
   
   private textContextOptions: TextContextOptions = {
@@ -117,7 +117,7 @@ export class PositionManager {
     normalizeWhitespace: false
   };
 
-  constructor(document: Document, container: Element) {
+  constructor(document: Document, container: HTMLElement) {
     this.document = document;
     this.container = container;
   }
@@ -259,21 +259,43 @@ export class PositionManager {
 
   /**
    * Generate primary CFI for a range
+   * Wraps internal locator format in EPUB CFI format for database compatibility
    */
   private generateCFI(range: Range): string {
     const chapterIndex = this.getChapterIndex(range);
     const characterOffset = this.getCharacterOffset(range);
-    return `chapter-${chapterIndex}-${characterOffset}`;
+    const internalLocator = `chapter-${chapterIndex}-${characterOffset}`;
+    return `epubcfi(${internalLocator})`;
   }
 
   /**
    * Generate backup CFI using different strategy
+   * Wraps internal locator format in EPUB CFI format for database compatibility
    */
   private generateBackupCFI(range: Range): string {
     const chapterIndex = this.getChapterIndex(range);
     const paragraphIndex = this.getParagraphIndex(range);
     const wordIndex = this.getWordIndex(range);
-    return `chapter-${chapterIndex}-p${paragraphIndex}-w${wordIndex}`;
+    const internalLocator = `chapter-${chapterIndex}-p${paragraphIndex}-w${wordIndex}`;
+    return `epubcfi(${internalLocator})`;
+  }
+
+  /**
+   * Extract internal locator from EPUB CFI format
+   * Removes the epubcfi() wrapper to get the internal format
+   */
+  private extractInternalLocator(cfi: string): string {
+    const match = cfi.match(/^epubcfi\((.+)\)$/);
+    return match?.[1] ?? cfi; // Fallback to original if not wrapped
+  }
+
+  /**
+   * Check if a CFI is using our internal locator format
+   */
+  private isInternalLocator(locator: string): boolean {
+    return locator.startsWith('chapter-') && (
+      locator.includes('-p') || /chapter-\d+-\d+$/.test(locator)
+    );
   }
 
   /**
@@ -349,36 +371,58 @@ export class PositionManager {
     let targetOffset = range.startOffset;
     
     if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
-      // Find the text node at or after the child index indicated by range.startOffset
+      // Compute base offset from all child nodes before range.startOffset
       const element = range.startContainer as Element;
+      let baseOffset = 0;
+      
+      // Sum text content lengths of all child nodes before startOffset
+      for (let i = 0; i < range.startOffset && i < element.childNodes.length; i++) {
+        const childNode = element.childNodes[i];
+        baseOffset += childNode.textContent?.length || 0;
+      }
+      
+      // Find the first descendant text node at or after the child index
       const childAtOffset = element.childNodes[range.startOffset];
       
       if (childAtOffset && childAtOffset.nodeType === Node.TEXT_NODE) {
         targetNode = childAtOffset;
-        targetOffset = 0;
+        targetOffset = 0; // Start at beginning of the text node
       } else {
-        // Find the first descendant text node
+        // Find the first descendant text node from the current position
+        const startElement = childAtOffset as Element || element;
         const textWalker = this.document.createTreeWalker(
-          element,
+          startElement,
           NodeFilter.SHOW_TEXT,
           null
         );
         const firstTextNode = textWalker.nextNode() as Text;
         if (firstTextNode) {
           targetNode = firstTextNode;
-          targetOffset = 0;
+          targetOffset = 0; // Start at beginning of the text node
         } else {
-          // No text node found, return end-of-chapter
-          return chapterElement.textContent?.length || 0;
+          // No text node found, return end-of-chapter including baseOffset
+          return baseOffset + (chapterElement.textContent?.length || 0);
         }
       }
-    }
-    
-    while ((node = walker.nextNode() as Text)) {
-      if (node === targetNode) {
-        return offset + targetOffset;
+      
+      // Adjust the loop to account for base offset when element is the startContainer
+      const hasBaseOffset = range.startContainer.nodeType === Node.ELEMENT_NODE;
+      const elementBaseOffset = hasBaseOffset ? baseOffset : 0;
+      
+      while ((node = walker.nextNode() as Text)) {
+        if (node === targetNode) {
+          return offset + targetOffset + elementBaseOffset;
+        }
+        offset += node.textContent?.length || 0;
       }
-      offset += node.textContent?.length || 0;
+    } else {
+      // Normal text node case - no base offset needed
+      while ((node = walker.nextNode() as Text)) {
+        if (node === targetNode) {
+          return offset + targetOffset;
+        }
+        offset += node.textContent?.length || 0;
+      }
     }
     
     return chapterElement.textContent?.length || 0;
@@ -522,7 +566,10 @@ export class PositionManager {
     const x = rect.left + rect.width / 2;
     // Anchor near the top for viewport-consistent restoration
     const y = rect.top + Math.min(40, rect.height * 0.1);
-    const elementAtAnchor = this.document.elementFromPoint(x, y);
+    const stack = (this.document as any).elementsFromPoint
+      ? (this.document as any).elementsFromPoint(x, y) as Element[]
+      : [this.document.elementFromPoint(x, y)].filter(Boolean) as Element[];
+    const elementAtAnchor = stack.find(el => this.container.contains(el));
     if (!elementAtAnchor) return null;
     
     // Find the first text node in this element
@@ -547,9 +594,12 @@ export class PositionManager {
    */
   private getRangeFromCFI(cfi: string): Range | null {
     try {
-      // Parse CFI format: "chapter-X-Y" or "chapter-X-pY-wZ"
-      const chapterMatch = cfi.match(/chapter-(\d+)-(\d+)/);
-      const paragraphMatch = cfi.match(/chapter-(\d+)-p(\d+)-w(\d+)/);
+      // Extract internal locator from EPUB CFI wrapper
+      const internalLocator = this.extractInternalLocator(cfi);
+      
+      // Parse internal locator format: "chapter-X-Y" or "chapter-X-pY-wZ"
+      const chapterMatch = internalLocator.match(/chapter-(\d+)-(\d+)/);
+      const paragraphMatch = internalLocator.match(/chapter-(\d+)-p(\d+)-w(\d+)/);
       
       if (paragraphMatch) {
         const chapterIndex = parseInt(paragraphMatch[1] || '0');
@@ -662,11 +712,17 @@ export class PositionManager {
     
     let node: Text | null;
     while ((node = walker.nextNode() as Text)) {
-      const index = node.textContent?.indexOf(text);
+      const hay = this.textContextOptions.normalizeWhitespace
+        ? (node.textContent || '').replace(/\s+/g, ' ')
+        : (node.textContent || '');
+      const needle = this.textContextOptions.normalizeWhitespace
+        ? text.replace(/\s+/g, ' ')
+        : text;
+      const index = hay.toLowerCase().indexOf(needle.toLowerCase());
       if (index !== undefined && index >= 0) {
         const range = this.document.createRange();
         range.setStart(node, index);
-        range.setEnd(node, index + text.length);
+        range.setEnd(node, index + needle.length);
         return range;
       }
     }

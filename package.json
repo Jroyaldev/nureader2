@@ -1,0 +1,13 @@
+{
+  "name": "arcadia-reader-migration",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Migration tools for Arcadia Reader",
+  "scripts": {
+    "check-progress": "node tools/migrations/check-progress-migration.js",
+    "migrate-progress": "node tools/migrations/check-progress-migration.js --migrate"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

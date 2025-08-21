@@ -13,10 +13,12 @@ import {
 export interface ServiceReadingProgress {
   bookId: string;
   position: string | null; // CFI location
+  // Progress values: normalized fraction in range [0, 1]
   progressPercentage: number;
   lastReadAt: string;
   readingTimeMinutes: number;
   totalTimeMinutes: number;
+  // percentageComplete: normalized progress fraction in range [0, 1]
   percentageComplete: number;
   viewport?: { width: number; height: number };
 }

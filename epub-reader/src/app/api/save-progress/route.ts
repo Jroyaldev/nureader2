@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       .upsert({
         user_id: user.id,
         book_id: bookId,
-        progress_percentage: progress,
+        progress_percentage: Math.max(0, Math.min(1, progress)),
         last_read_at: new Date().toISOString()
       }, {
         onConflict: 'user_id,book_id'

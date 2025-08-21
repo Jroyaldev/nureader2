@@ -1,4 +1,4 @@
-import { SavedAnnotation } from './epub-renderer';
+import type { SavedAnnotation } from './types';
 
 // Missing type definition for HighlightData
 interface HighlightData {
@@ -630,11 +630,23 @@ export class EnhancedTextFinder {
     return matrix[str2.length]![str1.length]!;
   }
 
+  /**
+   * Extract internal locator from EPUB CFI format
+   * Removes the epubcfi() wrapper to get the internal format
+   */
+  private extractInternalLocator(cfi: string): string {
+    const match = cfi.match(/^epubcfi\((.+)\)$/);
+    return match?.[1] ?? cfi; // Fallback to original if not wrapped
+  }
+
   private getRangeFromCfi(cfi: string): Range | null {
     try {
+      // Extract internal locator from EPUB CFI wrapper if present
+      const internalLocator = this.extractInternalLocator(cfi);
+      
       // Support "chapter-X-Y" and "X/CHAPTER_ID@relative" formats
-      const dashMatch = cfi.match(/chapter-(\d+)-(\d+)/);
-      const slashRelMatch = cfi.match(/^(\d+)\/[^@]+@([0-9.]+)/);
+      const dashMatch = internalLocator.match(/chapter-(\d+)-(\d+)/);
+      const slashRelMatch = internalLocator.match(/^(\d+)\/[^@]+@([0-9.]+)/);
       
       if (!dashMatch && !slashRelMatch) return null;
 
@@ -1496,7 +1508,7 @@ export class HighlightManager {
     // Add click handler
     span.addEventListener('click', (e) => {
       e.stopPropagation();
-      const event = new CustomEvent('annotationClick', { detail: annotation, bubbles: true });
+      const event = new CustomEvent('annotationClick', { detail: annotation, bubbles: true, composed: true });
       span.dispatchEvent(event);
     });
     

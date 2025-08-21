@@ -75,12 +75,15 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
     isActive: boolean;
     onClick: () => void;
   }) => {
-    const Icon = tabIcons[tab as keyof typeof tabIcons];
+    const Icon = tabIcons[tab];
     return (
     <button
       type="button"
       role="tab"
+      id={`tab-${tab}`}
+      aria-controls={`tabpanel-${tab}`}
       aria-selected={isActive}
+      tabIndex={isActive ? 0 : -1}
       onClick={onClick}
       className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all touch-manipulation ${
         isActive
@@ -200,6 +203,16 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
           aria-label="Reading settings tabs"
           aria-orientation="horizontal"
           className="flex gap-1 p-1 bg-[rgba(var(--muted),0.08)] rounded-lg mb-6"
+          onKeyDown={(e) => {
+            const order: TabKey[] = ['display','layout','theme'];
+            const idx = order.indexOf(activeTab);
+            if (idx === -1) return;
+            const newTab = e.key === 'ArrowRight' ? order[(idx + 1) % order.length] :
+                          e.key === 'ArrowLeft' ? order[(idx - 1 + order.length) % order.length] :
+                          e.key === 'Home' ? order[0] :
+                          e.key === 'End' ? order[order.length - 1] : null;
+            if (newTab) setActiveTab(newTab);
+          }}
         >
           <TabButton 
             tab="display" 
@@ -224,7 +237,7 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
         {/* Tab Content */}
         <div className="space-y-6">
           {activeTab === 'display' && (
-            <>
+            <div role="tabpanel" id="tabpanel-display" aria-labelledby="tab-display" hidden={false}>
               <Slider
                 label="Font Size"
                 value={settings.fontSize}
@@ -269,11 +282,11 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
                   ))}
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {activeTab === 'layout' && (
-            <>
+            <div role="tabpanel" id="tabpanel-layout" aria-labelledby="tab-layout" hidden={false}>
               <Slider
                 label="Page Margins"
                 value={settings.marginHorizontal}
@@ -303,10 +316,11 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
                 unit={settings.maxWidth === 0 ? ' (Full)' : 'px'}
                 onChange={(value) => handleSettingChange('maxWidth', value)}
               />
-            </>
+            </div>
           )}
 
           {activeTab === 'theme' && (
+            <div role="tabpanel" id="tabpanel-theme" aria-labelledby="tab-theme" hidden={false}>
             <div className="space-y-3">
               {themes.map((theme) => {
                 const Icon = theme.icon;
@@ -342,6 +356,7 @@ const UnifiedSettingsPanel: React.FC<UnifiedSettingsPanelProps> = ({
                   </button>
                 );
               })}
+            </div>
             </div>
           )}
         </div>

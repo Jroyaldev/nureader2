@@ -1,5 +1,6 @@
 import { PositionData, PositionManager } from './position-manager';
 import { EnhancedTextFinder } from './highlight-manager';
+import { extractInternalLocator } from './cfi-utils';
 
 /**
  * Types for position restoration
@@ -44,6 +45,24 @@ type RestorationStrategy =
 /**
  * Coordinates position restoration with multiple fallback strategies
  */
+/**
+ * Configuration for restoration position markers
+ */
+interface MarkerConfig {
+  /** Background color for the restoration marker */
+  backgroundColor: string;
+  /** Border radius for rounded corners */
+  borderRadius: string;
+  /** Minimum width of the marker in pixels */
+  minWidth: number;
+  /** Minimum height of the marker in pixels */
+  minHeight: number;
+  /** Delay before starting fade animation in milliseconds */
+  fadeDelay: number;
+  /** Total delay before removing marker from DOM in milliseconds */
+  removeDelay: number;
+}
+
 export class PositionRestorer {
   private document: Document;
   private container: Element;
@@ -57,6 +76,15 @@ export class PositionRestorer {
     logAttempts: true,
     maxRetries: 3,
     retryDelay: 500
+  };
+
+  private markerConfig: MarkerConfig = {
+    backgroundColor: 'var(--highlight-color, rgba(255, 235, 59, 0.35))',
+    borderRadius: '3px',
+    minWidth: 2,
+    minHeight: 14,
+    fadeDelay: 50,
+    removeDelay: 1700
   };
 
   constructor(
@@ -276,14 +304,18 @@ export class PositionRestorer {
     }
   }
 
+
   /**
    * Restore position from CFI
    */
   private async restoreFromCFI(cfi: string): Promise<Range | null> {
     try {
+      // Extract internal locator from EPUB CFI wrapper if present
+      const internalLocator = extractInternalLocator(cfi);
+      
       // Support both "chapter-X-Y" and "X/CHAPTER_ID@relative" formats
-      const dashMatch = cfi.match(/chapter-(\d+)-(\d+)/);
-      const slashRelMatch = cfi.match(/^(\d+)\/[^@]+@([0-9.]+)/);
+      const dashMatch = internalLocator.match(/chapter-(\d+)-(\d+)/);
+      const slashRelMatch = internalLocator.match(/^(\d+)\/[^@]+@([0-9.]+)/);
       
       let chapterIndex = 0;
       let characterOffset: number | null = null;
@@ -303,7 +335,7 @@ export class PositionRestorer {
       if (characterOffset == null) {
         // Compute character offset from relative position across the chapter's text
         const chapterText = chapterElement.textContent || '';
-        const rel = parseFloat(slashRelMatch![2] || '0');
+        const rel = parseFloat(slashRelMatch?.[2] || '0');
         characterOffset = Math.max(0, Math.min(chapterText.length - 1, Math.floor(chapterText.length * rel)));
       }
       
@@ -351,7 +383,8 @@ export class PositionRestorer {
     
     let node: Text | null;
     while ((node = walker.nextNode() as Text)) {
-      const index = node.textContent?.indexOf(searchText);
+      const nodeText = node.textContent || '';
+      const index = nodeText.toLowerCase().indexOf(searchText.toLowerCase());
       if (index !== undefined && index >= 0) {
         const range = this.document.createRange();
         range.setStart(node, index);
@@ -603,25 +636,19 @@ export class PositionRestorer {
       const startScrollTop = this.container.scrollTop;
       const distance = targetScrollTop - startScrollTop;
       const duration = this.config.smoothingDuration;
-      const startTime = Date.now();
+      let startTime = 0;
       
-      const animateScroll = () => {
-        const elapsed = Date.now() - startTime;
+      const step = (t: number) => {
+        if (!startTime) startTime = t;
+        const elapsed = t - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing function (ease-out)
         const easeOut = 1 - Math.pow(1 - progress, 3);
-        
         this.container.scrollTop = startScrollTop + (distance * easeOut);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animateScroll);
-        } else {
-          resolve();
-        }
+        if (progress < 1) requestAnimationFrame(step);
+        else resolve();
       };
       
-      requestAnimationFrame(animateScroll);
+      requestAnimationFrame(step);
     });
   }
 
@@ -630,32 +657,23 @@ export class PositionRestorer {
    */
   private highlightRestoredPosition(range: Range): void {
     try {
-      const span = this.document.createElement('span');
-      span.style.backgroundColor = '#ffeb3b';
-      span.style.transition = 'background-color 2s ease-out';
-      span.className = 'position-restoration-highlight';
-      
-      // Wrap the range content
-      span.appendChild(range.extractContents());
-      range.insertNode(span);
-      
-      // Fade out the highlight
-      setTimeout(() => {
-        span.style.backgroundColor = 'transparent';
-        
-        // Remove highlight after fade
-        setTimeout(() => {
-          if (span.parentNode) {
-            while (span.firstChild) {
-              span.parentNode.insertBefore(span.firstChild, span);
-            }
-            span.parentNode.removeChild(span);
-          }
-        }, 2000);
-      }, 100);
-      
+      const rect = range.getBoundingClientRect();
+      const marker = this.document.createElement('div');
+      marker.style.position = 'fixed';
+      marker.style.left = `${Math.max(0, rect.left)}px`;
+      marker.style.top = `${Math.max(0, rect.top)}px`;
+      marker.style.width = `${Math.max(this.markerConfig.minWidth, rect.width)}px`;
+      marker.style.height = `${Math.max(this.markerConfig.minHeight, rect.height)}px`;
+      marker.style.pointerEvents = 'none';
+      marker.style.zIndex = '9999';
+      marker.style.background = this.markerConfig.backgroundColor;
+      marker.style.borderRadius = this.markerConfig.borderRadius;
+      marker.style.transition = 'opacity 1.5s ease-out';
+      this.document.body.appendChild(marker);
+      setTimeout(() => (marker.style.opacity = '0'), this.markerConfig.fadeDelay);
+      setTimeout(() => marker.remove(), this.markerConfig.removeDelay);
     } catch (error) {
-      console.warn('Failed to highlight restored position:', error);
+      console.warn('Failed to paint restoration marker:', error);
     }
   }
 
@@ -720,9 +738,23 @@ export class PositionRestorer {
   }
 
   /**
+   * Update marker configuration
+   */
+  updateMarkerConfig(config: Partial<MarkerConfig>): void {
+    this.markerConfig = { ...this.markerConfig, ...config };
+  }
+
+  /**
    * Get current configuration
    */
   getConfig(): RestorationConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Get current marker configuration
+   */
+  getMarkerConfig(): MarkerConfig {
+    return { ...this.markerConfig };
   }
 }
