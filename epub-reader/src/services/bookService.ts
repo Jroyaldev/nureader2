@@ -190,18 +190,17 @@ export class BookServiceImpl implements BookService {
         .select(`
           *,
           reading_progress!left(
-            percentage_complete,
-            chapter_id,
-            position,
-            total_time_minutes,
-            updated_at
+            progress_percentage,
+            current_location,
+            reading_time_minutes,
+            last_read_at
           ),
           annotations!left(
             id,
-            type,
-            chapter_id,
-            selected_text,
-            note_content,
+            annotation_type,
+            content,
+            note,
+            location,
             color,
             created_at
           )

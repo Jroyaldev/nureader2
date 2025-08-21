@@ -17,14 +17,21 @@ interface TocItem {
   subitems?: TocItem[];
 }
 
-interface SavedAnnotation {
+export interface SavedAnnotation {
   id: string;
   location: string;
   content: string;
   color: string;
   annotation_type: 'highlight' | 'note' | 'bookmark';
   note?: string;
+  searchText?: string;
+  textContext?: string;
 }
+
+// Import new highlight and position management classes
+import { HighlightManager } from './highlight-manager';
+import { PositionManager, PositionData } from './position-manager';
+import { PositionRestorer } from './position-restorer';
 
 export class EpubRenderer {
   private book: any;
@@ -41,7 +48,15 @@ export class EpubRenderer {
   private highlightedRanges: Map<string, Range> = new Map();
   private fontSize: number = 18;
   private _onScroll?: (e: Event) => void;
-  private stylesApplied: boolean = false;
+  
+  // Debug flag for performance-sensitive logging
+  private static DEBUG_SCROLL_EVENTS = false;
+
+  
+  // New highlight and position management instances
+  private highlightManager: HighlightManager;
+  private positionManager: PositionManager;
+  private positionRestorer: PositionRestorer;
 
   constructor(container: HTMLElement, initialTheme?: 'light' | 'dark' | 'sepia' | 'night') {
     this.container = container;
@@ -63,6 +78,11 @@ export class EpubRenderer {
     }
     this.setupScrollListener();
     this.setupTextSelectionListener();
+    
+    // Initialize new highlight and position management systems
+    this.highlightManager = new HighlightManager(document, this.container);
+    this.positionManager = new PositionManager(document, this.container);
+    this.positionRestorer = new PositionRestorer(document, this.container, this.positionManager);
   }
 
   async loadBook(file: File): Promise<{ title?: string; author?: string }> {
@@ -369,7 +389,7 @@ export class EpubRenderer {
     
     const imagePromises: Promise<void>[] = [];
     
-    for (const img of images) {
+    for (const img of Array.from(images)) {
       const src = img.getAttribute('src');
       
       // Skip if already processed or is a valid URL
@@ -452,7 +472,7 @@ export class EpubRenderer {
     const imageMap = new Map<string, string>();
     
     // Process all unique images
-    for (const src of imageSrcs) {
+    for (const src of Array.from(imageSrcs)) {
       try {
         console.log(`🔄 Processing image: ${src}`);
         const imageUrl = await this.createImageUrl(src, chapterHref);
@@ -681,18 +701,22 @@ export class EpubRenderer {
     });
     
     this._onScroll = () => {
-      console.log('🔥 RAW SCROLL EVENT FIRED!', this.container.scrollTop);
+      if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+        console.log('🔥 RAW SCROLL EVENT FIRED!', this.container.scrollTop);
+      }
       if (!ticking) {
         requestAnimationFrame(() => {
           // Only update if scroll position actually changed significantly
           const currentScrollTop = this.container.scrollTop;
           if (Math.abs(currentScrollTop - lastScrollTop) > 5) {
-            console.log('📜 Scroll detected:', {
-              scrollTop: currentScrollTop,
-              scrollHeight: this.container.scrollHeight,
-              clientHeight: this.container.clientHeight,
-              progress: Math.round((currentScrollTop / (this.container.scrollHeight - this.container.clientHeight)) * 100)
-            });
+            if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+              console.log('📜 Scroll detected:', {
+                scrollTop: currentScrollTop,
+                scrollHeight: this.container.scrollHeight,
+                clientHeight: this.container.clientHeight,
+                progress: Math.round((currentScrollTop / (this.container.scrollHeight - this.container.clientHeight)) * 100)
+              });
+            }
             this.updateProgress();
             this.updateCurrentChapter();
             lastScrollTop = currentScrollTop;
@@ -1255,7 +1279,6 @@ export class EpubRenderer {
       document.head.appendChild(styleEl);
     }
     styleEl.textContent = styles;
-    this.stylesApplied = true;
 
     // Update theme attribute and colors immediately
     const content = this.container.querySelector('.epub-continuous-content') as HTMLElement;
@@ -1333,7 +1356,7 @@ export class EpubRenderer {
     // If still not found, try finding by matching the href part
     if (!chapter) {
       const chapters = this.container.querySelectorAll('[data-chapter-href]');
-      for (const ch of chapters) {
+      for (const ch of Array.from(chapters)) {
         const chapterHref = ch.getAttribute('data-chapter-href') || '';
         // Check if the hrefs match (ignoring fragments)
         if (chapterHref.split('#')[0] === href.split('#')[0]) {
@@ -1386,7 +1409,7 @@ export class EpubRenderer {
 
     const chapters = this.container.querySelectorAll('.epub-chapter');
     
-    for (const chapter of chapters) {
+    for (const chapter of Array.from(chapters)) {
       const rect = (chapter as HTMLElement).getBoundingClientRect();
       const chapterTop = scrollTop + rect.top;
       const chapterBottom = chapterTop + rect.height;
@@ -1461,12 +1484,12 @@ export class EpubRenderer {
     // Remove scroll listener
     if (this._onScroll) {
       this.container.removeEventListener('scroll', this._onScroll as EventListener);
-      this._onScroll = undefined;
+      this._onScroll = undefined as any;
     }
 
     // Revoke any object URLs we created for images
     if (this._imageObjectUrls.size > 0) {
-      for (const url of this._imageObjectUrls) {
+      for (const url of Array.from(this._imageObjectUrls)) {
         try {
           URL.revokeObjectURL(url);
         } catch {}
@@ -1498,24 +1521,92 @@ export class EpubRenderer {
     };
   }
 
-  // Restore to a percentage position (more reliable fallback)
+  // Restore to a percentage position with viewport-consistent positioning
   restoreToPercentage(percentage: number): void {
     if (percentage < 0 || percentage > 100) {
       console.warn(`Invalid percentage: ${percentage}`);
       return;
     }
     
-    // Calculate scroll position based on percentage
-    const scrollHeight = this.container.scrollHeight - this.container.clientHeight;
-    const targetScroll = scrollHeight * (percentage / 100);
+    // Wait for all content to be fully loaded and measured
+    const performRestore = () => {
+      const scrollHeight = this.container.scrollHeight - this.container.clientHeight;
+      const targetScroll = scrollHeight * (percentage / 100);
+      
+      console.log(`📍 Restoring to ${percentage}% (scroll: ${targetScroll}, total: ${scrollHeight})`);
+      
+      // Use requestAnimationFrame for precise timing
+      requestAnimationFrame(() => {
+        this.container.scrollTo({ top: targetScroll, behavior: 'auto' });
+        
+        // Verify final position and adjust if needed
+        requestAnimationFrame(() => {
+          const actualScroll = this.container.scrollTop;
+          // Re-read scrollHeight to account for any late micro-layout changes
+          const finalScrollHeight = this.container.scrollHeight - this.container.clientHeight;
+          const actualPercentage = finalScrollHeight > 0 ? (actualScroll / finalScrollHeight) * 100 : 0;
+          
+          console.log(`✅ Position restored: target=${percentage}%, actual=${actualPercentage.toFixed(1)}%`);
+          
+          // Update progress callback with actual position
+          if (this.onProgressCallback) {
+            this.onProgressCallback(Math.round(actualPercentage));
+          }
+        });
+      });
+    };
     
-    console.log(`📍 Restoring to ${percentage}% (scroll position: ${targetScroll})`);
-    this.container.scrollTo({ top: targetScroll, behavior: 'auto' });
+    // Check if content is still loading
+    const checkContentReady = () => {
+      const allImages = Array.from(this.container.querySelectorAll('img')) as HTMLImageElement[];
+      const incompleteImages = allImages.filter(img => !img.complete);
+      
+      if (incompleteImages.length > 0) {
+        console.log(`⏳ Waiting for ${incompleteImages.length} images to load...`);
+        
+        // Set up load/error listeners for incomplete images
+        const promises = incompleteImages.map(img => {
+          return new Promise<void>((resolve) => {
+            if (img.complete) {
+              resolve();
+              return;
+            }
+            
+            const onLoad = () => {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+              resolve();
+            };
+            
+            const onError = () => {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+              resolve(); // Still resolve to avoid hanging
+            };
+            
+            img.addEventListener('load', onLoad);
+            img.addEventListener('error', onError);
+            
+            // Fallback timeout in case listeners don't fire
+            setTimeout(() => {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+              resolve();
+            }, 5000);
+          });
+        });
+        
+        Promise.all(promises).then(() => {
+          // Re-check in case new images appeared
+          setTimeout(checkContentReady, 50);
+        });
+      } else {
+        performRestore();
+      }
+    };
     
-    // Update progress callback
-    if (this.onProgressCallback) {
-      this.onProgressCallback(Math.round(percentage));
-    }
+    // Small delay to ensure DOM is settled
+    setTimeout(checkContentReady, 100);
   }
 
   // Generate CFI-like identifier for current position or selection
@@ -1553,7 +1644,7 @@ export class EpubRenderer {
         const midPoint = scrollTop + viewportHeight / 2;
         const chapters = this.container.querySelectorAll('.epub-chapter');
         
-        for (const chapter of chapters) {
+        for (const chapter of Array.from(chapters)) {
           const rect = (chapter as HTMLElement).getBoundingClientRect();
           const chapterTop = scrollTop + rect.top;
           const chapterBottom = chapterTop + rect.height;
@@ -1577,8 +1668,8 @@ export class EpubRenderer {
     }
   }
 
-  // Navigate to a CFI location with highlighting
-  displayCfi(cfi: string, highlightId?: string): boolean {
+  // Navigate to a CFI location with viewport-consistent positioning
+  async displayCfi(cfi: string, highlightId?: string): Promise<boolean> {
     try {
       if (!cfi || cfi.includes('undefined')) {
         console.warn('⚠️ Attempted to display an invalid or undefined CFI:', cfi);
@@ -1589,8 +1680,8 @@ export class EpubRenderer {
       if (highlightId) {
         const highlightEl = this.container.querySelector(`[data-annotation-id="${highlightId}"]`) as HTMLElement;
         if (highlightEl) {
-          // Scroll to highlight
-          highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Use viewport-top alignment for consistency
+          this.scrollToElementWithViewportAlignment(highlightEl);
           
           // Add pulse animation
           highlightEl.classList.add('epub-highlight-pulse');
@@ -1602,73 +1693,129 @@ export class EpubRenderer {
         }
       }
       
-      // Parse CFI format
-      if (cfi.startsWith('@')) {
-        // Simple scroll position - use immediate scrolling for restoration
-        const scrollTop = parseFloat(cfi.substring(1));
-        if (!isNaN(scrollTop)) {
-          console.log(`📍 Restoring to scroll position: ${scrollTop}`);
-          this.container.scrollTo({ top: scrollTop, behavior: 'auto' }); // Use 'auto' for immediate scroll
-          return true;
-        }
-      } else {
-        // Parse chapter-based CFI
-        const parts = cfi.split('@');
-        const locationParts = parts[0] ? parts[0].split('/') : [];
-        
-        if (locationParts.length >= 2) {
-          const chapterIndex = locationParts[0];
-          const chapterId = locationParts[1];
-          
-          // Find the chapter
-          const chapter = this.container.querySelector(
-            `[data-chapter-index="${chapterIndex}"]`
-          ) as HTMLElement;
-          
-          if (!chapter) {
-            console.warn(`⚠️ Chapter not found: index=${chapterIndex}, id=${chapterId}`);
-            return false;
+      const performCfiRestore = () => {
+        // Parse CFI format
+        if (cfi.startsWith('@')) {
+          // Simple scroll position - ensure viewport consistency
+          const scrollTop = parseFloat(cfi.substring(1));
+          if (!isNaN(scrollTop)) {
+            console.log(`📍 Restoring to scroll position: ${scrollTop}`);
+            return this.scrollWithViewportAlignment(scrollTop);
           }
+        } else {
+          // Parse chapter-based CFI
+          const parts = cfi.split('@');
+          const locationParts = parts[0] ? parts[0].split('/') : [];
           
-          // Get the actual position of the chapter in the scrollable container
-          const chapterTop = chapter.offsetTop;
-          console.log(`📍 Found chapter at offsetTop: ${chapterTop}`);
-          
-          if (parts[1]) {
-            // Has relative position within chapter
-            const relativePosition = parseFloat(parts[1]);
-            if (!isNaN(relativePosition)) {
-              // Calculate target scroll position
-              const chapterHeight = chapter.offsetHeight;
-              const targetScroll = chapterTop + (chapterHeight * relativePosition) - (this.container.clientHeight / 2);
-              console.log(`📍 Restoring to chapter ${chapterIndex} at ${(relativePosition * 100).toFixed(1)}% (scroll: ${targetScroll})`);
-              this.container.scrollTo({ top: targetScroll, behavior: 'auto' }); // Use 'auto' for immediate scroll
-              return true;
+          if (locationParts.length >= 2) {
+            const chapterIndex = locationParts[0];
+            const chapterId = locationParts[1];
+            
+            // Find the chapter
+            const chapter = this.container.querySelector(
+              `[data-chapter-index="${chapterIndex}"]`
+            ) as HTMLElement;
+            
+            if (!chapter) {
+              console.warn(`⚠️ Chapter not found: index=${chapterIndex}, id=${chapterId}`);
+              return false;
             }
-          } else {
-            // Just scroll to chapter start
-            console.log(`📍 Restoring to chapter ${chapterIndex} start`);
-            this.container.scrollTo({ top: chapterTop, behavior: 'auto' });
-            return true;
+            
+            // Get the actual position of the chapter in the scrollable container
+            const chapterTop = chapter.offsetTop;
+            console.log(`📍 Found chapter at offsetTop: ${chapterTop}`);
+            
+            let targetScroll: number;
+            
+            if (parts[1]) {
+              // Has relative position within chapter
+              const relativePosition = parseFloat(parts[1]);
+              if (!isNaN(relativePosition)) {
+                // Calculate target scroll position with viewport-top alignment
+                const chapterHeight = chapter.offsetHeight;
+                targetScroll = chapterTop + (chapterHeight * relativePosition);
+                console.log(`📍 Restoring to chapter ${chapterIndex} at ${(relativePosition * 100).toFixed(1)}%`);
+              } else {
+                targetScroll = chapterTop;
+              }
+            } else {
+              // Just scroll to chapter start
+              targetScroll = chapterTop;
+              console.log(`📍 Restoring to chapter ${chapterIndex} start`);
+            }
+            
+            return this.scrollWithViewportAlignment(targetScroll);
           }
         }
+        
+        return false;
+      };
+      
+      
+      // Wait for content to be ready before positioning
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const pendingImages = this.container.querySelectorAll('img:not([src^="blob:"]):not([src^="data:"])');
+      if (pendingImages.length > 0) {
+        console.log(`⏳ CFI restore waiting for ${pendingImages.length} images...`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Additional wait for images
       }
+      
+      return performCfiRestore();
+      
     } catch (error) {
       console.error('Error displaying CFI:', error);
+      return false;
     }
-    
-    return false;
+  }
+  
+  // Helper method for viewport-consistent scrolling
+  private scrollWithViewportAlignment(targetScroll: number): boolean {
+    try {
+      // Ensure scroll position is within bounds
+      const maxScroll = this.container.scrollHeight - this.container.clientHeight;
+      const alignedScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+      
+      // Use requestAnimationFrame for precise timing
+      requestAnimationFrame(() => {
+        this.container.scrollTo({ top: alignedScroll, behavior: 'auto' });
+        
+        // Verify and log final position
+        requestAnimationFrame(() => {
+          const actualScroll = this.container.scrollTop;
+          console.log(`✅ Viewport-aligned scroll: target=${alignedScroll}, actual=${actualScroll}`);
+        });
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error in viewport-aligned scrolling:', error);
+      return false;
+    }
+  }
+  
+  // Helper method for element scrolling with viewport alignment
+  private scrollToElementWithViewportAlignment(element: HTMLElement): void {
+    try {
+      const elementTop = element.offsetTop;
+      this.scrollWithViewportAlignment(elementTop);
+    } catch (error) {
+      console.error('Error scrolling to element with alignment:', error);
+      // Fallback to standard scroll
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   // Navigate to an annotation
-  navigateToAnnotation(annotationId: string): boolean {
+  async navigateToAnnotation(annotationId: string): Promise<boolean> {
     const annotation = this.savedAnnotations.find(a => a.id === annotationId);
     if (!annotation) return false;
     
     // First try to find the highlight element
     const highlightEl = this.container.querySelector(`[data-annotation-id="${annotationId}"]`) as HTMLElement;
     if (highlightEl) {
-      highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Use viewport-top alignment for consistency with the viewport-consistent system
+      this.scrollToElementWithViewportAlignment(highlightEl);
       
       // Add pulse animation
       highlightEl.classList.add('epub-highlight-pulse');
@@ -1680,7 +1827,7 @@ export class EpubRenderer {
     }
     
     // Fallback to CFI navigation
-    return this.displayCfi(annotation.location, annotationId);
+    return await this.displayCfi(annotation.location, annotationId);
   }
 
   // Get node path for CFI generation
@@ -1703,7 +1850,7 @@ export class EpubRenderer {
 
   // Setup text selection listener
   private setupTextSelectionListener(): void {
-    let selectionTimeout: NodeJS.Timeout | null = null;
+    let selectionTimeout: ReturnType<typeof setTimeout> | null = null;
     
     const handleSelection = () => {
       const selection = window.getSelection();
@@ -1755,352 +1902,40 @@ export class EpubRenderer {
   // Load saved annotations
   loadAnnotations(annotations: SavedAnnotation[]): void {
     this.savedAnnotations = annotations;
-    this.applyHighlights();
+    // Use the new HighlightManager for applying highlights
+    this.highlightManager.loadAnnotations(annotations);
   }
 
-  // Apply highlights to the rendered content
-  private applyHighlights(): void {
-    // Clear existing highlights first
-    this.clearHighlights();
-    
-    // Filter for highlights and notes (not bookmarks)
-    const highlightAnnotations = this.savedAnnotations.filter(
-      a => a.annotation_type === 'highlight' || a.annotation_type === 'note'
-    );
-    
-    for (const annotation of highlightAnnotations) {
-      this.applyHighlight(annotation);
-    }
-  }
 
-  // Clear all highlights
-  private clearHighlights(): void {
-    // Remove all highlight spans
-    const highlights = this.container.querySelectorAll('.epub-highlight');
-    highlights.forEach(el => {
-      const parent = el.parentNode;
-      while (el.firstChild) {
-        parent?.insertBefore(el.firstChild, el);
-      }
-      parent?.removeChild(el);
-    });
-    
-    this.highlightedRanges.clear();
-  }
 
-  // Apply a single highlight
-  private applyHighlight(annotation: SavedAnnotation): void {
-    try {
-      // Try to find the text in the document
-      const searchText = annotation.content;
-      if (!searchText) return;
-      
-      // Use the CFI if available to narrow down search
-      const range = this.findTextInDocument(searchText, annotation.location);
-      if (!range) return;
-      
-      // Create highlight span with different styling for notes
-      const highlightSpan = document.createElement('span');
-      
-      if (annotation.annotation_type === 'note') {
-        // Special styling for notes - more subtle and digital
-        highlightSpan.className = 'epub-note';
-        highlightSpan.style.backgroundColor = 'transparent';
-        highlightSpan.style.borderBottom = '2px dotted rgba(99, 102, 241, 0.4)';
-        highlightSpan.style.position = 'relative';
-        highlightSpan.style.paddingBottom = '1px';
-        
-        // Add a small note indicator after the text
-        const noteIndicator = document.createElement('sup');
-        noteIndicator.style.cssText = `
-          color: rgb(99, 102, 241);
-          font-size: 0.7em;
-          margin-left: 2px;
-          font-weight: 600;
-          opacity: 0.7;
-        `;
-        noteIndicator.textContent = '✎';
-        highlightSpan.dataset.hasIndicator = 'true';
-      } else {
-        // Regular highlight styling
-        highlightSpan.className = 'epub-highlight';
-        highlightSpan.style.backgroundColor = annotation.color || 'rgba(251, 191, 36, 0.3)';
-      }
-      
-      highlightSpan.dataset.annotationId = annotation.id;
-      highlightSpan.style.cursor = 'pointer';
-      highlightSpan.title = annotation.note || 'Click to view annotation';
-      
-      // Add click handler
-      highlightSpan.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.onHighlightClick(annotation);
-      });
-      
-      // Wrap the range content in highlight span
-      try {
-        range.surroundContents(highlightSpan);
-        
-        // Add note indicator for notes
-        if (annotation.annotation_type === 'note' && highlightSpan.dataset.hasIndicator === 'true') {
-          const noteIndicator = document.createElement('sup');
-          noteIndicator.style.cssText = `
-            color: rgb(99, 102, 241);
-            font-size: 0.7em;
-            margin-left: 2px;
-            font-weight: 600;
-            opacity: 0.7;
-            user-select: none;
-          `;
-          noteIndicator.textContent = '✎';
-          highlightSpan.appendChild(noteIndicator);
-        }
-        
-        this.highlightedRanges.set(annotation.id, range);
-      } catch (e) {
-        // If surroundContents fails (e.g., range spans multiple elements),
-        // extract and wrap the contents manually
-        const contents = range.extractContents();
-        highlightSpan.appendChild(contents);
-        
-        // Add note indicator for notes
-        if (annotation.annotation_type === 'note' && highlightSpan.dataset.hasIndicator === 'true') {
-          const noteIndicator = document.createElement('sup');
-          noteIndicator.style.cssText = `
-            color: rgb(99, 102, 241);
-            font-size: 0.7em;
-            margin-left: 2px;
-            font-weight: 600;
-            opacity: 0.7;
-            user-select: none;
-          `;
-          noteIndicator.textContent = '✎';
-          highlightSpan.appendChild(noteIndicator);
-        }
-        
-        range.insertNode(highlightSpan);
-        this.highlightedRanges.set(annotation.id, range);
-      }
-    } catch (error) {
-      console.warn('Failed to apply highlight:', error);
-    }
-  }
 
-  // Find text in document with better duplicate handling
-  private findTextInDocument(searchText: string, cfi?: string): Range | null {
-    try {
-      // Priority 1: If we have a valid CFI, try to use it first
-      if (cfi && cfi.includes('/')) {
-        const range = this.getRangeFromCfi(cfi);
-        if (range) {
-          const rangeText = range.toString().trim();
-          // Check if the range text matches or contains our search text
-          if (rangeText === searchText.trim() || rangeText.includes(searchText.trim())) {
-            return range;
-          }
-        }
-      }
-      
-      // Priority 2: Try to find text near the CFI location if available
-      if (cfi) {
-        // Extract chapter info from CFI to narrow search
-        const cfiParts = cfi.split('/');
-        if (cfiParts.length >= 2) {
-          const chapterIndex = cfiParts[0];
-          const chapterId = cfiParts[1];
-          
-          // Find the chapter element to search within
-          const chapter = this.container.querySelector(
-            `[data-chapter-index="${chapterIndex}"][data-chapter-id="${chapterId}"]`
-          );
-          
-          if (chapter) {
-            // Search within the specific chapter first
-            const range = this.searchTextInElement(searchText, chapter as Element);
-            if (range) return range;
-          }
-        }
-      }
-      
-      // Priority 3: Fallback to full document search with occurrence tracking
-      const matches: { range: Range; context: string }[] = [];
-      const walker = document.createTreeWalker(
-        this.container,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-      
-      let node: Node | null;
-      while (node = walker.nextNode()) {
-        const text = node.textContent || '';
-        let index = text.indexOf(searchText);
-        
-        while (index !== -1) {
-          const range = document.createRange();
-          range.setStart(node, index);
-          range.setEnd(node, index + searchText.length);
-          
-          // Get surrounding context for disambiguation
-          const contextStart = Math.max(0, index - 20);
-          const contextEnd = Math.min(text.length, index + searchText.length + 20);
-          const context = text.substring(contextStart, contextEnd);
-          
-          matches.push({ range, context });
-          
-          // Look for next occurrence in the same node
-          index = text.indexOf(searchText, index + 1);
-        }
-      }
-      
-      // If we found matches, return the best one
-      if (matches.length > 0) {
-        // If only one match, return it
-        if (matches.length === 1) {
-          return matches[0].range;
-        }
-        
-        // If multiple matches and we have CFI context, try to match based on position
-        if (cfi && cfi.includes('@')) {
-          // Extract position hint from CFI
-          const positionMatch = cfi.match(/@([\d.]+)/);
-          if (positionMatch) {
-            const targetPosition = parseFloat(positionMatch[1]);
-            // Return the match closest to the target position
-            // For simplicity, return the match at the approximate position
-            const matchIndex = Math.min(
-              Math.floor(targetPosition * matches.length),
-              matches.length - 1
-            );
-            return matches[matchIndex].range;
-          }
-        }
-        
-        // Default to first match if no better selection criteria
-        return matches[0].range;
-      }
-      
-      return null;
-    } catch (error) {
-      console.warn('Error finding text:', error);
-      return null;
-    }
-  }
 
-  // Helper method to search within a specific element
-  private searchTextInElement(searchText: string, element: Element): Range | null {
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_TEXT,
-      null
-    );
-    
-    let node: Node | null;
-    while (node = walker.nextNode()) {
-      const text = node.textContent || '';
-      const index = text.indexOf(searchText);
-      
-      if (index !== -1) {
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + searchText.length);
-        return range;
-      }
-    }
-    
-    return null;
-  }
 
-  // Get range from CFI
-  private getRangeFromCfi(cfi: string): Range | null {
-    try {
-      // Parse our custom CFI format
-      if (cfi.includes('/')) {
-        const parts = cfi.split('@')[0].split('/');
-        if (parts.length >= 3) {
-          const chapterIndex = parts[0];
-          const chapterId = parts[1];
-          const pathAndOffsets = parts.slice(2).join('/');
-          
-          // Find the chapter element
-          const chapter = this.container.querySelector(
-            `[data-chapter-index="${chapterIndex}"][data-chapter-id="${chapterId}"]`
-          );
-          
-          if (chapter && pathAndOffsets.includes(':')) {
-            // Parse path and offsets
-            const [startPath, endPath] = pathAndOffsets.split('-');
-            const [startNodePath, startOffset] = startPath.split(':');
-            const [endNodePath, endOffset] = endPath ? endPath.split(':') : [startNodePath, startOffset];
-            
-            // Navigate to the text nodes
-            const startNode = this.getNodeFromPath(startNodePath, chapter as Element);
-            const endNode = this.getNodeFromPath(endNodePath, chapter as Element);
-            
-            if (startNode && endNode) {
-              const range = document.createRange();
-              range.setStart(startNode, parseInt(startOffset));
-              range.setEnd(endNode, parseInt(endOffset));
-              return range;
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Error parsing CFI:', error);
-    }
-    return null;
-  }
 
-  // Get node from path string
-  private getNodeFromPath(path: string, root: Element): Node | null {
-    try {
-      const indices = path.split('/').map(n => parseInt(n));
-      let current: Node = root;
-      
-      for (const index of indices) {
-        if (current.childNodes[index]) {
-          current = current.childNodes[index];
-        } else {
-          return null;
-        }
-      }
-      
-      return current;
-    } catch {
-      return null;
-    }
-  }
+
+
+
+
+
 
   // Handle highlight click
-  private onHighlightClick(annotation: SavedAnnotation): void {
-    // Dispatch custom event that the reader page can listen to
-    const event = new CustomEvent('annotationClick', {
-      detail: annotation,
-      bubbles: true
-    });
-    this.container.dispatchEvent(event);
-  }
+
 
   // Add new annotation (for when user creates one)
   addAnnotation(annotation: SavedAnnotation): void {
     this.savedAnnotations.push(annotation);
-    this.applyHighlight(annotation);
+    // Use the new HighlightManager for applying highlights
+    this.highlightManager.addAnnotation(annotation);
   }
 
   // Remove annotation
   removeAnnotation(annotationId: string): void {
     this.savedAnnotations = this.savedAnnotations.filter(a => a.id !== annotationId);
     
-    // Remove the highlight span
-    const highlightEl = this.container.querySelector(`[data-annotation-id="${annotationId}"]`);
-    if (highlightEl) {
-      const parent = highlightEl.parentNode;
-      while (highlightEl.firstChild) {
-        parent?.insertBefore(highlightEl.firstChild, highlightEl);
-      }
-      parent?.removeChild(highlightEl);
-    }
+    // Use the new HighlightManager for removing highlights
+    this.highlightManager.removeHighlight(annotationId);
     
+    // Keep legacy support for highlightedRanges
     this.highlightedRanges.delete(annotationId);
   }
 
@@ -2267,7 +2102,7 @@ export class EpubRenderer {
     let foundCurrentChapter = false;
     
     // Calculate total words and remaining words
-    this.chapters.forEach((chapter, index) => {
+    this.chapters.forEach((_, index) => {
       const chapterEl = this.container.querySelector(`[data-chapter-index="${index}"]`);
       if (!chapterEl) return;
       
@@ -2324,5 +2159,129 @@ export class EpubRenderer {
     }
     
     return `${hours}h ${mins}m`;
+  }
+
+  // Get highlight manager for external access
+  getHighlightManager(): HighlightManager {
+    return this.highlightManager;
+  }
+
+  // Get position manager for external access
+  getPositionManager(): PositionManager {
+    return this.positionManager;
+  }
+
+  // Get position restorer for external access
+  getPositionRestorer(): PositionRestorer {
+    return this.positionRestorer;
+  }
+
+  // Save current reading position
+  async saveCurrentPosition(): Promise<PositionData | null> {
+    try {
+      if (this.currentChapterIndex < 0 || this.currentChapterIndex >= this.chapters.length) {
+        console.warn('No current chapter to save position for');
+        return null;
+      }
+
+      const position = this.positionManager.capturePosition();
+
+      console.log('Saved reading position:', position);
+      return position;
+    } catch (error) {
+      console.error('Failed to save reading position:', error);
+      return null;
+    }
+  }
+
+  // Restore reading position
+  async restorePosition(position: PositionData): Promise<boolean> {
+    try {
+      // Handle cross-chapter restoration by navigating to target chapter first
+      if (this.currentChapterIndex !== position.chapterIndex) {
+        console.log(`Cross-chapter restoration: moving from ${this.currentChapterIndex} to ${position.chapterIndex}`);
+        
+        // Validate target chapter exists
+        if (position.chapterIndex < 0 || position.chapterIndex >= this.chapters.length) {
+          console.warn(`Invalid chapter index: ${position.chapterIndex}`);
+          return false;
+        }
+        
+        // Navigate to target chapter
+        const targetChapter = this.chapters[position.chapterIndex];
+        if (!targetChapter) {
+          console.warn(`Chapter not found at index: ${position.chapterIndex}`);
+          return false;
+        }
+        
+        try {
+          this.jumpToChapter(targetChapter.href);
+          
+          // Wait for navigation and DOM stabilization
+          await new Promise(resolve => {
+            const checkStability = () => {
+              if (this.currentChapterIndex === position.chapterIndex) {
+                // Additional small delay for DOM rendering
+                setTimeout(resolve, 100);
+              } else {
+                setTimeout(checkStability, 50);
+              }
+            };
+            checkStability();
+          });
+          
+          // Verify navigation succeeded
+          if (this.currentChapterIndex !== position.chapterIndex) {
+            console.warn(`Navigation failed: still at ${this.currentChapterIndex}, expected ${position.chapterIndex}`);
+            return false;
+          }
+          
+        } catch (navError) {
+          console.error('Failed to navigate to target chapter:', navError);
+          return false;
+        }
+      }
+
+      // Now restore position within the chapter
+      const result = await this.positionRestorer.restorePosition(position);
+      
+      if (result.success) {
+        console.log('Successfully restored reading position');
+      } else {
+        console.warn('Failed to restore reading position:', result.error);
+      }
+      
+      return result.success;
+    } catch (error) {
+      console.error('Error restoring reading position:', error);
+      return false;
+    }
+  }
+
+  // Get current scroll position as percentage
+  getCurrentScrollPercentage(): number {
+    if (!this.container) return 0;
+    
+    const scrollTop = this.container.scrollTop;
+    const scrollHeight = this.container.scrollHeight;
+    const clientHeight = this.container.clientHeight;
+    
+    if (scrollHeight <= clientHeight) return 0;
+    
+    return (scrollTop / (scrollHeight - clientHeight)) * 100;
+  }
+
+  // Scroll to percentage position
+  scrollToPercentage(percentage: number): void {
+    if (!this.container) return;
+    
+    const scrollHeight = this.container.scrollHeight;
+    const clientHeight = this.container.clientHeight;
+    const maxScroll = scrollHeight - clientHeight;
+    
+    if (maxScroll <= 0) return;
+    
+    const targetScroll = (percentage / 100) * maxScroll;
+    this.container.scrollTop = targetScroll;
   }
 }

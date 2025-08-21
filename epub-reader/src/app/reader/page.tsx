@@ -10,6 +10,7 @@ import NoteMobileModal from "@/components/reader/NoteMobileModal";
 import { Toast } from "@/components/ui/Toast/Toast";
 import { useTheme } from "@/providers/ThemeProvider";
 import { EpubRenderer } from "@/lib/epub-renderer";
+import { SavedPosition } from "@/lib/position-manager";
 import TableOfContents from "@/components/reader/TableOfContents";
 import ContextualToolbar from "@/components/reader/ContextualToolbar";
 import MobileToolbar from "@/components/reader/MobileToolbar";
@@ -327,14 +328,27 @@ function ReaderPageContent() {
         // Bail if renderer changed/destroyed while awaiting
         if (!r || r !== epubRendererRef.current) return;
 
-        const formattedAnnotations = annotations.map(a => ({
-          id: a.id,
-          location: a.location,
-          content: a.content,
-          color: a.color,
-          annotation_type: a.annotation_type,
-          note: a.note
-        }));
+        const formattedAnnotations = annotations
+          .filter(a => {
+            // Filter out annotations with invalid content
+            if (!a.content || typeof a.content !== 'string' || a.content.trim().length < 3) {
+              console.warn(`⚠️ Filtering out annotation ${a.id}: invalid content:`, {
+                content: a.content,
+                type: typeof a.content,
+                length: a.content ? a.content.length : 0
+              });
+              return false;
+            }
+            return true;
+          })
+          .map(a => ({
+            id: a.id,
+            location: a.location,
+            content: a.content,
+            color: a.color,
+            annotation_type: a.annotation_type,
+            note: a.note
+          }));
 
         r.loadAnnotations(formattedAnnotations);
         
@@ -397,7 +411,12 @@ function ReaderPageContent() {
           
           const { data: progress, error: progressError } = await supabase
             .from('reading_progress')
-            .select('current_location, progress_percentage, reading_time_minutes')
+            .select(`
+              current_location, 
+              progress_percentage, 
+              reading_time_minutes,
+              last_read_at
+            `)
             .eq('user_id', user.id)
             .eq('book_id', bookId)
             .single();
@@ -443,74 +462,100 @@ function ReaderPageContent() {
 
         // After book is loaded and settings applied, jump to saved position if available
         if (bookId && (savedLocation || savedPercentage > 0) && epubRendererRef.current) {
-          console.log('📍 Attempting to restore reading position...');
+          console.log('📍 Attempting to restore reading position with enhanced system...');
           console.log('  Saved location:', savedLocation);
           console.log('  Saved percentage:', savedPercentage + '%');
           
-          // Try CFI-based restoration first
-          let restored = false;
-          if (savedLocation && !savedLocation.includes('undefined')) {
-            console.log('  Trying CFI restoration...');
-            restored = epubRendererRef.current.displayCfi(savedLocation);
-          }
-          
-          // If CFI failed or wasn't available, use percentage
-          if (!restored && savedPercentage > 0) {
-            console.log('  Using percentage-based restoration...');
-            epubRendererRef.current.restoreToPercentage(savedPercentage);
-            restored = true;
-          }
-          
-          if (!restored) {
-            console.warn('⚠️ Could not restore reading position');
+          try {
+            // Viewport-consistent position restoration with expert-level coordination
+            let restored = false;
+            
+            // Implement coordinated restoration with proper timing
+            const performCoordinatedRestoration = async () => {
+              try {
+                // Wait for all async content loading to complete
+                await new Promise<void>(resolve => {
+                  const checkContentStable = () => {
+                    const pendingImages = containerRef.current?.querySelectorAll('img:not([src^="blob:"]):not([src^="data:"])');
+                    if (pendingImages && pendingImages.length > 0) {
+                      console.log(`⏳ Waiting for ${pendingImages.length} images before restoration...`);
+                      setTimeout(checkContentStable, 100);
+                    } else {
+                      // Additional delay to ensure layout is stable
+                      setTimeout(resolve, 150);
+                    }
+                  };
+                  checkContentStable();
+                });
+                
+                // First try CFI restoration with viewport alignment
+                if (savedLocation && !savedLocation.includes('undefined') && savedLocation.trim() && epubRendererRef.current) {
+                  console.log('🎆 Expert CFI restoration with:', savedLocation.substring(0, 50) + '...');
+                  restored = await epubRendererRef.current.displayCfi(savedLocation);
+                  
+                  if (restored) {
+                    console.log('✅ Viewport-aligned position restored using CFI');
+                    await new Promise(resolve => setTimeout(resolve, 200)); // Wait for scroll to complete
+                  }
+                }
+                
+                // If CFI restoration failed, use enhanced percentage-based restoration
+                if (!restored && savedPercentage > 0 && epubRendererRef.current) {
+                  console.log('🎆 Expert percentage restoration:', savedPercentage + '%');
+                  epubRendererRef.current.restoreToPercentage(savedPercentage);
+                  restored = true;
+                  console.log('✅ Viewport-aligned position restored using percentage');
+                  await new Promise(resolve => setTimeout(resolve, 200)); // Wait for scroll to complete
+                }
+                
+                // Always show container after restoration is complete
+                if (containerRef.current) {
+                  containerRef.current.style.transition = 'opacity 0.3s ease-out';
+                  containerRef.current.style.opacity = '1';
+                  
+                  if (restored) {
+                    console.log('✅ Viewport-consistent restoration completed successfully');
+                  } else {
+                    console.warn('⚠️ Restoration failed, showing book from beginning');
+                  }
+                }
+                
+              } catch (error) {
+                console.error('❌ Error in coordinated restoration:', error);
+                // Ensure container is always shown
+                if (containerRef.current) {
+                  containerRef.current.style.opacity = '1';
+                }
+              }
+            };
+            
+            // Execute coordinated restoration
+            await performCoordinatedRestoration();
+          } catch (error) {
+            console.error('❌ Error during position restoration:', error);
             // Show container immediately if restoration failed
             if (containerRef.current) {
               containerRef.current.style.opacity = '1';
             }
-          } else {
-            console.log('✅ Reading position restored successfully');
-            
-            // Wait for scroll to settle before showing container
-            const waitForScrollSettle = () => {
-              if (!containerRef.current) return;
-              
-              let lastScrollTop = containerRef.current.scrollTop;
-              let stableCount = 0;
-              const requiredStableFrames = 3;
-              
-              const checkScrollStable = () => {
-                if (!containerRef.current) return;
-                
-                const currentScrollTop = containerRef.current.scrollTop;
-                
-                if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
-                  stableCount++;
-                  if (stableCount >= requiredStableFrames) {
-                    // Scroll has settled, show container with smooth fade-in
-                    containerRef.current.style.transition = 'opacity 0.3s ease-out';
-                    containerRef.current.style.opacity = '1';
-                    console.log('📍 Container shown after scroll settled at position:', currentScrollTop);
-                    return;
-                  }
-                } else {
-                  stableCount = 0;
-                  lastScrollTop = currentScrollTop;
-                }
-                
-                requestAnimationFrame(checkScrollStable);
-              };
-              
-              requestAnimationFrame(checkScrollStable);
-            };
-            
-            // Start monitoring scroll stability
-            requestAnimationFrame(waitForScrollSettle);
           }
         } else {
-          // For books without saved progress, apply settings and show immediately
-          if (containerRef.current) {
-            containerRef.current.style.opacity = '1';
-          }
+          // For books without saved progress, ensure container shows after content is ready
+          const showContainerWhenReady = () => {
+            const checkReady = () => {
+              const pendingImages = containerRef.current?.querySelectorAll('img:not([src^="blob:"]):not([src^="data:"])');
+              if (pendingImages && pendingImages.length > 0) {
+                setTimeout(checkReady, 100);
+              } else {
+                if (containerRef.current) {
+                  containerRef.current.style.transition = 'opacity 0.3s ease-out';
+                  containerRef.current.style.opacity = '1';
+                  console.log('✅ Container shown after content ready (no saved position)');
+                }
+              }
+            };
+            setTimeout(checkReady, 100);
+          };
+          showContainerWhenReady();
         }
 
         // Load annotations after position restoration is complete
@@ -533,28 +578,73 @@ function ReaderPageContent() {
     if (!bookId) return false;
     
     try {
-      // Get current CFI position
+      // Get current CFI position (legacy compatibility)
       const cfi = epubRendererRef.current?.getCurrentCfi() || '';
+      
+      // Try to get enhanced position data from the new PositionManager
+      let enhancedPosition: SavedPosition | null = null;
+      try {
+        const positionManager = epubRendererRef.current?.getPositionManager();
+        if (positionManager) {
+          enhancedPosition = positionManager.capturePosition();
+          console.log('📍 Captured enhanced position data:', {
+            cfi: enhancedPosition.cfi,
+            chapterIndex: enhancedPosition.chapterIndex,
+            paragraphIndex: enhancedPosition.paragraphIndex,
+            hasTextContext: !!enhancedPosition.textContext
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to capture enhanced position, using legacy CFI:', error);
+      }
+      
+      // Prepare data for database save - Use correct database field names
+      const saveData: any = {
+        user_id: userId,
+        book_id: bookId,
+        current_location: cfi,
+        progress_percentage: progress,
+        last_read_at: new Date().toISOString()
+      };
+      if (enhancedPosition) {
+        console.log('📍 Enhanced position captured but not saved (schema limitation):', {
+          cfi: enhancedPosition.cfi,
+          chapterIndex: enhancedPosition.chapterIndex,
+          hasTextContext: !!enhancedPosition.textContext,
+          confidence: enhancedPosition.confidence
+        });
+        
+        // TODO: Create database migration to add enhanced position columns:
+        // backup_cfi, text_context, viewport_width, viewport_height,
+        // font_size, font_family, line_height, theme, settings_hash,
+        // restoration_strategy, position_confidence
+      }
       
       const { error } = await supabase
         .from('reading_progress')
-        .upsert({
-          user_id: userId,
-          book_id: bookId,
-          current_location: cfi,
-          progress_percentage: progress,
-          last_read_at: new Date().toISOString()
-        }, {
+        .upsert(saveData, {
           onConflict: 'user_id,book_id'
         });
 
       if (!error) {
-        console.log('✅ Progress saved:', progress + '%');
+        console.log('✅ Progress saved:', progress + '%', enhancedPosition ? '(enhanced data captured but not persisted)' : '(basic format)');
         return true;
+      } else {
+        console.error('❌ Database save error:', {
+          message: error.message || 'Unknown database error',
+          details: error.details || 'No details available',
+          hint: error.hint || 'No hint available',
+          code: error.code || 'No error code',
+          saveData: Object.keys(saveData),
+          fullError: error
+        });
       }
       return false;
     } catch (error) {
-      console.error('Error saving reading progress:', error);
+      console.error('❌ Error saving reading progress:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return false;
     }
   }, [bookId, supabase]);
@@ -708,13 +798,6 @@ function ReaderPageContent() {
         annotation_type: type,
         color
       };
-      
-      // Only add chapter_info if the column exists (for backward compatibility)
-      // Remove this check after migration is applied
-      if (currentChapter) {
-        // Try with chapter_info, fallback without if it fails
-        annotationData.chapter_info = currentChapter;
-      }
 
       const { data: newAnnotation, error } = await supabase
         .from('annotations')
@@ -751,78 +834,15 @@ function ReaderPageContent() {
       window.getSelection()?.removeAllRanges();
       
     } catch (error) {
-      // Check if it's a column error and retry without chapter_info
-      if (error && typeof error === 'object' && 'message' in error) {
-        const errorMessage = (error as any).message;
-        if (errorMessage && errorMessage.includes('chapter_info')) {
-          // Silently retry without chapter_info (column doesn't exist yet)
-          try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            
-            const { data: newAnnotation, error: retryError } = await supabase
-              .from('annotations')
-              .insert({
-                user_id: user.id,
-                book_id: bookId,
-                content,
-                note: note || null,
-                location: cfi,
-                annotation_type: type,
-                color
-              })
-              .select()
-              .single();
-              
-            if (retryError) throw retryError;
-            
-            // Apply the highlight if successful
-            if (newAnnotation && epubRendererRef.current && (type === 'highlight' || type === 'note')) {
-              epubRendererRef.current.addAnnotation({
-                id: newAnnotation.id,
-                location: newAnnotation.location,
-                content: newAnnotation.content,
-                color: newAnnotation.color,
-                annotation_type: newAnnotation.annotation_type,
-                note: newAnnotation.note
-              });
-            }
-            
-            // Show success toast
-            const messages = {
-              highlight: 'Highlight saved',
-              note: 'Note added',
-              bookmark: 'Bookmark created'
-            };
-            setToast({ message: messages[type], type: 'success' });
-            
-            // Clear selection
-            setSelectedText("");
-            setSelectionCfi("");
-            setShowAnnotationToolbar(false);
-            window.getSelection()?.removeAllRanges();
-            
-            return; // Exit early on successful retry
-          } catch (retryErr) {
-            console.error('Failed to save annotation:', retryErr);
-            setToast({ message: 'Failed to save annotation', type: 'error' });
-          }
-        } else {
-          // Only log non-column errors
-          console.error('Error creating annotation:', error);
-          setToast({ message: 'Failed to save annotation', type: 'error' });
-        }
-      } else {
-        console.error('Error creating annotation:', error);
-        setToast({ message: 'Failed to save annotation', type: 'error' });
-      }
+      console.error('Error creating annotation:', error);
+      setToast({ message: 'Failed to save annotation', type: 'error' });
     }
   }, [bookId, loaded, supabase, selectedText, selectionCfi]);
 
   const jumpToAnnotation = useCallback(async (location: string, annotationId: string) => {
     if (!epubRendererRef.current || !location) return;
     
-    const jumped = epubRendererRef.current.navigateToAnnotation(annotationId);
+    const jumped = await epubRendererRef.current.navigateToAnnotation(annotationId);
     if (jumped) {
       setShowAnnotations(false);
     } else {

@@ -95,15 +95,9 @@ export function useReaderPersistence(state: EnhancedReaderState) {
         .upsert({
           user_id: user.id,
           book_id: progressData.bookId,
-          chapter_id: null, // Will be set based on actual chapter mapping
-          position: progressData.location,
+          current_location: progressData.location,
           progress_percentage: Math.round(progressData.progress * 100),
-          reading_time_seconds: 0, // Will be tracked separately
-          last_read_at: new Date().toISOString(),
-          metadata: {
-            chapterTitle: progressData.chapterTitle,
-            cfi: progressData.location
-          }
+          last_read_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,book_id'
         });
@@ -174,9 +168,9 @@ export function useReaderPersistence(state: EnhancedReaderState) {
         if (dbProgress) {
           const dbProgressFormatted: PersistedProgress = {
             bookId: dbProgress.book_id,
-            location: dbProgress.position,
-            progress: dbProgress.progress_percentage / 100,
-            chapterTitle: dbProgress.metadata?.chapterTitle || '',
+            location: dbProgress.current_location ?? dbProgress.position ?? '',
+            progress: (dbProgress.progress_percentage ?? 0) / 100,
+            chapterTitle: dbProgress.metadata?.chapterTitle ?? '',
             lastRead: dbProgress.last_read_at
           };
 
