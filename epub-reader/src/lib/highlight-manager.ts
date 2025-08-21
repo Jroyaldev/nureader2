@@ -11,17 +11,37 @@ interface HighlightData {
   annotation_type?: string;
 }
 
-// SOP Error Classification System
+// Enhanced SOP Error Classification System
 enum HighlightErrorType {
+  // Text Search Errors
   TEXT_NOT_FOUND = 'TEXT_NOT_FOUND',
+  TEXT_TOO_SHORT = 'TEXT_TOO_SHORT',
+  TEXT_AMBIGUOUS = 'TEXT_AMBIGUOUS',
+  
+  // Position & Location Errors
+  CFI_PARSE_ERROR = 'CFI_PARSE_ERROR',
+  CFI_NOT_FOUND = 'CFI_NOT_FOUND',
+  CHAPTER_NOT_FOUND = 'CHAPTER_NOT_FOUND',
+  POSITION_OUT_OF_BOUNDS = 'POSITION_OUT_OF_BOUNDS',
+  
+  // DOM & Structure Errors
   DOM_STRUCTURE_CHANGED = 'DOM_STRUCTURE_CHANGED',
   CROSS_NODE_TEXT = 'CROSS_NODE_TEXT',
-  FORMATTING_MISMATCH = 'FORMATTING_MISMATCH',
-  ENCODING_ISSUE = 'ENCODING_ISSUE',
-  INVALID_ANNOTATION = 'INVALID_ANNOTATION',
-  TIMEOUT_EXCEEDED = 'TIMEOUT_EXCEEDED',
   RANGE_CREATION_FAILED = 'RANGE_CREATION_FAILED',
   DOM_MANIPULATION_FAILED = 'DOM_MANIPULATION_FAILED',
+  
+  // Content & Format Errors
+  FORMATTING_MISMATCH = 'FORMATTING_MISMATCH',
+  ENCODING_ISSUE = 'ENCODING_ISSUE',
+  WHITESPACE_NORMALIZATION_FAILED = 'WHITESPACE_NORMALIZATION_FAILED',
+  
+  // System & Configuration Errors
+  INVALID_ANNOTATION = 'INVALID_ANNOTATION',
+  TIMEOUT_EXCEEDED = 'TIMEOUT_EXCEEDED',
+  CONTEXT_INSUFFICIENT = 'CONTEXT_INSUFFICIENT',
+  STRATEGY_EXHAUSTED = 'STRATEGY_EXHAUSTED',
+  
+  // Fallback
   UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
 
@@ -166,9 +186,18 @@ class SOPErrorHandler {
     if (error instanceof Error) {
       message = error.message;
       
-      // Classify based on error message patterns
+      // Enhanced error classification based on message patterns
       if (message.includes('Text not found')) {
         errorType = HighlightErrorType.TEXT_NOT_FOUND;
+        recoverable = true;
+      } else if (message.includes('searchText too short')) {
+        errorType = HighlightErrorType.TEXT_TOO_SHORT;
+        recoverable = true;
+      } else if (message.includes('CFI') || message.includes('cfi')) {
+        errorType = HighlightErrorType.CFI_PARSE_ERROR;
+        recoverable = true;
+      } else if (message.includes('Chapter') && message.includes('not found')) {
+        errorType = HighlightErrorType.CHAPTER_NOT_FOUND;
         recoverable = true;
       } else if (message.includes('Range') || message.includes('range')) {
         errorType = HighlightErrorType.RANGE_CREATION_FAILED;
@@ -179,12 +208,32 @@ class SOPErrorHandler {
       } else if (message.includes('timeout') || message.includes('Timeout')) {
         errorType = HighlightErrorType.TIMEOUT_EXCEEDED;
         recoverable = false;
+      } else if (message.includes('normalize') || message.includes('encoding')) {
+        errorType = HighlightErrorType.ENCODING_ISSUE;
+        recoverable = true;
+      } else if (message.includes('cross-node') || message.includes('spans multiple')) {
+        errorType = HighlightErrorType.CROSS_NODE_TEXT;
+        recoverable = true;
       }
     }
 
-    // Additional context-based classification
-    if (context?.searchText && typeof context.searchText !== 'string') {
-      errorType = HighlightErrorType.INVALID_ANNOTATION;
+    // Enhanced context-based classification
+    if (context?.searchText) {
+      if (typeof context.searchText !== 'string') {
+        errorType = HighlightErrorType.INVALID_ANNOTATION;
+        recoverable = false;
+      } else if (context.searchText.trim().length < 1) {
+        errorType = HighlightErrorType.TEXT_TOO_SHORT;
+        recoverable = false;
+      } else if (context.searchText.trim().length < 3 && !context.location && !context.textContext) {
+        errorType = HighlightErrorType.CONTEXT_INSUFFICIENT;
+        recoverable = true;
+      }
+    }
+    
+    // Check for strategy exhaustion
+    if (context?.attempts >= 5 && context?.fallbackStrategies?.length === 0) {
+      errorType = HighlightErrorType.STRATEGY_EXHAUSTED;
       recoverable = false;
     }
 
@@ -206,11 +255,26 @@ class SOPErrorHandler {
     if (attempts >= maxAttempts) return false;
     if (!error.recoverable) return false;
     
-    // Don't retry certain error types
+    // Enhanced non-retryable error types
     const nonRetryableErrors = [
       HighlightErrorType.INVALID_ANNOTATION,
-      HighlightErrorType.DOM_MANIPULATION_FAILED
+      HighlightErrorType.DOM_MANIPULATION_FAILED,
+      HighlightErrorType.TIMEOUT_EXCEEDED,
+      HighlightErrorType.STRATEGY_EXHAUSTED
     ];
+    
+    // Special handling for specific error types
+    if (error.type === HighlightErrorType.TEXT_TOO_SHORT && attempts > 2) {
+      return false; // Give up on very short text after few attempts
+    }
+    
+    if (error.type === HighlightErrorType.CONTEXT_INSUFFICIENT && attempts > 1) {
+      return false; // Quick fail for insufficient context
+    }
+    
+    if (error.type === HighlightErrorType.CHAPTER_NOT_FOUND && attempts > 1) {
+      return false; // Chapter missing is usually permanent
+    }
     
     return !nonRetryableErrors.includes(error.type);
   }
@@ -222,17 +286,46 @@ class SOPErrorHandler {
       case HighlightErrorType.TEXT_NOT_FOUND:
         strategies.push('cross-node', 'fuzzy', 'partial', 'context');
         break;
+        
+      case HighlightErrorType.TEXT_TOO_SHORT:
+      case HighlightErrorType.TEXT_AMBIGUOUS:
+        strategies.push('context', 'cross-node'); // Prioritize context for short/ambiguous text
+        break;
+        
+      case HighlightErrorType.CFI_PARSE_ERROR:
+      case HighlightErrorType.CFI_NOT_FOUND:
+        strategies.push('context', 'fuzzy', 'partial'); // Fall back to text-based strategies
+        break;
+        
+      case HighlightErrorType.CHAPTER_NOT_FOUND:
+      case HighlightErrorType.POSITION_OUT_OF_BOUNDS:
+        strategies.push('fuzzy', 'partial', 'context'); // Broad search strategies
+        break;
+        
       case HighlightErrorType.CROSS_NODE_TEXT:
-        strategies.push('cross-node', 'partial');
+        strategies.push('cross-node', 'partial'); // Specialized for spanning elements
         break;
+        
       case HighlightErrorType.FORMATTING_MISMATCH:
-        strategies.push('fuzzy', 'partial');
+      case HighlightErrorType.ENCODING_ISSUE:
+      case HighlightErrorType.WHITESPACE_NORMALIZATION_FAILED:
+        strategies.push('fuzzy', 'partial', 'cross-node'); // Flexible text matching
         break;
+        
       case HighlightErrorType.RANGE_CREATION_FAILED:
-        strategies.push('cross-node', 'context');
+        strategies.push('cross-node', 'context', 'partial'); // Alternative range creation
         break;
+        
+      case HighlightErrorType.CONTEXT_INSUFFICIENT:
+        strategies.push('fuzzy', 'partial'); // Lower precision strategies
+        break;
+        
+      case HighlightErrorType.DOM_STRUCTURE_CHANGED:
+        strategies.push('cross-node', 'fuzzy', 'context'); // Adaptive strategies
+        break;
+        
       default:
-        strategies.push('fuzzy', 'context');
+        strategies.push('fuzzy', 'context', 'partial'); // General fallbacks
     }
     
     return strategies;
@@ -273,25 +366,67 @@ export class EnhancedTextFinder {
       return null;
     }
 
-    // Strategy 1: Exact text match
-    const exactMatch = this.findExactText(searchText);
-    if (exactMatch) {
-      return {
-        range: exactMatch,
-        confidence: 1.0,
-        strategy: 'exact'
-      };
-    }
-
-    // Strategy 2: CFI-based search with nearby text
-    if (cfi) {
-      const cfiMatch = await this.findTextNearCfi(searchText, cfi);
-      if (cfiMatch) {
+    // Normalize search text to handle common variations
+    const normalizedSearchText = this.normalizeSearchText(searchText);
+    const isShortWord = normalizedSearchText.trim().length < 3;
+    
+    // For short words, prioritize location-based strategies to avoid false matches
+    if (isShortWord) {
+      // Strategy 1 (short words): CFI-based search first - most precise for short words
+      if (cfi) {
+        const cfiMatch = await this.findTextNearCfi(normalizedSearchText, cfi);
+        if (cfiMatch) {
+          return {
+            range: cfiMatch,
+            confidence: 0.95,
+            strategy: 'exact'
+          };
+        }
+      }
+      
+      // Strategy 2 (short words): Context-based search with word boundaries
+      if (context) {
+        const contextMatch = this.findTextWithContext(normalizedSearchText, context, true);
+        if (contextMatch) {
+          return {
+            range: contextMatch,
+            confidence: 0.9,
+            strategy: 'context',
+            context
+          };
+        }
+      }
+      
+      // Strategy 3 (short words): Word-boundary exact match to avoid partial matches
+      const exactWordMatch = this.findExactWordMatch(normalizedSearchText);
+      if (exactWordMatch) {
         return {
-          range: cfiMatch,
-          confidence: 0.9,
+          range: exactWordMatch,
+          confidence: 0.85,
           strategy: 'exact'
         };
+      }
+    } else {
+      // Strategy 1 (normal words): Exact text match first
+      const exactMatch = this.findExactText(normalizedSearchText);
+      if (exactMatch) {
+        return {
+          range: exactMatch,
+          confidence: 1.0,
+          strategy: 'exact'
+        };
+      }
+
+      // Strategy 2 (normal words): CFI-based search
+      if (cfi) {
+        const cfiMatch = await this.findTextNearCfi(normalizedSearchText, cfi);
+        if (cfiMatch) {
+          return {
+            range: cfiMatch,
+            confidence: 0.9,
+            strategy: 'exact'
+          };
+        }
       }
     }
 
@@ -331,9 +466,9 @@ export class EnhancedTextFinder {
       }
     }
 
-    // Strategy 6: Context-based disambiguation
-    if (context && (!fallbackStrategies || fallbackStrategies.includes('context'))) {
-      const contextMatch = this.findTextWithContext(searchText, context);
+    // Strategy 6: Context-based disambiguation (only for normal words, already tried for short words)
+    if (!isShortWord && context && (!fallbackStrategies || fallbackStrategies.includes('context'))) {
+      const contextMatch = this.findTextWithContext(normalizedSearchText, context);
       if (contextMatch) {
         return {
           range: contextMatch,
@@ -354,14 +489,24 @@ export class EnhancedTextFinder {
       null
     );
 
+    const normalizedSearchText = searchText.toLowerCase();
+
     let node: Text | null;
     while ((node = walker.nextNode() as Text)) {
-      const index = node.textContent?.indexOf(searchText);
-      if (index !== undefined && index >= 0) {
-        const range = this.document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + searchText.length);
-        return range;
+      const originalText = node.textContent || '';
+      const normalizedNodeText = this.normalizeSearchText(originalText).toLowerCase();
+      
+      const index = normalizedNodeText.indexOf(normalizedSearchText);
+      if (index >= 0) {
+        // Convert normalized index back to original text position
+        const actualIndex = this.findActualIndex(originalText, this.normalizeSearchText(originalText), index);
+        
+        if (actualIndex >= 0 && actualIndex + searchText.length <= originalText.length) {
+          const range = this.document.createRange();
+          range.setStart(node, actualIndex);
+          range.setEnd(node, actualIndex + searchText.length);
+          return range;
+        }
       }
     }
 
@@ -373,9 +518,12 @@ export class EnhancedTextFinder {
       const cfiRange = this.getRangeFromCfi(cfi);
       if (!cfiRange) return null;
 
-      // Search within 1000 characters around the CFI position
+      const normalizedSearchText = searchText.toLowerCase();
       const container = cfiRange.commonAncestorContainer;
-      const searchRadius = 1000;
+      const searchRadius = 2000; // Increased search radius for better coverage
+      
+      // Collect potential matches with their distances from CFI
+      const potentialMatches: Array<{ range: Range; distance: number; confidence: number }> = [];
       
       const walker = this.document.createTreeWalker(
         container.nodeType === Node.ELEMENT_NODE ? container as Element : container.parentElement!,
@@ -385,18 +533,48 @@ export class EnhancedTextFinder {
 
       let node: Text | null;
       while ((node = walker.nextNode() as Text)) {
-        const index = node.textContent?.indexOf(searchText);
-        if (index !== undefined && index >= 0) {
-          const range = this.document.createRange();
-          range.setStart(node, index);
-          range.setEnd(node, index + searchText.length);
+        const originalText = node.textContent || '';
+        const normalizedNodeText = this.normalizeSearchText(originalText).toLowerCase();
+        
+        let searchIndex = 0;
+        // Find all occurrences in this node
+        while ((searchIndex = normalizedNodeText.indexOf(normalizedSearchText, searchIndex)) >= 0) {
+          // Convert normalized index back to original text position
+          const actualIndex = this.findActualIndex(originalText, this.normalizeSearchText(originalText), searchIndex);
           
-          // Check if this range is within reasonable distance of CFI
-          if (this.isRangeNearCfi(range, cfiRange, searchRadius)) {
-            return range;
+          if (actualIndex >= 0 && actualIndex + searchText.length <= originalText.length) {
+            const range = this.document.createRange();
+            range.setStart(node, actualIndex);
+            range.setEnd(node, actualIndex + searchText.length);
+            
+            // Calculate distance and confidence
+            const distance = this.calculateRangeDistance(range, cfiRange);
+            const confidence = this.calculateCFIMatchConfidence(distance, searchRadius, searchText.length);
+            
+            if (distance <= searchRadius) {
+              potentialMatches.push({ range, distance, confidence });
+            }
           }
+          
+          searchIndex++; // Move to next potential match
         }
       }
+      
+      // Return the best match (closest to CFI with highest confidence)
+      if (potentialMatches.length > 0) {
+        potentialMatches.sort((a, b) => {
+          // First sort by confidence (higher is better)
+          if (Math.abs(a.confidence - b.confidence) > 0.1) {
+            return b.confidence - a.confidence;
+          }
+          // Then by distance (closer is better)
+          return a.distance - b.distance;
+        });
+        
+        console.log(`Found ${potentialMatches.length} CFI matches, selected best with confidence ${potentialMatches[0]!.confidence.toFixed(2)}`);
+        return potentialMatches[0]!.range;
+      }
+      
     } catch (error) {
       console.warn('CFI-based search failed:', error);
     }
@@ -448,8 +626,94 @@ export class EnhancedTextFinder {
     return bestMatch;
   }
 
-  private findTextWithContext(searchText: string, context: string): Range | null {
-    const contextWords = context.toLowerCase().split(/\s+/).slice(0, 10); // Use first 10 words of context
+  /**
+   * Normalize search text to handle encoding and whitespace variations
+   */
+  private normalizeSearchText(searchText: string): string {
+    return searchText
+      // Normalize whitespace (multiple spaces/tabs/newlines to single space)
+      .replace(/\s+/g, ' ')
+      // Normalize common quote variations
+      .replace(/[‘’]/g, "'") // Smart single quotes to straight
+      .replace(/[“”]/g, '"') // Smart double quotes to straight
+      // Normalize dashes
+      .replace(/[–—]/g, '-') // En/em dash to hyphen
+      // Normalize ellipsis
+      .replace(/…/g, '...')
+      .trim();
+  }
+
+  /**
+   * Find exact word match with word boundaries to avoid partial matches for short words
+   */
+  private findExactWordMatch(searchText: string): Range | null {
+    const walker = this.document.createTreeWalker(
+      this.chapterElement || this.document.body,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+
+    // Create regex with word boundaries
+    const searchPattern = new RegExp(`\\b${this.escapeRegExp(searchText)}\\b`, 'i');
+
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text)) {
+      const nodeText = node.textContent || '';
+      const normalizedNodeText = this.normalizeSearchText(nodeText);
+      const match = normalizedNodeText.match(searchPattern);
+      
+      if (match && match.index !== undefined) {
+        // Find the actual position in the original text
+        const actualIndex = this.findActualIndex(nodeText, normalizedNodeText, match.index);
+        if (actualIndex >= 0) {
+          const range = this.document.createRange();
+          range.setStart(node, actualIndex);
+          range.setEnd(node, actualIndex + searchText.length);
+          return range;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Escape special regex characters
+   */
+  private escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * Find the actual character position in original text from normalized text position
+   */
+  private findActualIndex(originalText: string, normalizedText: string, normalizedIndex: number): number {
+    let originalIndex = 0;
+    let normalizedCount = 0;
+    
+    while (originalIndex < originalText.length && normalizedCount < normalizedIndex) {
+      const originalChar = originalText[originalIndex];
+      
+      if (originalChar && /\s/.test(originalChar)) {
+        // Skip extra whitespace in original
+        while (originalIndex < originalText.length && /\s/.test(originalText[originalIndex] || '')) {
+          originalIndex++;
+        }
+        if (normalizedCount < normalizedText.length && normalizedText[normalizedCount] === ' ') {
+          normalizedCount++;
+        }
+      } else {
+        originalIndex++;
+        normalizedCount++;
+      }
+    }
+    
+    return originalIndex;
+  }
+
+  private findTextWithContext(searchText: string, context: string, useWordBoundaries: boolean = false): Range | null {
+    const normalizedContext = this.normalizeSearchText(context);
+    const contextWords = normalizedContext.toLowerCase().split(/\s+/).slice(0, 10);
     
     const walker = this.document.createTreeWalker(
       this.chapterElement || this.document.body,
@@ -457,28 +721,70 @@ export class EnhancedTextFinder {
       null
     );
 
+    let bestMatch: { node: Text; index: number; score: number } | null = null;
     let node: Text | null;
+    
     while ((node = walker.nextNode() as Text)) {
-      const text = node.textContent?.toLowerCase() || '';
+      const originalText = node.textContent || '';
+      const normalizedText = this.normalizeSearchText(originalText).toLowerCase();
       
-      // Check if context words appear near the search text
-      const searchIndex = text.indexOf(searchText.toLowerCase());
+      // Use word boundaries for short words to avoid partial matches
+      const searchPattern = useWordBoundaries 
+        ? new RegExp(`\\b${this.escapeRegExp(searchText.toLowerCase())}\\b`)
+        : searchText.toLowerCase();
+        
+      let searchIndex = -1;
+      if (useWordBoundaries && searchPattern instanceof RegExp) {
+        const match = normalizedText.match(searchPattern);
+        searchIndex = match ? match.index || -1 : -1;
+      } else {
+        searchIndex = normalizedText.indexOf(searchText.toLowerCase());
+      }
+      
       if (searchIndex >= 0) {
-        const surroundingText = text.substring(
-          Math.max(0, searchIndex - 200),
-          Math.min(text.length, searchIndex + searchText.length + 200)
-        );
+        // Expand search area around the found text
+        const expandedStart = Math.max(0, searchIndex - 300);
+        const expandedEnd = Math.min(normalizedText.length, searchIndex + searchText.length + 300);
+        const surroundingText = normalizedText.substring(expandedStart, expandedEnd);
         
-        const contextMatches = contextWords.filter(word => 
-          surroundingText.includes(word)
-        ).length;
+        // Calculate context match score
+        let contextScore = 0;
+        let exactMatches = 0;
         
-        if (contextMatches >= Math.min(3, contextWords.length * 0.5)) {
-          const range = this.document.createRange();
-          range.setStart(node, searchIndex);
-          range.setEnd(node, searchIndex + searchText.length);
-          return range;
+        for (const contextWord of contextWords) {
+          if (contextWord.length > 2) { // Skip very short context words
+            const wordPattern = new RegExp(`\\b${this.escapeRegExp(contextWord)}\\b`);
+            if (wordPattern.test(surroundingText)) {
+              exactMatches++;
+              contextScore += 2; // Exact word match gets higher score
+            } else if (surroundingText.includes(contextWord)) {
+              contextScore += 1; // Partial match gets lower score
+            }
+          }
         }
+        
+        // Require higher context match threshold for better precision
+        const requiredMatches = Math.max(2, Math.ceil(contextWords.length * 0.4));
+        const requiredScore = Math.max(3, contextWords.length * 0.8);
+        
+        if (exactMatches >= requiredMatches && contextScore >= requiredScore) {
+          if (!bestMatch || contextScore > bestMatch.score) {
+            // Convert normalized index back to original text index
+            const actualIndex = this.findActualIndex(originalText, this.normalizeSearchText(originalText), searchIndex);
+            bestMatch = { node, index: actualIndex, score: contextScore };
+          }
+        }
+      }
+    }
+
+    if (bestMatch) {
+      try {
+        const range = this.document.createRange();
+        range.setStart(bestMatch.node, bestMatch.index);
+        range.setEnd(bestMatch.node, bestMatch.index + searchText.length);
+        return range;
+      } catch (error) {
+        console.warn('Failed to create range from context match:', error);
       }
     }
 
@@ -632,40 +938,98 @@ export class EnhancedTextFinder {
 
   private getRangeFromCfi(cfi: string): Range | null {
     try {
-      // Support "chapter-X-Y" and "X/CHAPTER_ID@relative" formats
+      // Enhanced CFI format support
+      // Format 1: "chapter-X-Y" (chapter index, character offset)
       const dashMatch = cfi.match(/chapter-(\d+)-(\d+)/);
+      // Format 2: "X/CHAPTER_ID@relative" (chapter index, relative position 0-1)
       const slashRelMatch = cfi.match(/^(\d+)\/[^@]+@([0-9.]+)/);
+      // Format 3: Standard EPUB CFI format "/6/4[chapter01]!/4/2/2:15" 
+      const epubCfiMatch = cfi.match(/\/\d+\/\d+\[[^\]]*\]!\/.*:(\d+)/);
+      // Format 4: Simple position "pos-X" or "offset-X"
+      const posMatch = cfi.match(/(?:pos|offset)-(\d+)/);
+      // Format 5: Percentage "percent-X.X"
+      const percentMatch = cfi.match(/percent-([0-9.]+)/);
       
-      if (!dashMatch && !slashRelMatch) return null;
-
-      let chapterIndex: number;
+      let chapterIndex: number = 0;
       let charOffset: number | null = null;
+      let relativePosition: number | null = null;
 
       if (dashMatch) {
+        // Format 1: Direct chapter and character offset
         chapterIndex = parseInt(dashMatch[1]!, 10);
         charOffset = parseInt(dashMatch[2]!, 10);
       } else if (slashRelMatch) {
+        // Format 2: Chapter with relative position
         chapterIndex = parseInt(slashRelMatch[1]!, 10);
-        // Will calculate charOffset from relative position below
+        relativePosition = parseFloat(slashRelMatch[2]!);
+      } else if (epubCfiMatch) {
+        // Format 3: Standard EPUB CFI - extract character offset
+        charOffset = parseInt(epubCfiMatch[1]!, 10);
+        // Try to find chapter from CFI path
+        const chapterMatch = cfi.match(/\[(chapter\d+|ch\d+|\d+)\]/);
+        if (chapterMatch) {
+          const chapterStr = chapterMatch[1]!;
+          const chNum = chapterStr.match(/\d+/);
+          if (chNum) chapterIndex = parseInt(chNum[0]!, 10);
+        }
+      } else if (posMatch) {
+        // Format 4: Simple position offset
+        charOffset = parseInt(posMatch[1]!, 10);
+      } else if (percentMatch) {
+        // Format 5: Percentage position
+        relativePosition = parseFloat(percentMatch[1]!) / 100;
       } else {
+        console.warn('Unsupported CFI format:', cfi);
         return null;
       }
 
-      // Find the chapter element - try both data-chapter-index and data-chapter selectors
-      let chapterElement = this.document.querySelector(`[data-chapter-index="${chapterIndex}"]`);
+      // Enhanced chapter element finding with multiple selector strategies
+      let chapterElement: Element | null = null;
+      
+      // Strategy 1: Try data-chapter-index attribute
+      chapterElement = this.document.querySelector(`[data-chapter-index="${chapterIndex}"]`);
+      
+      // Strategy 2: Try data-chapter attribute  
       if (!chapterElement) {
         chapterElement = this.document.querySelector(`[data-chapter="${chapterIndex}"]`);
       }
-      if (!chapterElement) return null;
-
-      // For relative format, calculate character offset from relative position
-      if (slashRelMatch && charOffset === null) {
-        const chapterText = chapterElement.textContent || '';
-        const rel = parseFloat(slashRelMatch[2] || '0');
-        charOffset = Math.max(0, Math.min(chapterText.length - 1, Math.floor(chapterText.length * rel)));
+      
+      // Strategy 3: Try id-based selectors
+      if (!chapterElement) {
+        chapterElement = this.document.querySelector(`#chapter-${chapterIndex}, #chapter${chapterIndex}, #ch${chapterIndex}`);
+      }
+      
+      // Strategy 4: Try class-based selectors
+      if (!chapterElement) {
+        chapterElement = this.document.querySelector(`.chapter-${chapterIndex}, .chapter${chapterIndex}`);
+      }
+      
+      // Strategy 5: Fall back to nth-child selection
+      if (!chapterElement) {
+        const chapterElements = this.document.querySelectorAll('[data-chapter-index], [data-chapter], .chapter, section, div.chapter');
+        if (chapterIndex < chapterElements.length) {
+          chapterElement = chapterElements[chapterIndex];
+        }
+      }
+      
+      // Strategy 6: Use entire document if no chapter found (for single-chapter documents)
+      if (!chapterElement) {
+        console.warn(`Chapter ${chapterIndex} not found, using document body`);
+        chapterElement = this.document.body;
       }
 
-      if (charOffset === null) return null;
+      // Calculate character offset from relative position if needed
+      if (charOffset === null && relativePosition !== null) {
+        const chapterText = chapterElement.textContent || '';
+        const normalizedChapterText = this.normalizeSearchText(chapterText);
+        charOffset = Math.max(0, Math.min(normalizedChapterText.length - 1, Math.floor(normalizedChapterText.length * relativePosition)));
+      }
+
+      // Ensure we have a valid character offset
+      if (charOffset === null || charOffset < 0) {
+        console.warn('Invalid character offset calculated from CFI:', cfi);
+        return null;
+      }
 
       // Create range at the specified character offset
       const walker = this.document.createTreeWalker(
@@ -695,28 +1059,57 @@ export class EnhancedTextFinder {
     return null;
   }
 
-  private isRangeNearCfi(range: Range, cfiRange: Range, maxDistance: number): boolean {
+  /**
+   * Calculate pixel distance between two ranges
+   */
+  private calculateRangeDistance(range1: Range, range2: Range): number {
     try {
-      const rangeRect = range.getBoundingClientRect();
-      const cfiRect = cfiRange.getBoundingClientRect();
+      const rect1 = range1.getBoundingClientRect();
+      const rect2 = range2.getBoundingClientRect();
       
-      const distance = Math.sqrt(
-        Math.pow(rangeRect.left - cfiRect.left, 2) + 
-        Math.pow(rangeRect.top - cfiRect.top, 2)
+      // Calculate center points
+      const center1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
+      const center2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
+      
+      // Euclidean distance
+      return Math.sqrt(
+        Math.pow(center1.x - center2.x, 2) + 
+        Math.pow(center1.y - center2.y, 2)
       );
-      
-      return distance <= maxDistance;
     } catch {
-      return false;
+      return Infinity;
     }
+  }
+  
+  /**
+   * Calculate confidence score for CFI match based on distance and text length
+   */
+  private calculateCFIMatchConfidence(distance: number, maxDistance: number, textLength: number): number {
+    if (distance === 0) return 1.0;
+    if (distance >= maxDistance) return 0.0;
+    
+    // Base confidence from distance (closer is better)
+    const distanceConfidence = 1 - (distance / maxDistance);
+    
+    // Longer text gets higher confidence (more specific)
+    const lengthBonus = Math.min(0.2, textLength / 50);
+    
+    return Math.min(1.0, distanceConfidence + lengthBonus);
+  }
+  
+  /**
+   * Legacy method for backward compatibility
+   */
+  private isRangeNearCfi(range: Range, cfiRange: Range, maxDistance: number): boolean {
+    return this.calculateRangeDistance(range, cfiRange) <= maxDistance;
   }
 
   /**
    * SOP Enhancement: Find text that spans across multiple DOM nodes
    */
   private findTextAcrossNodes(searchText: string): { range: Range; confidence: number } | null {
-    const cleanSearchText = searchText.toLowerCase().replace(/\s+/g, ' ').trim();
-    if (!cleanSearchText) return null;
+    const normalizedSearchText = this.normalizeSearchText(searchText).toLowerCase();
+    if (!normalizedSearchText) return null;
 
     const walker = this.document.createTreeWalker(
       this.chapterElement || this.document.body,
@@ -747,23 +1140,29 @@ export class EnhancedTextFinder {
         if (!currentNode?.textContent) continue;
         
         const originalNodeText = currentNode.textContent.toLowerCase();
-        const normalizedNodeText = originalNodeText.replace(/\s+/g, ' ');
+        const normalizedNodeText = this.normalizeSearchText(originalNodeText);
         
-        // Build index map for this node
+        // Build index map for this node - mapping normalized positions to original positions
         let originalNodeIndex = 0;
         for (let k = 0; k < normalizedNodeText.length; k++) {
+          // Find corresponding position in original text
           while (originalNodeIndex < originalNodeText.length) {
             const originalChar = originalNodeText[originalNodeIndex];
+            const normalizedChar = normalizedNodeText[k];
+            
             if (originalChar && /\s/.test(originalChar)) {
-              // Skip whitespace in original, but only advance if we haven't mapped this normalized space yet
-              if (normalizedNodeText[k] === ' ') {
+              // Handle whitespace normalization
+              if (normalizedChar === ' ') {
                 indexMap.push(originalGlobalIndex + originalNodeIndex);
-                originalNodeIndex++;
+                // Skip any additional whitespace in original
+                while (originalNodeIndex < originalNodeText.length && /\s/.test(originalNodeText[originalNodeIndex] || '')) {
+                  originalNodeIndex++;
+                }
                 break;
               }
               originalNodeIndex++;
             } else {
-              // Non-whitespace character
+              // Non-whitespace character - direct mapping
               indexMap.push(originalGlobalIndex + originalNodeIndex);
               originalNodeIndex++;
               break;
@@ -776,12 +1175,12 @@ export class EnhancedTextFinder {
         originalGlobalIndex += originalNodeText.length;
         
         // Check if we found the text
-        const searchIndex = combinedText.indexOf(cleanSearchText);
+        const searchIndex = combinedText.indexOf(normalizedSearchText);
         if (searchIndex >= 0) {
           try {
             // Convert normalized indices back to original indices
             const originalStart = indexMap[searchIndex] || 0;
-            const originalEndIndex = searchIndex + cleanSearchText.length - 1;
+            const originalEndIndex = searchIndex + normalizedSearchText.length - 1;
             const originalEnd = originalEndIndex < indexMap.length ? (indexMap[originalEndIndex] || originalGlobalIndex - 1) : originalGlobalIndex - 1;
             const originalLength = originalEnd - originalStart + 1;
             
@@ -805,7 +1204,17 @@ export class EnhancedTextFinder {
    * SOP Enhancement: Find partial text matches for truncated content
    */
   private findPartialText(searchText: string): { range: Range; confidence: number } | null {
-    const words = searchText.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    // Normalize and filter words - allow single characters if they're meaningful
+    const normalizedText = this.normalizeSearchText(searchText);
+    const words = normalizedText.toLowerCase().split(/\s+/).filter(w => {
+      // Allow single letters that are likely meaningful (I, A) or numbers
+      if (w.length === 1) {
+        return /[iauIAU0-9]/.test(w);
+      }
+      // Allow all words of 2+ characters (reduced from 3+)
+      return w.length > 1;
+    });
+    
     if (words.length === 0) return null;
 
     const walker = this.document.createTreeWalker(
@@ -1199,9 +1608,17 @@ export class HighlightManager {
         return false;
       }
       
+      // Allow short words only if we have location (CFI) or context data for precise matching
       if (searchText.trim().length < 3) {
-        console.warn(`⚠️ Skipping annotation ${annotation.id}: searchText too short (${searchText.length} chars):`, searchText);
-        return false;
+        const hasLocation = annotation.location && annotation.location.trim().length > 0;
+        const hasContext = annotation.textContext && annotation.textContext.trim().length > 10;
+        
+        if (!hasLocation && !hasContext) {
+          console.warn(`⚠️ Skipping annotation ${annotation.id}: searchText too short (${searchText.length} chars) without location/context data:`, searchText);
+          return false;
+        }
+        
+        console.log(`✅ Allowing short word "${searchText}" with ${hasLocation ? 'location' : ''} ${hasContext ? 'context' : ''} data`);
       }
       
       return true;
