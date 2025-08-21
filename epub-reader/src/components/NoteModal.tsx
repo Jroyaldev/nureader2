@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-import Tooltip from './Tooltip';
+import { Tooltip } from './ui/Tooltip/Tooltip';
 
 interface NoteModalProps {
   isOpen: boolean;
@@ -95,7 +95,7 @@ export default function NoteModal({
               <p className="text-sm text-gray-600 dark:text-gray-400 font-inter">Create a note for the selection</p>
             </div>
           </div>
-          <Tooltip content="Close (Esc)" position="left">
+          <Tooltip content="Close (Esc)" placement="left">
             <button
               onClick={handleCancel}
               className="w-8 h-8 rounded-lg bg-white/10 dark:bg-gray-800/20 hover:bg-white/20 dark:hover:bg-gray-700/30 border border-white/10 dark:border-gray-700/20 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 flex items-center justify-center font-inter -mr-2"
@@ -123,7 +123,7 @@ export default function NoteModal({
           <div className="mb-4">
             <div className="text-sm font-medium text-gray-900 dark:text-white mb-2 font-inter">Highlight color (optional):</div>
             <div className="flex gap-2 flex-wrap">
-              <Tooltip content="No highlight" position="top">
+              <Tooltip content="No highlight" placement="top">
                 <button
                   onClick={() => setSelectedHighlight('')}
                   className={`w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110 flex items-center justify-center font-inter ${
@@ -138,7 +138,7 @@ export default function NoteModal({
                 </button>
               </Tooltip>
               {HIGHLIGHT_COLORS.map((color) => (
-                <Tooltip key={color.name} content={color.name} position="top">
+                <Tooltip key={color.name} content={color.name} placement="top">
                   <button
                     onClick={() => setSelectedHighlight(color.value)}
                     className={`w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110 flex items-center justify-center text-xs font-inter ${

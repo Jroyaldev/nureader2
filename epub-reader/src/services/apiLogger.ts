@@ -504,14 +504,3 @@ export const apiLogger = new ApiLogger({
   enableRealTimeAlerts: process.env.NODE_ENV === 'production'
 })
 
-// React hook for accessing API logs and metrics
-export const useApiLogger = () => {
-  return {
-    getLogs: apiLogger.getLogs.bind(apiLogger),
-    getMetrics: apiLogger.getMetrics.bind(apiLogger),
-    getErrorSummary: apiLogger.getErrorSummary.bind(apiLogger),
-    getPerformanceSummary: apiLogger.getPerformanceSummary.bind(apiLogger),
-    exportLogs: apiLogger.exportLogs.bind(apiLogger),
-    clear: apiLogger.clear.bind(apiLogger)
-  }
-}

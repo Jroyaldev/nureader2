@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-import Tooltip from './Tooltip';
+import { Tooltip } from './ui/Tooltip/Tooltip';
 
 interface AnnotationToolbarProps {
   isVisible: boolean;
@@ -183,7 +183,7 @@ export default function AnnotationToolbar({
           <div className="flex items-center gap-1">
             {/* Highlight Button */}
             <div className="relative">
-              <Tooltip content="Highlight text" position="top">
+              <Tooltip content="Highlight text" placement="top">
                 <button
                   onClick={() => setShowColorPicker(!showColorPicker)}
                   className="btn-icon"
@@ -198,7 +198,7 @@ export default function AnnotationToolbar({
           <div className="w-px h-5 bg-[rgba(var(--border),var(--border-opacity))]" />
 
           {/* Note Button */}
-          <Tooltip content="Add note" position="top">
+          <Tooltip content="Add note" placement="top">
             <button onClick={onNote} className="btn-icon">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -207,7 +207,7 @@ export default function AnnotationToolbar({
           </Tooltip>
 
           {/* Bookmark Button */}
-          <Tooltip content="Add bookmark" position="top">
+          <Tooltip content="Add bookmark" placement="top">
             <button onClick={onBookmark} className="btn-icon">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -218,7 +218,7 @@ export default function AnnotationToolbar({
           <div className="w-px h-5 bg-[rgba(var(--border),var(--border-opacity))]" />
 
           {/* Close Button */}
-          <Tooltip content="Close" position="top">
+          <Tooltip content="Close" placement="top">
             <button onClick={onClose} className="btn-icon">
               <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
