@@ -1,11 +1,21 @@
-import { ReadingProgress, Annotation } from '@/types'
+import { Annotation } from '@/types'
 import { ReadingService, AnnotationFilters, CreateAnnotationRequest } from '@/types/services'
 import { createClient } from '@/utils/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
+// Service-level ReadingProgress type that matches the service implementation
+export interface ServiceReadingProgress {
+  bookId: string;
+  position: string | null; // CFI location
+  percentageComplete: number;
+  totalTimeMinutes: number;
+  lastRead: string; // ISO string
+}
+
 export interface ReadingSession {
   id?: string;
   bookId: string;
+  userId?: string; // Add userId for defense-in-depth
   startChapterId?: string;
   endChapterId?: string;
   startCfi?: string;
@@ -59,7 +69,7 @@ export class ReadingServiceImpl implements ReadingService {
 
       if (error) throw error;
 
-      this.activeSession = { id: data.id, bookId, ...session };
+      this.activeSession = { id: data.id, bookId, userId: user.id, ...session };
       
       // Start session timer for periodic updates
       this.startSessionTimer();
@@ -75,7 +85,7 @@ export class ReadingServiceImpl implements ReadingService {
    * Updates the current reading session
    */
   private async updateSession(): Promise<void> {
-    if (!this.activeSession?.id) return;
+    if (!this.activeSession?.id || !this.activeSession?.userId) return;
 
     try {
       await this.supabase
@@ -87,7 +97,8 @@ export class ReadingServiceImpl implements ReadingService {
           pages_read: this.activeSession.pagesRead,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', this.activeSession.id);
+        .eq('id', this.activeSession.id)
+        .eq('user_id', this.activeSession.userId); // Defense-in-depth user scoping
     } catch (error) {
       console.error('Failed to update session:', error);
     }
@@ -116,7 +127,7 @@ export class ReadingServiceImpl implements ReadingService {
    * Ends the active reading session
    */
   async endActiveSession(): Promise<void> {
-    if (!this.activeSession?.id) return;
+    if (!this.activeSession?.id || !this.activeSession?.userId) return;
 
     try {
       this.stopSessionTimer();
@@ -131,7 +142,8 @@ export class ReadingServiceImpl implements ReadingService {
           end_percentage: this.activeSession.endPercentage,
           pages_read: this.activeSession.pagesRead,
         })
-        .eq('id', this.activeSession.id);
+        .eq('id', this.activeSession.id)
+        .eq('user_id', this.activeSession.userId); // Defense-in-depth user scoping
 
       this.activeSession = null;
     } catch (error) {
@@ -139,7 +151,7 @@ export class ReadingServiceImpl implements ReadingService {
     }
   }
 
-  async saveProgress(bookId: string, progress: ReadingProgress): Promise<void> {
+  async saveProgress(bookId: string, progress: ServiceReadingProgress): Promise<void> {
     try {
       const { data: { user }, error: authError } = await this.supabase.auth.getUser();
       if (authError || !user) throw new Error('Authentication required');
@@ -182,7 +194,7 @@ export class ReadingServiceImpl implements ReadingService {
     }
   }
 
-  async getProgress(bookId: string): Promise<ReadingProgress | null> {
+  async getProgress(bookId: string): Promise<ServiceReadingProgress | null> {
     try {
       const { data: { user }, error: authError } = await this.supabase.auth.getUser();
       if (authError || !user) throw new Error('Authentication required');
@@ -198,10 +210,10 @@ export class ReadingServiceImpl implements ReadingService {
 
       return data ? {
         bookId: data.book_id,
-        position: data.current_location, // Fixed: was 'data.position'
-        percentageComplete: data.progress_percentage, // Fixed: was 'data.percentage_complete'
-        totalTimeMinutes: data.reading_time_minutes, // Fixed: was 'data.total_time_minutes'
-        lastRead: data.last_read_at, // Fixed: was 'data.updated_at'
+        position: data.current_location,
+        percentageComplete: data.progress_percentage,
+        totalTimeMinutes: data.reading_time_minutes,
+        lastRead: data.last_read_at,
       } : null;
     } catch (error) {
       console.error('Failed to get progress:', error);
@@ -298,12 +310,22 @@ export class ReadingServiceImpl implements ReadingService {
       // Note: UpdateAnnotationRequest doesn't include location updates
       // so no need to check for position conflicts
 
+      // Whitelist updatable fields to prevent unintended updates
+      const allowedUpdates: { [key: string]: any } = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only include explicitly allowed fields
+      if (updates.content !== undefined) allowedUpdates.content = updates.content;
+      if (updates.note !== undefined) allowedUpdates.note = updates.note;
+      if (updates.color !== undefined) allowedUpdates.color = updates.color;
+      if (updates.type !== undefined) allowedUpdates.annotation_type = updates.type;
+      // Handle both type and annotation_type for backward compatibility
+      if ((updates as any).annotation_type !== undefined) allowedUpdates.annotation_type = (updates as any).annotation_type;
+
       const { data, error } = await this.supabase
         .from('annotations')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update(allowedUpdates)
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
@@ -339,12 +361,19 @@ export class ReadingServiceImpl implements ReadingService {
   /**
    * Subscribes to real-time progress updates for cross-device sync
    */
-  subscribeToProgressUpdates(
+  async subscribeToProgressUpdates(
     bookId: string,
-    onUpdate: (progress: ReadingProgress) => void
-  ): () => void {
+    onUpdate: (progress: ServiceReadingProgress) => void
+  ): Promise<() => void> {
     try {
-      const channelName = `progress:${bookId}`;
+      // Get current user for filtering
+      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Authentication required for real-time subscriptions');
+        return () => {};
+      }
+
+      const channelName = `progress:${bookId}:${user.id}`;
       
       // Clean up existing channel if any
       this.unsubscribeFromProgressUpdates(bookId);
@@ -357,11 +386,11 @@ export class ReadingServiceImpl implements ReadingService {
             event: 'INSERT',
             schema: 'public',
             table: 'reading_progress',
-            filter: `book_id=eq.${bookId}`,
+            filter: `book_id=eq.${bookId},user_id=eq.${user.id}`,
           },
           (payload) => {
             if (payload.new) {
-              const progress: ReadingProgress = {
+              const progress: ServiceReadingProgress = {
                 bookId: payload.new.book_id,
                 position: payload.new.current_location,
                 percentageComplete: payload.new.progress_percentage,
@@ -378,11 +407,11 @@ export class ReadingServiceImpl implements ReadingService {
             event: 'UPDATE',
             schema: 'public',
             table: 'reading_progress',
-            filter: `book_id=eq.${bookId}`,
+            filter: `book_id=eq.${bookId},user_id=eq.${user.id}`,
           },
           (payload) => {
             if (payload.new) {
-              const progress: ReadingProgress = {
+              const progress: ServiceReadingProgress = {
                 bookId: payload.new.book_id,
                 position: payload.new.current_location,
                 percentageComplete: payload.new.progress_percentage,
@@ -465,6 +494,36 @@ export class ReadingServiceImpl implements ReadingService {
   }
 
   /**
+   * Sanitizes and maps reading progress for import
+   */
+  private sanitizeProgressForImport(progress: any, userId: string): any {
+    return {
+      user_id: userId,
+      book_id: progress.book_id || progress.bookId,
+      current_location: progress.current_location || progress.currentLocation || progress.position,
+      progress_percentage: progress.progress_percentage || progress.progressPercentage || 0,
+      reading_time_minutes: progress.reading_time_minutes || progress.readingTimeMinutes || progress.totalTimeMinutes || 0,
+      last_read_at: progress.last_read_at || progress.lastReadAt || progress.lastRead || new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Sanitizes and maps annotation for import
+   */
+  private sanitizeAnnotationForImport(annotation: any, userId: string): any {
+    return {
+      user_id: userId,
+      book_id: annotation.book_id || annotation.bookId,
+      annotation_type: annotation.annotation_type || annotation.type || 'note',
+      content: annotation.content || '',
+      note: annotation.note || null,
+      location: annotation.location,
+      color: annotation.color || '#ffeb3b',
+      created_at: annotation.created_at || annotation.createdAt || new Date().toISOString(),
+    };
+  }
+
+  /**
    * Imports user data from backup
    */
   async importUserData(data: any): Promise<void> {
@@ -472,30 +531,43 @@ export class ReadingServiceImpl implements ReadingService {
       const { data: { user }, error: authError } = await this.supabase.auth.getUser();
       if (authError || !user) throw new Error('Authentication required');
 
-      // Import progress data
+      // Import progress data with sanitization
       if (data.progress && Array.isArray(data.progress)) {
         for (const progress of data.progress) {
+          // Validate required fields
+          if (!progress.book_id && !progress.bookId) {
+            console.warn('Skipping progress entry without book_id');
+            continue;
+          }
+          
+          const sanitizedProgress = this.sanitizeProgressForImport(progress, user.id);
+          
           await this.supabase
             .from('reading_progress')
-            .upsert({
-              ...progress,
-              user_id: user.id,
-            }, {
+            .upsert(sanitizedProgress, {
               onConflict: 'user_id,book_id',
             });
         }
       }
 
-      // Import annotations
+      // Import annotations with sanitization
       if (data.annotations && Array.isArray(data.annotations)) {
         for (const annotation of data.annotations) {
-          const { id, ...annotationData } = annotation;
+          // Validate required fields
+          if (!annotation.book_id && !annotation.bookId) {
+            console.warn('Skipping annotation without book_id');
+            continue;
+          }
+          if (!annotation.location) {
+            console.warn('Skipping annotation without location');
+            continue;
+          }
+          
+          const sanitizedAnnotation = this.sanitizeAnnotationForImport(annotation, user.id);
+          
           await this.supabase
             .from('annotations')
-            .insert({
-              ...annotationData,
-              user_id: user.id,
-            });
+            .insert(sanitizedAnnotation);
         }
       }
     } catch (error) {

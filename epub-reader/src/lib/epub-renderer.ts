@@ -26,7 +26,6 @@ export interface SavedAnnotation {
   note?: string;
   searchText?: string;
   textContext?: string;
-  type?: 'highlight' | 'note' | 'bookmark';
 }
 
 // Import new highlight and position management classes
@@ -49,6 +48,9 @@ export class EpubRenderer {
   private highlightedRanges: Map<string, Range> = new Map();
   private fontSize: number = 18;
   private _onScroll?: (e: Event) => void;
+  
+  // Debug flag for performance-sensitive logging
+  private static DEBUG_SCROLL_EVENTS = false;
 
   
   // New highlight and position management instances
@@ -699,18 +701,22 @@ export class EpubRenderer {
     });
     
     this._onScroll = () => {
-      console.log('🔥 RAW SCROLL EVENT FIRED!', this.container.scrollTop);
+      if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+        console.log('🔥 RAW SCROLL EVENT FIRED!', this.container.scrollTop);
+      }
       if (!ticking) {
         requestAnimationFrame(() => {
           // Only update if scroll position actually changed significantly
           const currentScrollTop = this.container.scrollTop;
           if (Math.abs(currentScrollTop - lastScrollTop) > 5) {
-            console.log('📜 Scroll detected:', {
-              scrollTop: currentScrollTop,
-              scrollHeight: this.container.scrollHeight,
-              clientHeight: this.container.clientHeight,
-              progress: Math.round((currentScrollTop / (this.container.scrollHeight - this.container.clientHeight)) * 100)
-            });
+            if (EpubRenderer.DEBUG_SCROLL_EVENTS) {
+              console.log('📜 Scroll detected:', {
+                scrollTop: currentScrollTop,
+                scrollHeight: this.container.scrollHeight,
+                clientHeight: this.container.clientHeight,
+                progress: Math.round((currentScrollTop / (this.container.scrollHeight - this.container.clientHeight)) * 100)
+              });
+            }
             this.updateProgress();
             this.updateCurrentChapter();
             lastScrollTop = currentScrollTop;
@@ -1808,7 +1814,8 @@ export class EpubRenderer {
     // First try to find the highlight element
     const highlightEl = this.container.querySelector(`[data-annotation-id="${annotationId}"]`) as HTMLElement;
     if (highlightEl) {
-      highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Use viewport-top alignment for consistency with the viewport-consistent system
+      this.scrollToElementWithViewportAlignment(highlightEl);
       
       // Add pulse animation
       highlightEl.classList.add('epub-highlight-pulse');
@@ -1843,7 +1850,7 @@ export class EpubRenderer {
 
   // Setup text selection listener
   private setupTextSelectionListener(): void {
-    let selectionTimeout: NodeJS.Timeout | null = null;
+    let selectionTimeout: ReturnType<typeof setTimeout> | null = null;
     
     const handleSelection = () => {
       const selection = window.getSelection();
@@ -2190,11 +2197,52 @@ export class EpubRenderer {
   // Restore reading position
   async restorePosition(position: PositionData): Promise<boolean> {
     try {
-      if (this.currentChapterIndex < 0 || this.currentChapterIndex !== position.chapterIndex) {
-        console.warn('Cannot restore position: chapter mismatch');
-        return false;
+      // Handle cross-chapter restoration by navigating to target chapter first
+      if (this.currentChapterIndex !== position.chapterIndex) {
+        console.log(`Cross-chapter restoration: moving from ${this.currentChapterIndex} to ${position.chapterIndex}`);
+        
+        // Validate target chapter exists
+        if (position.chapterIndex < 0 || position.chapterIndex >= this.chapters.length) {
+          console.warn(`Invalid chapter index: ${position.chapterIndex}`);
+          return false;
+        }
+        
+        // Navigate to target chapter
+        const targetChapter = this.chapters[position.chapterIndex];
+        if (!targetChapter) {
+          console.warn(`Chapter not found at index: ${position.chapterIndex}`);
+          return false;
+        }
+        
+        try {
+          this.jumpToChapter(targetChapter.href);
+          
+          // Wait for navigation and DOM stabilization
+          await new Promise(resolve => {
+            const checkStability = () => {
+              if (this.currentChapterIndex === position.chapterIndex) {
+                // Additional small delay for DOM rendering
+                setTimeout(resolve, 100);
+              } else {
+                setTimeout(checkStability, 50);
+              }
+            };
+            checkStability();
+          });
+          
+          // Verify navigation succeeded
+          if (this.currentChapterIndex !== position.chapterIndex) {
+            console.warn(`Navigation failed: still at ${this.currentChapterIndex}, expected ${position.chapterIndex}`);
+            return false;
+          }
+          
+        } catch (navError) {
+          console.error('Failed to navigate to target chapter:', navError);
+          return false;
+        }
       }
 
+      // Now restore position within the chapter
       const result = await this.positionRestorer.restorePosition(position);
       
       if (result.success) {

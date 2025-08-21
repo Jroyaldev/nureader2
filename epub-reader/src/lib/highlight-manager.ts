@@ -1474,7 +1474,7 @@ export class HighlightManager {
     span.dataset.confidence = confidence.toString();
     
     // Apply styling based on annotation type
-    const annotationType = annotation.type || annotation.annotation_type;
+    const annotationType = annotation.annotation_type;
     if (annotationType === 'highlight') {
       span.style.backgroundColor = annotation.color || '#ffeb3b';
       span.style.color = '#000';
@@ -1505,14 +1505,19 @@ export class HighlightManager {
 
   private applyHighlightToRange(range: Range, highlightElement: HTMLSpanElement): void {
     try {
-      // Try surroundContents first
-      highlightElement.appendChild(range.extractContents());
-      range.insertNode(highlightElement);
+      // Try surroundContents first for simple ranges - preserves text node structure better
+      range.surroundContents(highlightElement);
     } catch (error) {
-      // Fallback for complex ranges
-      const contents = range.extractContents();
-      highlightElement.appendChild(contents);
-      range.insertNode(highlightElement);
+      // Fallback for complex ranges that cross multiple elements
+      try {
+        const contents = range.extractContents();
+        highlightElement.appendChild(contents);
+        range.insertNode(highlightElement);
+      } catch (fallbackError) {
+        // Final fallback - insert the highlight element and move content manually
+        console.warn('Range highlighting failed with both surroundContents and extractContents:', fallbackError);
+        range.insertNode(highlightElement);
+      }
     }
   }
 
@@ -1575,7 +1580,7 @@ export class HighlightManager {
             location: highlight.location,
             textContext: highlight.textContext,
             color: highlight.color,
-            type: highlight.type || 'highlight'
+            annotation_type: (highlight.type || 'highlight') as 'highlight' | 'note' | 'bookmark'
           } as SavedAnnotation, matchResult.confidence || 1.0);
           
           // Apply the highlight
@@ -1699,10 +1704,10 @@ export class HighlightManager {
     if (successRate < 80) {
       recommendations.push('Consider improving text preprocessing or DOM structure');
     }
-    if ((errorCounts.get(HighlightErrorType.CROSS_NODE_TEXT) || 0) > 0) {
+    if ((errorCounts.get(HighlightErrorType.CROSS_NODE_TEXT) ?? 0) > 0) {
       recommendations.push('Text spans multiple DOM elements - cross-node search is being used');
     }
-    if ((errorCounts.get(HighlightErrorType.DOM_STRUCTURE_CHANGED) || 0) > 0) {
+    if ((errorCounts.get(HighlightErrorType.DOM_STRUCTURE_CHANGED) ?? 0) > 0) {
       recommendations.push('DOM structure is changing frequently - consider waiting for stability');
     }
     
