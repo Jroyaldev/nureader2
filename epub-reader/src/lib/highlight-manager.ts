@@ -4,7 +4,7 @@ import { SavedAnnotation } from './epub-renderer';
 interface HighlightData {
   id: string;
   searchText: string;
-  location: any;
+  location: string | null;
   textContext?: string;
   color?: string;
   type?: string;
@@ -48,9 +48,9 @@ enum HighlightErrorType {
 interface HighlightError {
   type: HighlightErrorType;
   message: string;
-  context?: any;
+  context?: Record<string, unknown>;
   timestamp: number;
-  strategy?: string;
+  strategy?: string | undefined;
   recoverable: boolean;
 }
 
@@ -101,15 +101,22 @@ class HighlightLogger {
     timestamp: number;
     level: 'info' | 'warn' | 'error';
     message: string;
-    context?: any;
+    context?: Record<string, unknown>;
     annotationId?: string;
     strategy?: string;
   }> = [];
 
   private maxLogs = 1000;
 
-  log(level: 'info' | 'warn' | 'error', message: string, context?: any, annotationId?: string, strategy?: string): void {
-    const logEntry: any = {
+  log(level: 'info' | 'warn' | 'error', message: string, context?: Record<string, unknown>, annotationId?: string, strategy?: string): void {
+    const logEntry: {
+      timestamp: number;
+      level: 'info' | 'warn' | 'error';
+      message: string;
+      context?: Record<string, unknown>;
+      annotationId?: string;
+      strategy?: string;
+    } = {
       timestamp: Date.now(),
       level,
       message
@@ -135,14 +142,21 @@ class HighlightLogger {
     } else if (level === 'warn') {
       console.warn(logMessage, context);
     } else {
-      console.log(logMessage, context);
+      console.warn(logMessage, context);
     }
   }
 
   getStats(): {
     total: number;
     byLevel: Record<string, number>;
-    recentErrors: Array<any>;
+    recentErrors: Array<{
+      timestamp: number;
+      level: 'info' | 'warn' | 'error';
+      message: string;
+      context?: Record<string, unknown>;
+      annotationId?: string;
+      strategy?: string;
+    }>;
     successRate: number;
   } {
     const byLevel = this.logs.reduce((acc, log) => {
@@ -177,7 +191,7 @@ class SOPErrorHandler {
     this.logger = logger;
   }
 
-  classifyError(error: any, context: any): HighlightError {
+  classifyError(error: unknown, context: Record<string, unknown>): HighlightError {
     const timestamp = Date.now();
     let errorType = HighlightErrorType.UNKNOWN_ERROR;
     let recoverable = true;
@@ -232,21 +246,28 @@ class SOPErrorHandler {
     }
     
     // Check for strategy exhaustion
-    if (context?.attempts >= 5 && context?.fallbackStrategies?.length === 0) {
-      errorType = HighlightErrorType.STRATEGY_EXHAUSTED;
-      recoverable = false;
+    if (typeof context === 'object' && context && 'attempts' in context && 'fallbackStrategies' in context) {
+      const attempts = context.attempts;
+      const fallbackStrategies = context.fallbackStrategies;
+      if (typeof attempts === 'number' && attempts >= 5 && 
+          Array.isArray(fallbackStrategies) && fallbackStrategies.length === 0) {
+        errorType = HighlightErrorType.STRATEGY_EXHAUSTED;
+        recoverable = false;
+      }
     }
+
+    const annotationId = context && typeof context === 'object' && 'annotationId' in context ? String(context.annotationId) : undefined;
+    const strategy = context && typeof context === 'object' && 'strategy' in context ? String(context.strategy) : undefined;
 
     const highlightError: HighlightError = {
       type: errorType,
       message,
       context,
       timestamp,
-      strategy: context?.strategy,
+      strategy,
       recoverable
     };
-
-    this.logger.log('error', `Error classified as ${errorType}`, highlightError, context?.annotationId, context?.strategy);
+    this.logger.log('error', `Error classified as ${errorType}`, context, annotationId, strategy);
     
     return highlightError;
   }
@@ -526,7 +547,7 @@ export class EnhancedTextFinder {
       const potentialMatches: Array<{ range: Range; distance: number; confidence: number }> = [];
       
       const walker = this.document.createTreeWalker(
-        container.nodeType === Node.ELEMENT_NODE ? container as Element : container.parentElement!,
+        container.nodeType === Node.ELEMENT_NODE ? container as Element : (container.parentElement || document.body),
         NodeFilter.SHOW_TEXT,
         null
       );
@@ -571,8 +592,11 @@ export class EnhancedTextFinder {
           return a.distance - b.distance;
         });
         
-        console.log(`Found ${potentialMatches.length} CFI matches, selected best with confidence ${potentialMatches[0]!.confidence.toFixed(2)}`);
-        return potentialMatches[0]!.range;
+        const bestMatch = potentialMatches[0];
+        if (bestMatch) {
+          console.warn(`Found ${potentialMatches.length} CFI matches, selected best with confidence ${bestMatch.confidence.toFixed(2)}`);
+          return bestMatch.range;
+        }
       }
       
     } catch (error) {
@@ -794,8 +818,7 @@ export class EnhancedTextFinder {
   /**
    * SOP Enhancement: Get nearby text around a node for context analysis
    */
-  // @ts-ignore - Method reserved for future SOP enhancements
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error - Method reserved for future SOP enhancements
   private getNearbyText(_node: Text, _radius: number): string {
     const node = _node;
     const radius = _radius;
@@ -846,8 +869,7 @@ export class EnhancedTextFinder {
   /**
    * SOP Enhancement: Create a range from nearby text analysis
    */
-  // @ts-ignore - Method reserved for future SOP enhancements
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error - Method reserved for future SOP enhancements
   private createRangeFromNearbyText(_node: Text, _searchIndex: number, _length: number): Range | null {
     const node = _node;
     const searchIndex = _searchIndex;
@@ -908,7 +930,7 @@ export class EnhancedTextFinder {
     for (let i = 0; i < words1.length; i++) {
       if (words1[i] === words2[i]) {
         matches++;
-      } else if (words1[i] && words2[i] && this.levenshteinDistance(words1[i]!, words2[i]!) <= 2) {
+      } else if (words1[i] && words2[i] && this.levenshteinDistance(words1[i] || '', words2[i] || '') <= 2) {
         matches += 0.7; // Partial credit for similar words
       }
     }
@@ -919,21 +941,32 @@ export class EnhancedTextFinder {
   private levenshteinDistance(str1: string, str2: string): number {
     const matrix: number[][] = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(0));
     
-    for (let i = 0; i <= str1.length; i++) matrix[0]![i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j]![0] = j;
+    for (let i = 0; i <= str1.length; i++) {
+      const row = matrix[0];
+      if (row) row[i] = i;
+    }
+    for (let j = 0; j <= str2.length; j++) {
+      const row = matrix[j];
+      if (row) row[0] = j;
+    }
     
     for (let j = 1; j <= str2.length; j++) {
       for (let i = 1; i <= str1.length; i++) {
         const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[j]![i] = Math.min(
-          matrix[j]![i - 1]! + 1,
-          matrix[j - 1]![i]! + 1,
-          matrix[j - 1]![i - 1]! + indicator
-        );
+        const currentRow = matrix[j];
+        const prevRow = matrix[j - 1];
+        if (currentRow && prevRow) {
+          currentRow[i] = Math.min(
+            (currentRow[i - 1] || 0) + 1,
+            (prevRow[i] || 0) + 1,
+            (prevRow[i - 1] || 0) + indicator
+          );
+        }
       }
     }
     
-    return matrix[str2.length]![str1.length]!;
+    const finalRow = matrix[str2.length];
+    return finalRow?.[str1.length] || str1.length + str2.length;
   }
 
   private getRangeFromCfi(cfi: string): Range | null {
@@ -954,30 +987,30 @@ export class EnhancedTextFinder {
       let charOffset: number | null = null;
       let relativePosition: number | null = null;
 
-      if (dashMatch) {
+      if (dashMatch && dashMatch[1] && dashMatch[2]) {
         // Format 1: Direct chapter and character offset
-        chapterIndex = parseInt(dashMatch[1]!, 10);
-        charOffset = parseInt(dashMatch[2]!, 10);
-      } else if (slashRelMatch) {
+        chapterIndex = parseInt(dashMatch[1], 10);
+        charOffset = parseInt(dashMatch[2], 10);
+      } else if (slashRelMatch && slashRelMatch[1] && slashRelMatch[2]) {
         // Format 2: Chapter with relative position
-        chapterIndex = parseInt(slashRelMatch[1]!, 10);
-        relativePosition = parseFloat(slashRelMatch[2]!);
-      } else if (epubCfiMatch) {
+        chapterIndex = parseInt(slashRelMatch[1], 10);
+        relativePosition = parseFloat(slashRelMatch[2]);
+      } else if (epubCfiMatch && epubCfiMatch[1]) {
         // Format 3: Standard EPUB CFI - extract character offset
-        charOffset = parseInt(epubCfiMatch[1]!, 10);
+        charOffset = parseInt(epubCfiMatch[1], 10);
         // Try to find chapter from CFI path
         const chapterMatch = cfi.match(/\[(chapter\d+|ch\d+|\d+)\]/);
-        if (chapterMatch) {
-          const chapterStr = chapterMatch[1]!;
+        if (chapterMatch && chapterMatch[1]) {
+          const chapterStr = chapterMatch[1];
           const chNum = chapterStr.match(/\d+/);
-          if (chNum) chapterIndex = parseInt(chNum[0]!, 10);
+          if (chNum && chNum[0]) chapterIndex = parseInt(chNum[0], 10);
         }
-      } else if (posMatch) {
+      } else if (posMatch && posMatch[1]) {
         // Format 4: Simple position offset
-        charOffset = parseInt(posMatch[1]!, 10);
-      } else if (percentMatch) {
+        charOffset = parseInt(posMatch[1], 10);
+      } else if (percentMatch && percentMatch[1]) {
         // Format 5: Percentage position
-        relativePosition = parseFloat(percentMatch[1]!) / 100;
+        relativePosition = parseFloat(percentMatch[1]) / 100;
       } else {
         console.warn('Unsupported CFI format:', cfi);
         return null;
@@ -1008,7 +1041,7 @@ export class EnhancedTextFinder {
       if (!chapterElement) {
         const chapterElements = this.document.querySelectorAll('[data-chapter-index], [data-chapter], .chapter, section, div.chapter');
         if (chapterIndex < chapterElements.length) {
-          chapterElement = chapterElements[chapterIndex];
+          chapterElement = chapterElements[chapterIndex] || null;
         }
       }
       
@@ -1097,12 +1130,6 @@ export class EnhancedTextFinder {
     return Math.min(1.0, distanceConfidence + lengthBonus);
   }
   
-  /**
-   * Legacy method for backward compatibility
-   */
-  private isRangeNearCfi(range: Range, cfiRange: Range, maxDistance: number): boolean {
-    return this.calculateRangeDistance(range, cfiRange) <= maxDistance;
-  }
 
   /**
    * SOP Enhancement: Find text that spans across multiple DOM nodes
@@ -1130,8 +1157,8 @@ export class EnhancedTextFinder {
     // Try to find text spanning multiple nodes
     for (let i = 0; i < textNodes.length; i++) {
       let combinedText = '';
-      let nodeRange: Text[] = [];
-      let indexMap: number[] = []; // Maps normalized index to original global index
+      const nodeRange: Text[] = [];
+      const indexMap: number[] = []; // Maps normalized index to original global index
       let originalGlobalIndex = 0;
       
       // Build combined text from consecutive nodes with index mapping
@@ -1319,10 +1346,12 @@ export class EnhancedTextFinder {
       let endPos = -1;
       
       for (let j = i; j < words.length; j++) {
-        const wordIndex = text.indexOf(words[j]!, currentPos);
+        const word = words[j];
+        if (!word) break;
+        const wordIndex = text.indexOf(word, currentPos);
         if (wordIndex >= 0) {
           if (startPos === -1) startPos = wordIndex;
-          endPos = wordIndex + words[j]!.length;
+          endPos = wordIndex + word.length;
           currentPos = endPos;
           matchedWords++;
         } else {
@@ -1367,8 +1396,11 @@ export class EnhancedTextFinder {
     
     if (foundWords.length >= Math.ceil(words.length * 0.6)) {
       foundWords.sort((a, b) => a.index - b.index);
-      const start = foundWords[0]!.index;
-      const end = foundWords[foundWords.length - 1]!.index + foundWords[foundWords.length - 1]!.word.length;
+      const firstWord = foundWords[0];
+      const lastWord = foundWords[foundWords.length - 1];
+      if (!firstWord || !lastWord) return null;
+      const start = firstWord.index;
+      const end = lastWord.index + lastWord.word.length;
       
       try {
         const range = this.document.createRange();
@@ -1394,8 +1426,9 @@ export class EnhancedTextFinder {
       let matches = 0;
       
       for (let j = 0; j < words.length; j++) {
-        const searchWord = words[j]!;
+        const searchWord = words[j];
         const textWord = segment[j] || '';
+        if (!searchWord) continue;
         
         if (searchWord === textWord) {
           matches++;
@@ -1618,7 +1651,7 @@ export class HighlightManager {
           return false;
         }
         
-        console.log(`✅ Allowing short word "${searchText}" with ${hasLocation ? 'location' : ''} ${hasContext ? 'context' : ''} data`);
+        console.warn(`✅ Allowing short word "${searchText}" with ${hasLocation ? 'location' : ''} ${hasContext ? 'context' : ''} data`);
       }
       
       return true;
@@ -1924,7 +1957,7 @@ export class HighlightManager {
     try {
       // Try surroundContents first for simple ranges - preserves text node structure better
       range.surroundContents(highlightElement);
-    } catch (error) {
+    } catch {
       // Fallback for complex ranges that cross multiple elements
       try {
         const contents = range.extractContents();
@@ -1963,8 +1996,7 @@ export class HighlightManager {
   /**
    * SOP Enhancement: Retry highlight with comprehensive error handling and fallback strategies
    */
-  // @ts-ignore - Method reserved for future SOP enhancements
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error - Method reserved for future SOP enhancements
   private async retryHighlightWithSOP(_highlight: HighlightData, _attempt: HighlightAttempt): Promise<void> {
     const highlight = _highlight;
     const attempt = _attempt;
@@ -1983,7 +2015,7 @@ export class HighlightManager {
         // Try to find and apply the highlight
         const matchResult = await this.textFinder.findText(
           highlight.searchText,
-          highlight.location,
+          highlight.location || undefined,
           highlight.textContext,
           strategies
         );
@@ -1994,7 +2026,7 @@ export class HighlightManager {
             id: highlight.id,
             searchText: highlight.searchText,
             content: highlight.searchText,
-            location: highlight.location,
+            location: highlight.location || '',
             textContext: highlight.textContext,
             color: highlight.color,
             annotation_type: (highlight.type || 'highlight') as 'highlight' | 'note' | 'bookmark'
@@ -2003,7 +2035,7 @@ export class HighlightManager {
           // Apply the highlight
           this.applyHighlightToRange(matchResult.range, highlightElement);
           
-          attempt.strategy = matchResult.strategy as any;
+          attempt.strategy = matchResult.strategy as HighlightAttempt['strategy'];
           this.tracker.addHighlight(highlight.id, highlightElement, matchResult.range);
           return; // Success!
         }
@@ -2084,7 +2116,19 @@ export class HighlightManager {
    * SOP Enhancement: Get comprehensive statistics and user feedback
    */
   getSOPStats(): {
-    performance: any;
+    performance: {
+      total: number;
+      byLevel: Record<string, number>;
+      recentErrors: Array<{
+        timestamp: number;
+        level: 'info' | 'warn' | 'error';
+        message: string;
+        context?: Record<string, unknown>;
+        annotationId?: string;
+        strategy?: string;
+      }>;
+      successRate: number;
+    };
     errors: HighlightError[];
     userFeedback: {
       successRate: number;
@@ -2194,7 +2238,7 @@ export class HighlightManager {
     
     // SOP: Log final statistics
     if (this.sopConfig.enableStructuredLogging) {
-      console.log('Highlight Manager destroyed. Final statistics:', this.getSOPStats().performance);
+      console.warn('Highlight Manager destroyed. Final statistics:', this.getSOPStats().performance);
     }
   }
 }
