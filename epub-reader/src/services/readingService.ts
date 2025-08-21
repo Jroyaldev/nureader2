@@ -497,9 +497,31 @@ export class ReadingServiceImpl implements ReadingService {
           .select('*')
           .eq('user_id', user.id);
 
-        // Map to service DTOs for consistency
-        exportData.progress = (progressData || []).map(mapDbProgressToService);
-        exportData.annotations = (annotationsData || []).map(mapDbAnnotationToDomain);
+        // Map to service DTOs for consistency and group by book ID for proper structure
+        const bookMap = new Map<string, { progress: ServiceReadingProgress | null; annotations: Annotation[] }>();
+        
+        // Process progress data
+        (progressData || []).forEach(p => {
+          const progress = mapDbProgressToService(p);
+          if (!bookMap.has(progress.bookId)) {
+            bookMap.set(progress.bookId, { progress: null, annotations: [] });
+          }
+          bookMap.get(progress.bookId)!.progress = progress;
+        });
+        
+        // Process annotations data
+        (annotationsData || []).forEach(a => {
+          const annotation = mapDbAnnotationToDomain(a);
+          if (!bookMap.has(annotation.bookId)) {
+            bookMap.set(annotation.bookId, { progress: null, annotations: [] });
+          }
+          bookMap.get(annotation.bookId)!.annotations.push(annotation);
+        });
+        
+        exportData.books = Array.from(bookMap.entries()).map(([bookId, data]) => ({
+          bookId,
+          ...data,
+        }));
       }
 
       return exportData;
@@ -552,9 +574,28 @@ export class ReadingServiceImpl implements ReadingService {
       if (authError || !user) throw new Error('Authentication required');
 
       // Import progress data with sanitization and error handling
-      if (data.progress && Array.isArray(data.progress)) {
+      // Handle new nested structure first, then fallback to legacy flat structure
+      const progressEntries: any[] = [];
+      
+      if (data.books && Array.isArray(data.books)) {
+        // New nested structure
+        for (const book of data.books) {
+          if (book.progress) {
+            // Ensure bookId is set from the book wrapper if missing
+            if (!book.progress.bookId && !book.progress.book_id) {
+              book.progress.bookId = book.bookId;
+            }
+            progressEntries.push(book.progress);
+          }
+        }
+      } else if (data.progress && Array.isArray(data.progress)) {
+        // Legacy flat structure for backward compatibility
+        progressEntries.push(...data.progress);
+      }
+      
+      if (progressEntries.length > 0) {
         const progressErrors: any[] = [];
-        for (const progress of data.progress) {
+        for (const progress of progressEntries) {
           // Validate required fields
           if (!progress.book_id && !progress.bookId) {
             console.warn('Skipping progress entry without book_id');
@@ -577,9 +618,30 @@ export class ReadingServiceImpl implements ReadingService {
       }
 
       // Import annotations with sanitization and error handling
-      if (data.annotations && Array.isArray(data.annotations)) {
+      // Handle new nested structure first, then fallback to legacy flat structure
+      const annotationEntries: any[] = [];
+      
+      if (data.books && Array.isArray(data.books)) {
+        // New nested structure
+        for (const book of data.books) {
+          if (book.annotations && Array.isArray(book.annotations)) {
+            for (const annotation of book.annotations) {
+              // Ensure bookId is set from the book wrapper if missing
+              if (!annotation.bookId && !annotation.book_id) {
+                annotation.bookId = book.bookId;
+              }
+              annotationEntries.push(annotation);
+            }
+          }
+        }
+      } else if (data.annotations && Array.isArray(data.annotations)) {
+        // Legacy flat structure for backward compatibility
+        annotationEntries.push(...data.annotations);
+      }
+      
+      if (annotationEntries.length > 0) {
         const annotationErrors: any[] = [];
-        for (const annotation of data.annotations) {
+        for (const annotation of annotationEntries) {
           // Validate required fields
           if (!annotation.book_id && !annotation.bookId) {
             console.warn('Skipping annotation without book_id');

@@ -35,15 +35,17 @@ export interface ServiceReadingSession {
 }
 
 export interface ExportDTO {
-  exportDate: Date;
+  exportDate: string; // ISO string for JSON serialization
   userId: string;
-  // Either use nested structure per book
+  // Primary structure: organized by book
   books?: {
     bookId: string;
     progress: ServiceReadingProgress | null;
     annotations: Annotation[];
   }[];
-  // OR use flat arrays (not both)
+  // Legacy flat arrays for backward compatibility (deprecated)
+  progress?: ServiceReadingProgress[];
+  annotations?: Annotation[];
 }
 
 // Enhanced service interface definitions
@@ -220,7 +222,6 @@ export interface ReadingService {
   updateAnnotation(id: string, updates: Partial<Annotation>): Promise<Annotation>
   deleteAnnotation(id: string): Promise<void>
   
-  // Data management
   // Data management
   exportUserData(bookId?: string): Promise<ExportDTO>
   importUserData(data: ExportDTO): Promise<void>
