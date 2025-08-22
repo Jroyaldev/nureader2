@@ -648,9 +648,9 @@ export default function LibraryPage() {
                       <div className="space-y-3">
                         {/* Book Cover with glassmorphism */}
                         <div className="aspect-[3/4] rounded-xl overflow-hidden reader-glass transition-all duration-300 relative group-hover:scale-[1.03] group-hover:shadow-2xl">
-                          {book.cover_url ? (
+                          {getCoverUrl(book.cover_path) ? (
                             <img 
-                              src={book.cover_url} 
+                              src={getCoverUrl(book.cover_path)!} 
                               alt={`${book.title} cover`}
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               loading="lazy"
@@ -701,6 +701,12 @@ export default function LibraryPage() {
                           <p className="text-[rgb(var(--muted))] text-xs line-clamp-1">
                             {book.author || 'Unknown author'}
                           </p>
+                          {/* Additional metadata on hover */}
+                          <div className="hidden group-hover:flex flex-wrap gap-2 text-[10px] text-[rgb(var(--muted))]/70 mt-1">
+                            {book.page_count && <span>{book.page_count}p</span>}
+                            {book.language && <span>• {book.language}</span>}
+                            {book.publisher && <span>• {book.publisher}</span>}
+                          </div>
                         </div>
                       </div>
                     </Link>
@@ -718,9 +724,9 @@ export default function LibraryPage() {
                   >
                     {/* Cover Thumbnail */}
                     <div className="w-24 h-32 rounded-lg overflow-hidden bg-gradient-to-br from-[rgb(var(--accent))]/5 to-[rgb(var(--accent))]/10 flex-shrink-0 border border-[rgb(var(--border))]/10">
-                      {book.cover_url ? (
+                      {getCoverUrl(book.cover_path) ? (
                         <img 
-                          src={book.cover_url} 
+                          src={getCoverUrl(book.cover_path)!} 
                           alt={`${book.title} cover`}
                           className="w-full h-full object-cover"
                           loading="lazy"
@@ -763,6 +769,12 @@ export default function LibraryPage() {
                           <span className="flex items-center gap-1">
                             <span className="w-1 h-1 bg-[rgb(var(--muted))]/40 rounded-full" />
                             {book.publisher}
+                          </span>
+                        )}
+                        {book.published_date && (
+                          <span className="flex items-center gap-1">
+                            <span className="w-1 h-1 bg-[rgb(var(--muted))]/40 rounded-full" />
+                            {new Date(book.published_date).getFullYear()}
                           </span>
                         )}
                       </div>

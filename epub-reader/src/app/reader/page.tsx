@@ -17,7 +17,7 @@ import MobileToolbar from "@/components/reader/MobileToolbar";
 import SearchPanel from "@/components/reader/SearchPanel";
 import { EnhancedSettingsPanel, SimplifiedReadingSettings } from "@/components/reader/EnhancedSettingsPanel";
 import { useReaderState } from '@/hooks/useReaderState';
-import AIChatPanel from "@/components/reader/AIChatPanel";
+import EnhancedAIAssistant from "@/components/reader/EnhancedAIAssistant";
 import { useSidebar, UIStateProvider } from '@/contexts/UIStateContext';
 
 
@@ -1562,18 +1562,18 @@ function ReaderPageContent() {
         />
       )}
       
-      {/* AI Chat Panel */}
-      <AIChatPanel
+      {/* Enhanced AI Assistant with GPT-5 Models */}
+      <EnhancedAIAssistant
         isOpen={aiSidebar.isOpen}
         onClose={() => aiSidebar.close()}
-        bookTitle={loaded?.title}
-        currentChapter={chapterTitle}
-        currentLocation={navigationState.canGoNext ? `Page ${currentProgress}` : 'End of book'}
-        selectedText={selectedText}
-        bookId={bookId || undefined}
-        userId={currentUserId || undefined}
-        isMobile={isMobile}
-        theme={resolvedTheme as 'light' | 'dark'}
+        {...(bookId && { bookId })}
+        {...(loaded?.title && { bookTitle: loaded.title })}
+        {...(chapterTitle && { currentChapter: chapterTitle })}
+        {...(epubRendererRef.current?.getCurrentCfi() && { currentCFI: epubRendererRef.current.getCurrentCfi() })}
+        {...(selectedText && { currentText: selectedText, selectedText })}
+        {...(currentProgress && { progressPercent: currentProgress })}
+        // Note: totalPages would be real page count if available from book.spine
+        {...(currentUserId && { userId: currentUserId })}
       />
     </div>
   );
