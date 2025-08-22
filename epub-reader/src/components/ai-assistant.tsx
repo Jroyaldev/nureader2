@@ -4,21 +4,42 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAIContext } from '@/lib/ai-context';
 import { X, Send, Sparkles, ChevronDown, Plus, BookOpen, Highlighter, Brain } from 'lucide-react';
 
-// Strict model definitions - GPT-5 series and GPT-4.1
-type AIModel = 'gpt-5' | 'gpt-5-mini' | 'gpt-5-nano' | 'gpt-4.1';
+// Enhanced model definitions - OpenAI GPT-5 series and Groq OSS models
+type AIModel = 
+  | 'gpt-5' | 'gpt-5-mini' | 'gpt-5-nano' | 'gpt-4.1'  // OpenAI
+  | 'openai/gpt-oss-120b' | 'openai/gpt-oss-20b';      // Groq OSS
 
 const MODEL_DISPLAY_NAMES: Record<AIModel, string> = {
+  // OpenAI Models
   'gpt-5': 'GPT-5',
   'gpt-5-mini': 'GPT-5 Mini',
   'gpt-5-nano': 'GPT-5 Nano',
   'gpt-4.1': 'GPT-4.1',
+  // Groq OSS Models
+  'openai/gpt-oss-120b': 'GPT-OSS 120B',
+  'openai/gpt-oss-20b': 'GPT-OSS 20B',
 };
 
 const MODEL_DESCRIPTIONS: Record<AIModel, string> = {
+  // OpenAI Models
   'gpt-5': 'Most capable, multimodal understanding',
   'gpt-5-mini': 'Fast and efficient, balanced performance',
   'gpt-5-nano': 'Lightweight, quick responses',
   'gpt-4.1': 'Enhanced GPT-4 with improved capabilities',
+  // Groq OSS Models
+  'openai/gpt-oss-120b': 'Ultra-fast streaming, web search, reasoning',
+  'openai/gpt-oss-20b': 'Cost-efficient, fast inference, tool calling',
+};
+
+const MODEL_FEATURES: Record<AIModel, { streaming: boolean; webSearch: boolean; reasoning: boolean; provider: 'openai' | 'groq' }> = {
+  // OpenAI Models
+  'gpt-5': { streaming: false, webSearch: false, reasoning: true, provider: 'openai' },
+  'gpt-5-mini': { streaming: false, webSearch: false, reasoning: true, provider: 'openai' },
+  'gpt-5-nano': { streaming: false, webSearch: false, reasoning: true, provider: 'openai' },
+  'gpt-4.1': { streaming: false, webSearch: false, reasoning: true, provider: 'openai' },
+  // Groq OSS Models
+  'openai/gpt-oss-120b': { streaming: true, webSearch: true, reasoning: true, provider: 'groq' },
+  'openai/gpt-oss-20b': { streaming: true, webSearch: true, reasoning: true, provider: 'groq' },
 };
 
 interface Message {
@@ -37,7 +58,7 @@ interface AIAssistantProps {
 
 export default function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState<AIModel>('gpt-5');
+  const [selectedModel, setSelectedModel] = useState<AIModel>('openai/gpt-oss-20b');
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [contextIncluded, setContextIncluded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -88,36 +109,114 @@ export default function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
       setInput('');
       setIsLoading(true);
 
+      const selectedModelFeatures = MODEL_FEATURES[selectedModel];
+      const useStreaming = selectedModelFeatures.streaming;
+
       try {
-        const response = await fetch('/api/ai-chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages: [...messages, userMessage].map(m => ({
-              role: m.role,
-              content: m.context ? `${m.content}\n\n[Context:\n${m.context}]` : m.content,
-            })),
+        if (useStreaming) {
+          // Streaming implementation for Groq models
+          const response = await fetch('/api/ai-chat-stream', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messages: [...messages, userMessage].map(m => ({
+                role: m.role,
+                content: m.context ? `${m.content}\n\n[Context:\n${m.context}]` : m.content,
+              })),
+              model: selectedModel,
+              context: {
+                ...bookContext,
+                selectedAnnotations: selectedAnnotations.length > 0 ? selectedAnnotations : undefined,
+              },
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to get AI response');
+          }
+
+          // Handle streaming response
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error('No response stream');
+
+          let streamingMessage: Message = {
+            id: `msg-${Date.now()}-assistant`,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
             model: selectedModel,
-          }),
-        });
+          };
 
-        if (!response.ok) {
-          throw new Error('Failed to get AI response');
+          setMessages(prev => [...prev, streamingMessage]);
+
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const dataLine = line.slice(6); // Remove 'data: ' prefix
+                if (dataLine === '[DONE]') break;
+                
+                try {
+                  const data = JSON.parse(dataLine);
+                  if (data.type === 'text-delta') {
+                    streamingMessage.content += data.delta;
+                    setMessages(prev => 
+                      prev.map(msg => 
+                        msg.id === streamingMessage.id 
+                          ? { ...msg, content: streamingMessage.content }
+                          : msg
+                      )
+                    );
+                  }
+                } catch (e) {
+                  // Ignore malformed JSON
+                }
+              }
+            }
+          }
+        } else {
+          // Non-streaming implementation for OpenAI models
+          const response = await fetch('/api/ai-chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messages: [...messages, userMessage].map(m => ({
+                role: m.role,
+                content: m.context ? `${m.content}\n\n[Context:\n${m.context}]` : m.content,
+              })),
+              model: selectedModel,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to get AI response');
+          }
+
+          const data = await response.json();
+          
+          const assistantMessage: Message = {
+            id: `msg-${Date.now()}-assistant`,
+            role: 'assistant',
+            content: data.content,
+            timestamp: new Date(),
+            model: selectedModel,
+          };
+
+          setMessages(prev => [...prev, assistantMessage]);
         }
-
-        const data = await response.json();
-        
-        const assistantMessage: Message = {
-          id: `msg-${Date.now()}-assistant`,
-          role: 'assistant',
-          content: data.content,
-          timestamp: new Date(),
-          model: selectedModel,
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
       } catch (error) {
         console.error('Error getting AI response:', error);
         // Add error message
@@ -179,7 +278,15 @@ export default function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
               className="w-full flex flex-col gap-1 px-2 md:px-3 py-2 md:py-2.5 bg-zinc-800/50 hover:bg-zinc-800/70 rounded-lg transition-colors cursor-pointer"
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-sm md:text-base text-zinc-200 font-medium">{MODEL_DISPLAY_NAMES[selectedModel]}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm md:text-base text-zinc-200 font-medium">{MODEL_DISPLAY_NAMES[selectedModel]}</span>
+                  {MODEL_FEATURES[selectedModel].webSearch && (
+                    <span className="text-xs bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-600/30">WEB</span>
+                  )}
+                  {MODEL_FEATURES[selectedModel].streaming && (
+                    <span className="text-xs bg-green-600/20 text-green-400 px-1.5 py-0.5 rounded border border-green-600/30">STREAM</span>
+                  )}
+                </div>
                 <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
               </div>
               <span className="text-xs text-zinc-500 text-left">{MODEL_DESCRIPTIONS[selectedModel]}</span>
@@ -200,9 +307,17 @@ export default function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-sm ${selectedModel === model ? 'text-green-400' : 'text-zinc-300'}`}>
-                        {displayName}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm ${selectedModel === model ? 'text-green-400' : 'text-zinc-300'}`}>
+                          {displayName}
+                        </span>
+                        {MODEL_FEATURES[model as AIModel].webSearch && (
+                          <span className="text-xs bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-600/30">WEB</span>
+                        )}
+                        {MODEL_FEATURES[model as AIModel].streaming && (
+                          <span className="text-xs bg-green-600/20 text-green-400 px-1.5 py-0.5 rounded border border-green-600/30">STREAM</span>
+                        )}
+                      </div>
                       {selectedModel === model && (
                         <div className="w-2 h-2 bg-green-500 rounded-full" />
                       )}
@@ -248,9 +363,15 @@ export default function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
               <p className="text-zinc-400 text-sm mb-2">
                 Ask me anything about your book, reading, or request help with understanding the content.
               </p>
-              <p className="text-zinc-500 text-xs">
-                Using {MODEL_DISPLAY_NAMES[selectedModel]} for enhanced comprehension
-              </p>
+              <div className="flex items-center justify-center gap-2 text-xs">
+                <span className="text-zinc-500">Using {MODEL_DISPLAY_NAMES[selectedModel]}</span>
+                {MODEL_FEATURES[selectedModel].webSearch && (
+                  <span className="bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-600/30">WEB SEARCH</span>
+                )}
+                {MODEL_FEATURES[selectedModel].streaming && (
+                  <span className="bg-green-600/20 text-green-400 px-1.5 py-0.5 rounded border border-green-600/30">STREAMING</span>
+                )}
+              </div>
             </div>
           )}
           

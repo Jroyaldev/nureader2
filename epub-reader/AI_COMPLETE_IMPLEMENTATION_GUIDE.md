@@ -753,8 +753,12 @@ const result = await generateText({
       presencePenalty: 0,
       user: userId, // For tracking
       
-      // Multimodal options
-      imageDetail: 'high', // for image inputs
+      // GPT-5 New Parameters
+      reasoning_effort: 'medium', // 'minimal', 'low', 'medium', 'high'
+      verbosity: 'medium', // 'low', 'medium', 'high'
+      
+      // Multimodal options (Enhanced in GPT-5)
+      imageDetail: 'high', // for image inputs - improved understanding
       
       // Advanced features
       structuredOutputs: true,
@@ -878,6 +882,74 @@ for await (const partialObject of stream.partialObjectStream) {
 }
 ```
 
+## GPT-5 Enhanced Capabilities (August 2025)
+
+### 1. Reasoning Effort Parameter
+- **Values**: `"minimal"`, `"low"`, `"medium"`, `"high"`
+- **Use Cases**: 
+  - `"minimal"`: Quick lookups, simple definitions
+  - `"low"`: Basic comprehension questions
+  - `"medium"`: Standard literary analysis (default)
+  - `"high"`: Deep literary analysis, complex themes
+
+### 2. Verbosity Control
+- **Values**: `"low"`, `"medium"`, `"high"`
+- **Use Cases**:
+  - `"low"`: Concise answers for quick reference
+  - `"medium"`: Balanced explanations (default)
+  - `"high"`: Detailed explanations for learning
+
+### 3. Enhanced Context Handling
+- **Capability**: Much better long-context understanding vs GPT-4o
+- **Perfect for**: Processing entire book chapters or multiple annotations
+- **Context Window**: Up to 1M tokens for comprehensive understanding
+
+### 4. Reduced Hallucinations
+- **Improvement**: ~45% fewer factual errors than GPT-4o
+- **Critical for**: Accurate literary analysis and book discussions
+- **Reliability**: Better for educational and scholarly content
+
+### 5. Improved Multimodal Support
+- **Enhancement**: Better image understanding for book covers, diagrams, illustrations
+- **Applications**: Enhanced book metadata extraction from cover images
+- **Formats**: Supports images, PDFs, and structured documents
+
+### 6. Implementation Examples
+```typescript
+// Dynamic reasoning based on task type
+const getReasoningEffort = (taskType: string): string => {
+  switch (taskType) {
+    case 'definition': return 'minimal';
+    case 'summary': return 'low';
+    case 'analysis': return 'high';
+    default: return 'medium';
+  }
+};
+
+// Context-aware verbosity
+const getVerbosity = (userPreference: string, taskComplexity: string): string => {
+  if (userPreference === 'detailed' || taskComplexity === 'complex') return 'high';
+  if (userPreference === 'brief') return 'low';
+  return 'medium';
+};
+
+// Enhanced API call with GPT-5 features
+const result = await generateText({
+  model: openai('gpt-5'),
+  messages: formattedMessages,
+  system: enhancedSystemPrompt,
+  providerOptions: {
+    openai: {
+      reasoning_effort: getReasoningEffort(taskType),
+      verbosity: getVerbosity(userPreference, taskComplexity),
+      temperature: taskType === 'creative' ? 0.9 : 0.7,
+    }
+  },
+  temperature: 0.7,
+  maxOutputTokens: 2000,
+});
+```
+
 ## Best Practices
 
 1. **Context Management**
@@ -921,6 +993,12 @@ for await (const partialObject of stream.partialObjectStream) {
    - Use routing for efficiency
    - Implement error recovery
    - Monitor agent performance
+
+7. **GPT-5 Optimization**
+   - Use `reasoning_effort: 'minimal'` for UI responsiveness
+   - Use `reasoning_effort: 'high'` for academic analysis
+   - Adjust `verbosity` based on user context and preferences
+   - Leverage enhanced multimodal support for book covers/diagrams
 
 ## Testing Considerations
 
