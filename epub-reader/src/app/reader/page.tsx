@@ -1556,8 +1556,8 @@ function ReaderPageContent() {
       {/* Toast Notifications */}
       {toast && (
         <Toast
-          message={toast.message}
-          type={toast.type}
+          description={toast.message}
+          variant={toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'info'}
           onClose={() => setToast(null)}
         />
       )}
@@ -1571,7 +1571,7 @@ function ReaderPageContent() {
         {...(chapterTitle && { currentChapter: chapterTitle })}
         {...(epubRendererRef.current?.getCurrentCfi() && { currentCFI: epubRendererRef.current.getCurrentCfi() })}
         {...(selectedText && { currentText: selectedText, selectedText })}
-        {...(currentProgress && { progressPercent: currentProgress })}
+        {...(currentProgress !== undefined && { progressPercent: currentProgress })}
         // Note: totalPages would be real page count if available from book.spine
         {...(currentUserId && { userId: currentUserId })}
       />

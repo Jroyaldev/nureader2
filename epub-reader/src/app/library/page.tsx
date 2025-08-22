@@ -33,6 +33,7 @@ interface Book {
   description: string | null;
   cover_path: string | null;
   cover_url: string | null;
+  file_path: string | null;
   isbn: string | null;
   language: string;
   publisher: string | null;
@@ -152,7 +153,13 @@ export default function LibraryPage() {
     };
   }, [showSortMenu, showUserMenu]);
   
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+
+  const getCoverUrl = useCallback((coverPath: string | null) => {
+    if (!coverPath) return null;
+    const { data } = supabase.storage.from('book-covers').getPublicUrl(coverPath);
+    return data.publicUrl;
+  }, [supabase]);
 
   const fetchBooks = useCallback(async () => {
     setIsLoading(true);
@@ -185,7 +192,7 @@ export default function LibraryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router]);
+  }, [supabase, router, getCoverUrl]);
 
   useEffect(() => {
     fetchBooks();
@@ -238,13 +245,6 @@ export default function LibraryPage() {
     fetchBooks();
   }, [fetchBooks]);
 
-  const getCoverUrl = useCallback((coverPath: string | null) => {
-    if (!coverPath) {
-      return null;
-    }
-    const { data } = supabase.storage.from('book-covers').getPublicUrl(coverPath);
-    return data.publicUrl;
-  }, [supabase]);
 
   const handleDeleteBook = async () => {
     if (!deletingBook) return;
@@ -648,9 +648,9 @@ export default function LibraryPage() {
                       <div className="space-y-3">
                         {/* Book Cover with glassmorphism */}
                         <div className="aspect-[3/4] rounded-xl overflow-hidden reader-glass transition-all duration-300 relative group-hover:scale-[1.03] group-hover:shadow-2xl">
-                          {getCoverUrl(book.cover_path) ? (
+                          {book.cover_url ? (
                             <img 
-                              src={getCoverUrl(book.cover_path)!} 
+                              src={book.cover_url} 
                               alt={`${book.title} cover`}
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               loading="lazy"
@@ -724,9 +724,9 @@ export default function LibraryPage() {
                   >
                     {/* Cover Thumbnail */}
                     <div className="w-24 h-32 rounded-lg overflow-hidden bg-gradient-to-br from-[rgb(var(--accent))]/5 to-[rgb(var(--accent))]/10 flex-shrink-0 border border-[rgb(var(--border))]/10">
-                      {getCoverUrl(book.cover_path) ? (
+                      {book.cover_url ? (
                         <img 
-                          src={getCoverUrl(book.cover_path)!} 
+                          src={book.cover_url} 
                           alt={`${book.title} cover`}
                           className="w-full h-full object-cover"
                           loading="lazy"

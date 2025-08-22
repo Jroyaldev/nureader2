@@ -220,14 +220,14 @@ const tools = {
       type: z.enum(['highlight', 'note', 'bookmark']).optional()
     }),
     execute: async ({ query, type }) => {
-      let query = supabase
+      let builder = supabase
         .from('annotations')
         .select('*')
         .ilike('text', `%${query}%`);
       
-      if (type) query = query.eq('type', type);
+      if (type) builder = builder.eq('type', type);
       
-      const { data } = await query;
+      const { data } = await builder;
       return data;
     }
   })
